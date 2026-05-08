@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import useNavItems from '../hooks/useNavItems'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { MdClose, MdMenu } from 'react-icons/md'
 
 function SearchIcon() {
@@ -24,9 +24,11 @@ function SearchIcon() {
 
 export default function Navbar() {
   const navigate = useNavigate()
+  const location = useLocation()
   const navItems = useNavItems()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [search, setSearch] = useState('')
   const [authUser, setAuthUser] = useState(() => {
     try {
       const raw = localStorage.getItem('authUser')
@@ -38,6 +40,11 @@ export default function Navbar() {
   const profileRef = useRef(null)
   const isAdmin = authUser?.role === 'admin'
   const avatarLabel = useMemo(() => (authUser?.username?.trim()?.[0] || 'P').toUpperCase(), [authUser])
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    setSearch(params.get('q') || '')
+  }, [location.search])
 
   useEffect(() => {
     const syncAuth = () => {
@@ -65,6 +72,12 @@ export default function Navbar() {
     }
   }, [])
 
+  const updateSearch = (value) => {
+    setSearch(value)
+    const query = value.trim()
+    navigate(query ? `/books?q=${encodeURIComponent(query)}` : '/books')
+  }
+
   const handleLogout = () => {
     localStorage.removeItem('authToken')
     localStorage.removeItem('authUser')
@@ -83,7 +96,7 @@ export default function Navbar() {
     >
       <nav className="mx-auto w-full max-w-7xl rounded-2xl border border-white/15 bg-gradient-to-r from-white/[0.13] via-white/[0.08] to-white/[0.1] shadow-[0_14px_50px_rgba(6,10,34,0.6)] backdrop-blur-2xl">
         <div className="flex items-center gap-4 px-4 py-3.5 sm:px-6">
-          <a href="#" className="group flex shrink-0 items-center gap-3">
+          <Link to="/" className="group flex shrink-0 items-center gap-3">
             <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600 text-sm font-bold text-white shadow-[0_0_35px_rgba(100,105,255,0.55)] transition duration-300 group-hover:scale-105 group-hover:rotate-3">
               R
             </span>
@@ -93,7 +106,7 @@ export default function Navbar() {
                 Readify AI
               </p>
             </div>
-          </a>
+          </Link>
 
           <div className="hidden min-w-0 flex-1 items-center justify-center lg:flex">
             <label className="group relative w-full max-w-md">
@@ -102,6 +115,8 @@ export default function Navbar() {
               </span>
               <input
                 type="text"
+                value={search}
+                onChange={(e) => updateSearch(e.target.value)}
                 placeholder="Search books, genres, or authors..."
                 className="h-11 w-full rounded-xl border border-white/15 bg-slate-950/45 pl-10 pr-4 text-sm text-white placeholder:text-slate-300/60 outline-none transition duration-300 focus:border-blue-300/60 focus:bg-slate-900/55 focus:shadow-[0_0_0_4px_rgba(96,102,255,0.18)]"
               />
@@ -111,13 +126,13 @@ export default function Navbar() {
           <ul className="hidden items-center gap-1 xl:flex">
             {navItems.map((item) => (
               <li key={item.label}>
-                <a
-                  href={item.href}
+                <Link
+                  to={item.href}
                   className="group relative rounded-lg px-4 py-2 text-sm font-medium text-slate-200/90 transition duration-300 hover:-translate-y-0.5 hover:text-white"
                 >
                   {item.label}
                   <span className="absolute inset-x-3 -bottom-0.5 h-px scale-x-0 bg-gradient-to-r from-blue-400 to-violet-400 transition duration-300 group-hover:scale-x-100" />
-                </a>
+                </Link>
               </li>
             ))}
             {!authUser ? (
@@ -127,16 +142,6 @@ export default function Navbar() {
                   className="rounded-lg border border-blue-300/35 bg-blue-500/15 px-4 py-2 text-sm font-semibold text-blue-100 transition duration-300 hover:-translate-y-0.5 hover:border-blue-200/55 hover:bg-blue-500/25 hover:text-white"
                 >
                   Login
-                </Link>
-              </li>
-            ) : null}
-            {!authUser ? (
-              <li>
-                <Link
-                  to="/signup"
-                  className="rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-slate-100 transition duration-300 hover:-translate-y-0.5 hover:border-blue-300/45 hover:bg-white/15 hover:text-white"
-                >
-                  Sign Up
                 </Link>
               </li>
             ) : null}
@@ -172,9 +177,9 @@ export default function Navbar() {
                   <Link to="/me" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
                     My Profile
                   </Link>
-                  <a href="/#continue-reading" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
+                  <Link to="/" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
                     Continue Reading
-                  </a>
+                  </Link>
                   {isAdmin ? (
                     <Link to="/admin/dashboard" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
                       Admin Dashboard
@@ -226,6 +231,8 @@ export default function Navbar() {
           </span>
           <input
             type="text"
+            value={search}
+            onChange={(e) => updateSearch(e.target.value)}
             placeholder="Search books..."
             className="h-10 w-full rounded-xl border border-white/15 bg-slate-950/45 pl-10 pr-4 text-sm text-white placeholder:text-slate-300/60 outline-none transition duration-300 focus:border-blue-300/60 focus:bg-slate-900/55 focus:shadow-[0_0_0_4px_rgba(96,102,255,0.18)]"
           />
@@ -233,14 +240,14 @@ export default function Navbar() {
 
         <nav className="space-y-2">
           {navItems.map((item) => (
-            <a
+            <Link
               key={item.label}
-              href={item.href}
+              to={item.href}
               onClick={() => setMobileMenuOpen(false)}
               className="block rounded-xl border border-white/15 bg-white/[0.06] px-4 py-3 text-sm font-semibold text-slate-100 transition hover:border-blue-300/40 hover:bg-white/[0.12]"
             >
               {item.label}
-            </a>
+            </Link>
           ))}
           {!authUser ? (
             <Link
@@ -251,32 +258,14 @@ export default function Navbar() {
               Login
             </Link>
           ) : null}
-          {!authUser ? (
-            <Link
-              to="/signup"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-semibold text-slate-100 transition hover:border-blue-300/40 hover:bg-white/[0.12]"
-            >
-              Sign Up
-            </Link>
-          ) : null}
           {authUser ? (
-            <a
-              href="/me"
+            <Link
+              to="/me"
               onClick={() => setMobileMenuOpen(false)}
               className="block rounded-xl border border-white/15 bg-white/[0.06] px-4 py-3 text-sm font-semibold text-slate-100 transition hover:border-blue-300/40 hover:bg-white/[0.12]"
             >
               My Profile
-            </a>
-          ) : null}
-          {authUser ? (
-            <a
-              href="/#continue-reading"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block rounded-xl border border-white/15 bg-white/[0.06] px-4 py-3 text-sm font-semibold text-slate-100 transition hover:border-blue-300/40 hover:bg-white/[0.12]"
-            >
-              Continue Reading
-            </a>
+            </Link>
           ) : null}
           {authUser && isAdmin ? (
             <Link

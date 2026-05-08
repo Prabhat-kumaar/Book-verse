@@ -9,6 +9,9 @@ import AdminManageBooksPage from './pages/AdminManageBooksPage'
 import AdminAnalyticsPage from './pages/AdminAnalyticsPage'
 import LoginPage from './pages/LoginPage'
 import SignUpPage from './pages/SignUpPage'
+import BooksPage from './pages/BooksPage'
+import CategoriesPage from './pages/CategoriesPage'
+import RecommendedPage from './pages/RecommendedPage'
 
 function readAuthUser() {
   try {
@@ -70,6 +73,9 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<MainLayout><HomePage /></MainLayout>} />
+      <Route path="/books" element={<MainLayout><BooksPage /></MainLayout>} />
+      <Route path="/categories" element={<MainLayout><CategoriesPage /></MainLayout>} />
+      <Route path="/recommended" element={<MainLayout><RecommendedPage /></MainLayout>} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignUpPage />} />
       <Route path="/admin/login" element={<Navigate to="/login" replace />} />

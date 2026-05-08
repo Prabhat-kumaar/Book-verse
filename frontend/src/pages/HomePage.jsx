@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import useBooks from '../hooks/useBooks'
 import useProgress from '../hooks/useProgress'
 
@@ -118,6 +119,7 @@ function BookCardSkeleton() {
 }
 
 export default function HomePage() {
+  const navigate = useNavigate()
   const { books, loading, error } = useBooks()
   const {
     progressItems,
@@ -201,6 +203,24 @@ export default function HomePage() {
     ? `#reader?bookId=${encodeURIComponent(lastReadBook._id || '')}&pdf=${encodeURIComponent(lastReadBook.pdf || '')}&title=${encodeURIComponent(lastReadBook.title || '')}&author=${encodeURIComponent(lastReadBook.author || '')}`
     : '#'
 
+  const handleStartReading = () => {
+    const section = document.getElementById('books-section')
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      return
+    }
+
+    if (booksWithProgress.length > 0) {
+      const firstBook = booksWithProgress[0]
+      const readerLink = `#reader?bookId=${encodeURIComponent(firstBook._id || '')}&pdf=${encodeURIComponent(firstBook.pdf || '')}&title=${encodeURIComponent(firstBook.title || '')}&author=${encodeURIComponent(firstBook.author || '')}`
+      window.location.hash = readerLink
+    }
+  }
+
+  const handleExploreBooks = () => {
+    navigate('/books')
+  }
+
   return (
     <motion.section
       initial={{ opacity: 0, y: 28 }}
@@ -273,6 +293,7 @@ export default function HomePage() {
               y: { duration: 2.2, repeat: Infinity, ease: 'easeInOut' },
               default: { type: 'spring', stiffness: 300, damping: 18 },
             }}
+            onClick={handleStartReading}
             className="rounded-xl bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-600 px-7 py-3.5 text-sm font-semibold text-white shadow-[0_0_0_1px_rgba(255,255,255,0.15),0_18px_50px_rgba(73,98,255,0.55)] transition duration-300 hover:shadow-[0_0_0_1px_rgba(255,255,255,0.25),0_0_32px_rgba(92,98,255,0.55),0_24px_65px_rgba(88,96,255,0.72)]"
           >
             Start Reading
@@ -285,6 +306,7 @@ export default function HomePage() {
               y: { duration: 2.8, repeat: Infinity, ease: 'easeInOut', delay: 0.3 },
               default: { type: 'spring', stiffness: 280, damping: 18 },
             }}
+            onClick={handleExploreBooks}
             className="rounded-xl border border-white/20 bg-white/10 px-7 py-3.5 text-sm font-semibold text-slate-100 transition duration-300 hover:border-blue-300/45 hover:bg-white/15 hover:shadow-[0_0_26px_rgba(126,110,255,0.35)]"
           >
             Explore Books
@@ -423,7 +445,7 @@ export default function HomePage() {
         )}
       </motion.section>
 
-      <div className="relative mt-12 space-y-10">
+      <div id="books-section" className="relative mt-12 space-y-10">
         {bookSections.map((section) => (
           <section key={section.title}>
             <div className="mb-4 flex items-center justify-between">
