@@ -1,21 +1,28 @@
 import axios from 'axios'
 
+const resolveApiBaseUrl = () => {
+  // In local dev, use Vite proxy to avoid host/IP mismatch network errors.
+  if (import.meta.env.DEV) return '/'
+  return import.meta.env.VITE_API_URL || '/'
+}
+
+const API_BASE_URL = resolveApiBaseUrl()
+
 const apiClient = axios.create({
-  baseURL: 'http://127.0.0.1:5000',
+  baseURL: API_BASE_URL,
   timeout: 0,
 })
 
 apiClient.interceptors.request.use(
   (config) => {
-    const method = (config.method || 'get').toLowerCase()
-    const isProtectedMethod = ['post', 'put', 'patch', 'delete'].includes(method)
     const url = config.url || ''
     const isPublicAuthEndpoint =
       url.startsWith('/api/auth/login') ||
       url.startsWith('/api/auth/register')
+    const needsAuth = url.startsWith('/api/') && !isPublicAuthEndpoint
     const token = localStorage.getItem('authToken')
 
-    if (isProtectedMethod && !isPublicAuthEndpoint) {
+    if (needsAuth) {
       if (!token) {
         return Promise.reject(new Error('Please login first'))
       }

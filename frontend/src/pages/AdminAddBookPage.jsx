@@ -11,7 +11,7 @@ const initialForm = {
   author: '',
   category: 'Programming',
   description: '',
-  pdfUrl: '',
+  fileUrl: '',
   thumbnailUrl: '',
   tags: '',
   language: '',
@@ -20,7 +20,7 @@ const initialForm = {
 
 const initialMediaMode = {
   thumbnail: 'url',
-  pdf: 'url',
+  file: 'url',
 }
 
 const urlPattern = /^https?:\/\/.+/i
@@ -42,7 +42,7 @@ export default function AdminAddBookPage() {
   const [form, setForm] = useState(initialForm)
   const [mediaMode, setMediaMode] = useState(initialMediaMode)
   const [thumbnailFile, setThumbnailFile] = useState(null)
-  const [pdfFile, setPdfFile] = useState(null)
+  const [bookFile, setBookFile] = useState(null)
   const [errors, setErrors] = useState({})
   const [status, setStatus] = useState('')
   const [toast, setToast] = useState('')
@@ -74,16 +74,16 @@ export default function AdminAddBookPage() {
 
   const onMediaModeChange = (type, mode) => {
     setMediaMode((prev) => ({ ...prev, [type]: mode }))
-    setErrors((prev) => ({ ...prev, [type === 'thumbnail' ? 'thumbnailUrl' : 'pdfUrl']: '' }))
+    setErrors((prev) => ({ ...prev, [type === 'thumbnail' ? 'thumbnailUrl' : 'fileUrl']: '' }))
   }
 
   const validate = () => {
     const nextErrors = {}
-    const pdfUrl = form.pdfUrl.trim()
+    const fileUrl = form.fileUrl.trim()
     const thumbnailUrl = form.thumbnailUrl.trim()
-    const hasPdfUrl = Boolean(pdfUrl)
+    const hasFileUrl = Boolean(fileUrl)
     const hasThumbnailUrl = Boolean(thumbnailUrl)
-    const hasPdfFile = Boolean(pdfFile)
+    const hasBookFile = Boolean(bookFile)
     const hasThumbnailFile = Boolean(thumbnailFile)
 
     if (!form.title.trim()) nextErrors.title = 'Title is required'
@@ -93,12 +93,16 @@ export default function AdminAddBookPage() {
       nextErrors.description = 'Description should be at least 20 characters'
     }
 
-    if (!hasPdfUrl && !hasPdfFile) {
-      nextErrors.pdfUrl = 'Provide a PDF URL or upload a PDF file'
-    } else if (hasPdfUrl && !urlPattern.test(pdfUrl)) {
-      nextErrors.pdfUrl = 'Enter a valid PDF URL'
-    } else if (hasPdfFile && pdfFile.type !== 'application/pdf') {
-      nextErrors.pdfUrl = 'Only PDF files are allowed'
+    if (!hasFileUrl && !hasBookFile) {
+      nextErrors.fileUrl = 'Provide a file URL or upload a PDF/EPUB file'
+    } else if (hasFileUrl && !urlPattern.test(fileUrl)) {
+      nextErrors.fileUrl = 'Enter a valid file URL'
+    } else if (hasBookFile) {
+      const name = (bookFile?.name || '').toLowerCase()
+      const type = (bookFile?.type || '').toLowerCase()
+      const isPdf = type === 'application/pdf' || name.endsWith('.pdf')
+      const isEpub = type === 'application/epub+zip' || name.endsWith('.epub')
+      if (!isPdf && !isEpub) nextErrors.fileUrl = 'Only PDF or EPUB files are allowed'
     }
 
     if (!hasThumbnailUrl && !hasThumbnailFile) {
@@ -145,10 +149,10 @@ export default function AdminAddBookPage() {
         formData.append('thumbnail', thumbnailFile)
       }
 
-      if (form.pdfUrl.trim()) {
-        formData.append('pdf', form.pdfUrl.trim())
-      } else if (pdfFile) {
-        formData.append('pdf', pdfFile)
+      if (form.fileUrl.trim()) {
+        formData.append('fileUrl', form.fileUrl.trim())
+      } else if (bookFile) {
+        formData.append('file', bookFile)
       }
 
       await apiClient.post('/api/books', formData, {
@@ -164,7 +168,7 @@ export default function AdminAddBookPage() {
       setForm(initialForm)
       setMediaMode(initialMediaMode)
       setThumbnailFile(null)
-      setPdfFile(null)
+      setBookFile(null)
       setErrors({})
       setTimeout(() => setToast(''), 2600)
     } catch (submitError) {
@@ -178,7 +182,7 @@ export default function AdminAddBookPage() {
     setForm(initialForm)
     setMediaMode(initialMediaMode)
     setThumbnailFile(null)
-    setPdfFile(null)
+    setBookFile(null)
     setErrors({})
     setStatus('')
   }
@@ -260,14 +264,14 @@ export default function AdminAddBookPage() {
                 </select>
               </Field>
 
-              <Field label="PDF Source" error={errors.pdfUrl}>
+              <Field label="Book File (PDF/EPUB)" error={errors.fileUrl}>
                 <div className="rounded-xl border border-white/15 bg-slate-950/35 p-3">
                   <div className="mb-3 inline-flex rounded-lg border border-white/15 bg-white/[0.04] p-1">
                     <button
                       type="button"
-                      onClick={() => onMediaModeChange('pdf', 'url')}
+                      onClick={() => onMediaModeChange('file', 'url')}
                       className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                        mediaMode.pdf === 'url'
+                        mediaMode.file === 'url'
                           ? 'bg-gradient-to-r from-blue-500/40 to-violet-500/40 text-white'
                           : 'text-slate-300 hover:text-white'
                       }`}
@@ -276,9 +280,9 @@ export default function AdminAddBookPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => onMediaModeChange('pdf', 'file')}
+                      onClick={() => onMediaModeChange('file', 'file')}
                       className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                        mediaMode.pdf === 'file'
+                        mediaMode.file === 'file'
                           ? 'bg-gradient-to-r from-blue-500/40 to-violet-500/40 text-white'
                           : 'text-slate-300 hover:text-white'
                       }`}
@@ -287,23 +291,23 @@ export default function AdminAddBookPage() {
                     </button>
                   </div>
 
-                  {mediaMode.pdf === 'url' ? (
+                  {mediaMode.file === 'url' ? (
                     <input
                       type="url"
-                      value={form.pdfUrl}
-                      onChange={(e) => onChange('pdfUrl', e.target.value)}
-                      placeholder="https://example.com/book.pdf"
+                      value={form.fileUrl}
+                      onChange={(e) => onChange('fileUrl', e.target.value)}
+                      placeholder="https://example.com/book.epub"
                       className={inputClass}
                     />
                   ) : (
                     <div>
                       <input
                         type="file"
-                        accept="application/pdf"
-                        onChange={(e) => setPdfFile(e.target.files?.[0] || null)}
+                        accept=".pdf,.epub,application/pdf,application/epub+zip"
+                        onChange={(e) => setBookFile(e.target.files?.[0] || null)}
                         className={`${inputClass} file:mr-3 file:rounded-md file:border-0 file:bg-blue-500/30 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-blue-100`}
                       />
-                      <p className="mt-2 text-xs text-slate-300">{pdfFile ? `Selected: ${pdfFile.name}` : 'No file selected'}</p>
+                      <p className="mt-2 text-xs text-slate-300">{bookFile ? `Selected: ${bookFile.name}` : 'No file selected'}</p>
                     </div>
                   )}
                 </div>
@@ -360,7 +364,7 @@ export default function AdminAddBookPage() {
 
                   {thumbnailPreview ? (
                     <div className="mt-3 overflow-hidden rounded-xl border border-white/15 bg-slate-900/40">
-                      <img src={thumbnailPreview} alt="Thumbnail preview" className="h-32 w-full object-cover" />
+                      <img loading="lazy" src={thumbnailPreview} alt="Thumbnail preview" className="h-32 w-full object-cover" />
                     </div>
                   ) : null}
                 </div>

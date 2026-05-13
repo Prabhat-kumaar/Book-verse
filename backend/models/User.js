@@ -25,6 +25,61 @@ const userSchema = new mongoose.Schema(
             enum: ['admin', 'user'],
             default: 'user',
         },
+        streak: {
+            currentStreak: {
+                type: Number,
+                default: 0,
+                min: 0,
+            },
+            longestStreak: {
+                type: Number,
+                default: 0,
+                min: 0,
+            },
+            lastReadingDate: {
+                type: Date,
+                default: null,
+            },
+            totalReadingDays: {
+                type: Number,
+                default: 0,
+                min: 0,
+            },
+            streakFreezeAvailable: {
+                type: Boolean,
+                default: true,
+            },
+            lastFreezeUsedAt: {
+                type: Date,
+                default: null,
+            },
+        },
+        analytics: {
+            totalPagesRead: {
+                type: Number,
+                default: 0,
+                min: 0,
+            },
+            totalReadingSeconds: {
+                type: Number,
+                default: 0,
+                min: 0,
+            },
+            totalSessions: {
+                type: Number,
+                default: 0,
+                min: 0,
+            },
+            booksCompleted: {
+                type: Number,
+                default: 0,
+                min: 0,
+            },
+            lastSessionAt: {
+                type: Date,
+                default: null,
+            },
+        },
     },
     {
         timestamps: true,

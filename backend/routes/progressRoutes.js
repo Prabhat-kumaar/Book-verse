@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { trackProgress, getProgressByUser } = require('../controllers/progressController');
+const { protect } = require('../middleware/authMiddleware');
 
-router.post('/', trackProgress);
-router.get('/', getProgressByUser);
+router.post('/', protect, trackProgress);
+router.get('/', protect, getProgressByUser);
 
 module.exports = router;

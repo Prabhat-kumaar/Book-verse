@@ -2,9 +2,19 @@ import { motion } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 import apiClient from '../lib/apiClient'
 import AdminSidebar from '../components/AdminSidebar'
+import { applyThumbnailFallback, getBookThumbnailUrl, normalizeMediaUrl } from '../lib/mediaUrls'
 
 const inputClass =
   'w-full rounded-xl border border-white/15 bg-slate-950/50 px-4 py-3 text-sm text-white outline-none transition duration-300 placeholder:text-slate-400 focus:border-blue-300/55 focus:bg-slate-900/70 focus:shadow-[0_0_0_4px_rgba(98,108,255,0.2)]'
+
+const normalizeBook = (book = {}) => ({
+  ...book,
+  fileUrl: normalizeMediaUrl(book?.fileUrl || book?.pdf || ''),
+  pdf: normalizeMediaUrl(book?.pdf || ''),
+  thumbnail: getBookThumbnailUrl(book),
+})
+
+const normalizeText = (value) => (value || '').toString().trim().toLowerCase()
 
 export default function AdminManageBooksPage() {
   const [books, setBooks] = useState([])
@@ -20,7 +30,8 @@ export default function AdminManageBooksPage() {
     title: '',
     author: '',
     category: '',
-    pdf: '',
+    fileUrl: '',
+    fileType: 'pdf',
     thumbnail: '',
   })
   const [editError, setEditError] = useState('')
@@ -32,7 +43,8 @@ export default function AdminManageBooksPage() {
       setError('')
       const response = await apiClient.get('/api/books')
       const payload = response.data
-      setBooks(Array.isArray(payload) ? payload : [])
+      const resolvedBooks = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
+      setBooks(resolvedBooks.map(normalizeBook))
     } catch (fetchError) {
       setError(fetchError.response?.data?.message || fetchError.message || 'Unable to load books.')
     } finally {
@@ -50,14 +62,14 @@ export default function AdminManageBooksPage() {
   )
 
   const filteredBooks = useMemo(() => {
-    const term = search.trim().toLowerCase()
+    const term = normalizeText(search)
     return books.filter((book) => {
       const matchesCategory = category === 'All' || book.category === category
-      const matchesSearch =
-        !term ||
-        book.title?.toLowerCase().includes(term) ||
-        book.author?.toLowerCase().includes(term) ||
-        book.category?.toLowerCase().includes(term)
+      const matchesSearch = !term || [
+        normalizeText(book.title),
+        normalizeText(book.author),
+        normalizeText(book.category),
+      ].some((value) => value.includes(term))
       return matchesCategory && matchesSearch
     })
   }, [books, category, search])
@@ -68,7 +80,8 @@ export default function AdminManageBooksPage() {
       title: book.title || '',
       author: book.author || '',
       category: book.category || '',
-      pdf: book.pdf || '',
+      fileUrl: book.fileUrl || book.pdf || '',
+      fileType: book.fileType || 'pdf',
       thumbnail: book.thumbnail || '',
     })
     setEditError('')
@@ -78,7 +91,7 @@ export default function AdminManageBooksPage() {
     event.preventDefault()
     if (!editTarget?._id) return
 
-    if (!editForm.title.trim() || !editForm.author.trim() || !editForm.category.trim() || !editForm.pdf.trim() || !editForm.thumbnail.trim()) {
+    if (!editForm.title.trim() || !editForm.author.trim() || !editForm.category.trim() || !editForm.fileUrl.trim() || !editForm.thumbnail.trim()) {
       setEditError('All fields are required.')
       return
     }
@@ -91,12 +104,13 @@ export default function AdminManageBooksPage() {
           title: editForm.title.trim(),
           author: editForm.author.trim(),
           category: editForm.category.trim(),
-          pdf: editForm.pdf.trim(),
+          fileUrl: editForm.fileUrl.trim(),
+          fileType: editForm.fileType,
           thumbnail: editForm.thumbnail.trim(),
       })
       const payload = response.data
-
-      setBooks((prev) => prev.map((book) => (book._id === editTarget._id ? payload : book)))
+      const updatedBook = normalizeBook(payload?.data || payload)
+      setBooks((prev) => prev.map((book) => (book._id === editTarget._id ? updatedBook : book)))
       setEditTarget(null)
       setToast('Book updated successfully.')
       setTimeout(() => setToast(''), 2200)
@@ -195,11 +209,11 @@ export default function AdminManageBooksPage() {
                 <motion.article
                   key={book._id}
                   whileHover={{ y: -4, scale: 1.01 }}
-                  className="rounded-2xl border border-white/12 bg-white/[0.05] p-4 shadow-[0_10px_35px_rgba(5,10,30,0.35)] backdrop-blur-xl"
+                    className="min-w-0 rounded-2xl border border-white/12 bg-white/[0.05] p-4 shadow-[0_10px_35px_rgba(5,10,30,0.35)] backdrop-blur-xl"
                 >
                   <div className="mb-3 h-36 overflow-hidden rounded-xl bg-slate-900/60">
                     {book.thumbnail ? (
-                      <img src={book.thumbnail} alt={book.title} className="h-full w-full object-cover" />
+                      <img loading="lazy" src={book.thumbnail} onError={applyThumbnailFallback} alt={book.title} className="h-full w-full object-cover" />
                     ) : (
                       <div className="grid h-full place-items-center text-sm text-slate-400">No Thumbnail</div>
                     )}
@@ -211,7 +225,7 @@ export default function AdminManageBooksPage() {
                     {book.category || 'Uncategorized'}
                   </span>
 
-                  <div className="mt-4 flex gap-2">
+                  <div className="mt-4 flex flex-col gap-2 sm:flex-row">
                     <button
                       type="button"
                       onClick={() => handleEdit(book)}
@@ -288,11 +302,19 @@ export default function AdminManageBooksPage() {
                 className={inputClass}
               />
               <input
-                value={editForm.pdf}
-                onChange={(e) => setEditForm((prev) => ({ ...prev, pdf: e.target.value }))}
-                placeholder="PDF URL"
+                value={editForm.fileUrl}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, fileUrl: e.target.value }))}
+                placeholder="Book File URL"
                 className={inputClass}
               />
+              <select
+                value={editForm.fileType}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, fileType: e.target.value }))}
+                className={inputClass}
+              >
+                <option value="pdf" className="bg-slate-900">PDF</option>
+                <option value="epub" className="bg-slate-900">EPUB</option>
+              </select>
               <input
                 value={editForm.thumbnail}
                 onChange={(e) => setEditForm((prev) => ({ ...prev, thumbnail: e.target.value }))}

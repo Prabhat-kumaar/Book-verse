@@ -63,9 +63,9 @@ Admin operations require JWT token in header: `Authorization: Bearer <token>`
 ## Notes
 
 - Uses MongoDB for persistence.
-- Default MongoDB URI is `mongodb://127.0.0.1:27017/book-reading-system` if not configured.
+- `MONGO_URI` must be configured in your environment before starting the server.
 
 ## Notes
 
 - Uses MongoDB for persistence.
-- Default MongoDB URI is `mongodb://127.0.0.1:27017/book-reading-system` if not configured.
+- `MONGO_URI` must be configured in your environment before starting the server.

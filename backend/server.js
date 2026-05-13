@@ -1,50 +1,213 @@
+console.log("🔥 SERVER UPDATED FILE RUNNING - Book Controller Fix Active");
+
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
+const fs = require('fs');
+const http = require('http');
+
 const connectDB = require('./config/db');
+
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const bookRoutes = require('./routes/bookRoutes');
 const progressRoutes = require('./routes/progressRoutes');
+const savedRoutes = require('./routes/savedRoutes');
+const streakRoutes = require('./routes/streakRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
 
 dotenv.config();
+
+if (!process.env.JWT_SECRET || !process.env.JWT_SECRET.trim()) {
+    throw new Error('Missing required environment variable: JWT_SECRET');
+}
+
 connectDB();
 
 const app = express();
-app.use(cors());
-app.use(express.json({ limit: '100mb' }));
-app.use(express.urlencoded({ limit: '100mb', extended: true }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+const uploadsDir = path.join(__dirname, 'uploads');
+fs.mkdirSync(uploadsDir, { recursive: true });
+app.set('trust proxy', true);
 
+// ================= MIDDLEWARE =================
+const parseAllowedOrigins = () => {
+    const configured = (process.env.CORS_ALLOWED_ORIGINS || process.env.FRONTEND_URL || '')
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean);
+
+    const devDefaults = [
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        'http://localhost:4173',
+        'http://127.0.0.1:4173',
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+    ];
+
+    if ((process.env.NODE_ENV || '').toLowerCase() !== 'production') {
+        return [...new Set([...configured, ...devDefaults])];
+    }
+
+    return [...new Set(configured)];
+};
+
+const allowedOrigins = parseAllowedOrigins();
+const isProduction = (process.env.NODE_ENV || '').toLowerCase() === 'production';
+
+const isPrivateIPv4 = (hostname) => {
+    const match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (!match) return false;
+
+    const octets = match.slice(1).map(Number);
+    if (octets.some((n) => Number.isNaN(n) || n < 0 || n > 255)) return false;
+
+    if (octets[0] === 10) return true;
+    if (octets[0] === 192 && octets[1] === 168) return true;
+    if (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) return true;
+
+    return false;
+};
+
+const isAllowedDevOrigin = (origin) => {
+    try {
+        const url = new URL(origin);
+        const isHttp = url.protocol === 'http:' || url.protocol === 'https:';
+        if (!isHttp || !url.port) return false;
+
+        const devPorts = new Set(['3000', '4173', '5173']);
+        if (!devPorts.has(url.port)) return false;
+
+        if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') return true;
+        if (isPrivateIPv4(url.hostname)) return true;
+
+        return false;
+    } catch (_error) {
+        return false;
+    }
+};
+
+app.use(cors({
+    origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        if (!isProduction && isAllowedDevOrigin(origin)) return callback(null, true);
+        return callback(new Error('CORS: Origin not allowed'));
+    },
+    credentials: true,
+}));
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ extended: true, limit: '100mb' }));
+
+// ================= STATIC FILES =================
+app.use(
+    '/uploads',
+    express.static(uploadsDir, {
+        index: false,
+        fallthrough: true,
+        setHeaders: (res, filePath) => {
+            const ext = path.extname(filePath).toLowerCase();
+            if (ext === '.epub') res.setHeader('Content-Type', 'application/epub+zip');
+            if (ext === '.pdf') res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('X-Content-Type-Options', 'nosniff');
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+        },
+    })
+);
+
+// Safe explicit download/access endpoint for uploaded files.
+app.get('/uploads/:filename', (req, res) => {
+    try {
+        const raw = decodeURIComponent(req.params.filename || '');
+        const safeFilename = path.basename(raw);
+        if (!safeFilename || safeFilename !== raw) {
+            return res.status(400).json({ message: 'Invalid filename' });
+        }
+
+        const absolutePath = path.resolve(uploadsDir, safeFilename);
+        const insideUploads = absolutePath.startsWith(path.resolve(uploadsDir) + path.sep);
+        if (!insideUploads) {
+            return res.status(400).json({ message: 'Invalid file path' });
+        }
+
+        if (!fs.existsSync(absolutePath)) {
+            return res.status(404).json({ message: `File not found: ${safeFilename}` });
+        }
+
+        return res.sendFile(absolutePath, (err) => {
+            if (err && !res.headersSent) {
+                return res.status(500).json({ message: 'Unable to serve file' });
+            }
+            return undefined;
+        });
+    } catch (_error) {
+        return res.status(500).json({ message: 'Failed to process file request' });
+    }
+});
+
+// ================= BASIC ROUTE =================
 app.get('/', (req, res) => {
     res.json({ message: 'Book Reading System API is running' });
 });
 
+// ================= API ROUTES =================
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/books', bookRoutes);
 app.use('/api/progress', progressRoutes);
+app.use('/api', savedRoutes);
+app.use('/api/streak', streakRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
-app.use((req, res, next) => {
-    return res.status(404).json({ message: `Not Found - ${req.originalUrl}` });
+// ================= 404 HANDLER =================
+app.use((req, res) => {
+    res.status(404).json({ message: `Not Found - ${req.originalUrl}` });
 });
 
+// ================= ERROR HANDLER =================
 app.use((err, req, res, next) => {
+    if (err.message === 'CORS: Origin not allowed') {
+        return res.status(403).json({ message: 'Origin not allowed by CORS policy' });
+    }
+
     if (err.type === 'entity.too.large') {
         return res.status(413).json({
-            message: 'Request entity too large. Reduce file size or switch to chunked/multipart upload.',
+            message: 'Request entity too large. Reduce file size or switch to chunked upload.',
         });
     }
 
-    const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
     console.error(err.stack);
-    res.status(statusCode).json({
-        message: err.message,
+    res.status(500).json({
+        message: err.message || 'Internal Server Error',
     });
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
-});
+// ================= START SERVER =================
+const DEFAULT_PORT = parseInt(process.env.PORT, 10) || 5000;
+const MAX_PORT = DEFAULT_PORT + 5;
+
+const startServer = (port) => {
+    const server = http.createServer(app);
+
+    server.on('error', (error) => {
+        if (error.code === 'EADDRINUSE') {
+            const nextPort = port + 1;
+            if (nextPort <= MAX_PORT) {
+                console.warn(`Port ${port} is already in use. Trying port ${nextPort}...`);
+                startServer(nextPort);
+                return;
+            }
+            console.error(`Port ${port} is already in use. Tried ports ${DEFAULT_PORT}-${MAX_PORT}. Set a different PORT and restart.`);
+        } else {
+            console.error('Server startup error:', error);
+        }
+        process.exit(1);
+    });
+
+    server.listen(port, '0.0.0.0', () => {
+        console.log(`🚀 Server running on port ${port}`);
+    });
+};
+
+startServer(DEFAULT_PORT);

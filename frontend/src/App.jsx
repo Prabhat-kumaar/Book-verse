@@ -1,17 +1,23 @@
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
-import { useEffect, useState } from 'react'
-import MainLayout from './layout/MainLayout'
-import HomePage from './pages/HomePage'
-import PdfReaderPage from './pages/PdfReaderPage'
-import AdminDashboardPage from './pages/AdminDashboardPage'
-import AdminAddBookPage from './pages/AdminAddBookPage'
-import AdminManageBooksPage from './pages/AdminManageBooksPage'
-import AdminAnalyticsPage from './pages/AdminAnalyticsPage'
-import LoginPage from './pages/LoginPage'
-import SignUpPage from './pages/SignUpPage'
-import BooksPage from './pages/BooksPage'
-import CategoriesPage from './pages/CategoriesPage'
-import RecommendedPage from './pages/RecommendedPage'
+import { Suspense, lazy, useEffect, useState } from 'react'
+import { SavedBooksProvider } from './context/SavedBooksContext'
+import { BookCardSkeleton, HeroSkeleton, NavbarSkeleton } from './components/Skeletons'
+
+const MainLayout = lazy(() => import('./layout/MainLayout'))
+const HomePage = lazy(() => import('./pages/HomePage'))
+const PdfReaderPage = lazy(() => import('./pages/PdfReaderPage'))
+const EpubReaderPage = lazy(() => import('./pages/EpubReaderPage'))
+const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'))
+const AdminAddBookPage = lazy(() => import('./pages/AdminAddBookPage'))
+const AdminManageBooksPage = lazy(() => import('./pages/AdminManageBooksPage'))
+const AdminAnalyticsPage = lazy(() => import('./pages/AdminAnalyticsPage'))
+const LoginPage = lazy(() => import('./pages/LoginPage'))
+const SignUpPage = lazy(() => import('./pages/SignUpPage'))
+const BooksPage = lazy(() => import('./pages/BooksPage'))
+const CategoriesPage = lazy(() => import('./pages/CategoriesPage'))
+const RecommendedPage = lazy(() => import('./pages/RecommendedPage'))
+const SavedBooksPage = lazy(() => import('./pages/SavedBooksPage'))
+const ProfileDashboardPage = lazy(() => import('./pages/ProfileDashboardPage'))
 
 function readAuthUser() {
   try {
@@ -34,6 +40,22 @@ function RequireAdmin({ children }) {
   if (!token) return <Navigate to="/login" replace />
   if (user?.role !== 'admin') return <Navigate to="/" replace />
   return children
+}
+
+function RouteFallback() {
+  return (
+    <div className="min-h-screen px-3 pt-3 sm:px-6">
+      <NavbarSkeleton />
+      <main className="mx-auto mt-6 w-full max-w-7xl space-y-6">
+        <HeroSkeleton />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {[...Array(4)].map((_, idx) => (
+            <BookCardSkeleton key={`route-skeleton-${idx}`} />
+          ))}
+        </div>
+      </main>
+    </div>
+  )
 }
 
 function App() {
@@ -65,28 +87,46 @@ function App() {
   }, [hash, navigate])
 
   const isReaderRoute = hash.startsWith('#reader')
+  const readerType = (() => {
+    if (!isReaderRoute) return 'pdf'
+    const queryString = hash.includes('?') ? hash.split('?')[1] : ''
+    const params = new URLSearchParams(queryString)
+    const fileType = (params.get('fileType') || '').toLowerCase()
+    const fileUrl = (params.get('fileUrl') || params.get('pdf') || '').toLowerCase()
+    if (fileType === 'epub' || fileUrl.endsWith('.epub')) return 'epub'
+    return 'pdf'
+  })()
 
   if (isReaderRoute) {
-    return <PdfReaderPage />
+    return (
+      <Suspense fallback={<RouteFallback />}>
+        {readerType === 'epub' ? <EpubReaderPage /> : <PdfReaderPage />}
+      </Suspense>
+    )
   }
 
   return (
-    <Routes>
-      <Route path="/" element={<MainLayout><HomePage /></MainLayout>} />
-      <Route path="/books" element={<MainLayout><BooksPage /></MainLayout>} />
-      <Route path="/categories" element={<MainLayout><CategoriesPage /></MainLayout>} />
-      <Route path="/recommended" element={<MainLayout><RecommendedPage /></MainLayout>} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<SignUpPage />} />
-      <Route path="/admin/login" element={<Navigate to="/login" replace />} />
-      <Route path="/admin/dashboard" element={<RequireAdmin><AdminDashboardPage /></RequireAdmin>} />
-      <Route path="/admin/add-book" element={<RequireAdmin><AdminAddBookPage /></RequireAdmin>} />
-      <Route path="/admin/manage-books" element={<RequireAdmin><AdminManageBooksPage /></RequireAdmin>} />
-      <Route path="/admin/analytics" element={<RequireAdmin><AdminAnalyticsPage /></RequireAdmin>} />
-      <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
-      <Route path="/me" element={<RequireAuth><MainLayout><HomePage /></MainLayout></RequireAuth>} />
-      <Route path="*" element={<MainLayout><HomePage /></MainLayout>} />
-    </Routes>
+    <SavedBooksProvider>
+      <Suspense fallback={<RouteFallback />}>
+        <Routes>
+          <Route path="/" element={<MainLayout><HomePage /></MainLayout>} />
+          <Route path="/books" element={<MainLayout><BooksPage /></MainLayout>} />
+          <Route path="/categories" element={<MainLayout><CategoriesPage /></MainLayout>} />
+          <Route path="/recommended" element={<MainLayout><RecommendedPage /></MainLayout>} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignUpPage />} />
+          <Route path="/admin/login" element={<Navigate to="/login" replace />} />
+          <Route path="/admin/dashboard" element={<RequireAdmin><AdminDashboardPage /></RequireAdmin>} />
+          <Route path="/admin/add-book" element={<RequireAdmin><AdminAddBookPage /></RequireAdmin>} />
+          <Route path="/admin/manage-books" element={<RequireAdmin><AdminManageBooksPage /></RequireAdmin>} />
+          <Route path="/admin/analytics" element={<RequireAdmin><AdminAnalyticsPage /></RequireAdmin>} />
+          <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="/me" element={<RequireAuth><MainLayout><ProfileDashboardPage /></MainLayout></RequireAuth>} />
+          <Route path="/saved-books" element={<RequireAuth><MainLayout><SavedBooksPage /></MainLayout></RequireAuth>} />
+          <Route path="*" element={<MainLayout><HomePage /></MainLayout>} />
+        </Routes>
+      </Suspense>
+    </SavedBooksProvider>
   )
 }
 

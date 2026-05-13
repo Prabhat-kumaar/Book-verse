@@ -3,7 +3,7 @@ const Admin = require('../models/Admin');
 const jwt = require('jsonwebtoken');
 
 const generateToken = (id, role) => {
-    return jwt.sign({ id, role }, process.env.JWT_SECRET || 'secret', {
+    return jwt.sign({ id, role }, process.env.JWT_SECRET, {
         expiresIn: '30d',
     });
 };
@@ -21,7 +21,7 @@ const serializeAuthResponse = (user) => ({
 
 const register = async (req, res, next) => {
     try {
-        const { username, email, password, role } = req.body;
+        const { username, email, password } = req.body;
 
         if (!username || !password) {
             return res.status(400).json({ message: 'Username and password are required' });
@@ -44,7 +44,7 @@ const register = async (req, res, next) => {
             username: username.trim(),
             email: normalizedEmail || undefined,
             password,
-            role: role === 'admin' ? 'admin' : 'user',
+            role: req.allowAdminCreation ? 'admin' : 'user',
         });
 
         res.status(201).json(serializeAuthResponse(user));

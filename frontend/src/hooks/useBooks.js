@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
+import { getBookThumbnailUrl, normalizeMediaUrl } from '../lib/mediaUrls'
 
-const API_BASE_URL = 'http://127.0.0.1:5000'
+const API_BASE_URL = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || '')
 
 export default function useBooks() {
   const [books, setBooks] = useState([])
@@ -24,7 +25,14 @@ export default function useBooks() {
         }
 
         const payload = await response.json()
-        setBooks(Array.isArray(payload) ? payload : [])
+        const resolvedBooks = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
+        const normalizedBooks = resolvedBooks.map((book) => ({
+          ...book,
+          fileUrl: normalizeMediaUrl(book?.fileUrl || ''),
+          pdf: normalizeMediaUrl(book?.pdf || ''),
+          thumbnail: getBookThumbnailUrl(book),
+        }))
+        setBooks(normalizedBooks)
       } catch (fetchError) {
         if (fetchError.name !== 'AbortError') {
           setError(fetchError.message || 'Unable to fetch books right now.')

@@ -2,7 +2,7 @@ import { motion } from 'framer-motion'
 import useNavItems from '../hooks/useNavItems'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { MdClose, MdMenu } from 'react-icons/md'
+import { MdMenu, MdPerson, MdSearch } from 'react-icons/md'
 
 function SearchIcon() {
   return (
@@ -26,9 +26,11 @@ export default function Navbar() {
   const navigate = useNavigate()
   const location = useLocation()
   const navItems = useNavItems()
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const [searchDirty, setSearchDirty] = useState(false)
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const [authUser, setAuthUser] = useState(() => {
     try {
       const raw = localStorage.getItem('authUser')
@@ -38,13 +40,35 @@ export default function Navbar() {
     }
   })
   const profileRef = useRef(null)
+  const mobileSearchInputRef = useRef(null)
   const isAdmin = authUser?.role === 'admin'
   const avatarLabel = useMemo(() => (authUser?.username?.trim()?.[0] || 'P').toUpperCase(), [authUser])
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     setSearch(params.get('q') || '')
-  }, [location.search])
+    setMenuOpen(false)
+    setProfileOpen(false)
+    if (!location.pathname.startsWith('/books')) {
+      setMobileSearchOpen(false)
+    }
+  }, [location])
+
+  useEffect(() => {
+    if (!mobileSearchOpen) return
+    window.requestAnimationFrame(() => {
+      mobileSearchInputRef.current?.focus()
+    })
+  }, [mobileSearchOpen])
+
+  useEffect(() => {
+    if (!searchDirty) return
+    const query = search.trim()
+    const timer = window.setTimeout(() => {
+      navigate(query ? `/books?q=${encodeURIComponent(query)}` : '/books')
+    }, 300)
+    return () => window.clearTimeout(timer)
+  }, [navigate, search, searchDirty])
 
   useEffect(() => {
     const syncAuth = () => {
@@ -72,18 +96,11 @@ export default function Navbar() {
     }
   }, [])
 
-  const updateSearch = (value) => {
-    setSearch(value)
-    const query = value.trim()
-    navigate(query ? `/books?q=${encodeURIComponent(query)}` : '/books')
-  }
-
   const handleLogout = () => {
     localStorage.removeItem('authToken')
     localStorage.removeItem('authUser')
     window.dispatchEvent(new Event('authChanged'))
     setProfileOpen(false)
-    setMobileMenuOpen(false)
     navigate('/login', { replace: true })
   }
 
@@ -92,17 +109,17 @@ export default function Navbar() {
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.55, ease: 'easeOut' }}
-      className="sticky top-0 z-50 px-3 pt-3 sm:px-6 lg:px-10"
+      className="sticky top-0 z-50 px-2 pt-2 sm:px-6 sm:pt-3 lg:px-10"
     >
-      <nav className="mx-auto w-full max-w-7xl rounded-2xl border border-white/15 bg-gradient-to-r from-white/[0.13] via-white/[0.08] to-white/[0.1] shadow-[0_14px_50px_rgba(6,10,34,0.6)] backdrop-blur-2xl">
-        <div className="flex items-center gap-4 px-4 py-3.5 sm:px-6">
-          <Link to="/" className="group flex shrink-0 items-center gap-3">
-            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600 text-sm font-bold text-white shadow-[0_0_35px_rgba(100,105,255,0.55)] transition duration-300 group-hover:scale-105 group-hover:rotate-3">
+      <nav className="mx-auto w-full max-w-7xl rounded-2xl border border-white/10 bg-gradient-to-r from-[#0f0f0f]/95 via-[#131313]/95 to-[#0f0f0f]/95 shadow-[0_18px_60px_rgba(0,0,0,0.62)] backdrop-blur-2xl">
+        <div className="flex items-center gap-2 px-3 py-2.5 sm:gap-4 sm:px-6 sm:py-3.5">
+          <Link to="/" className="group flex shrink-0 items-center gap-2.5 sm:gap-3">
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600 text-sm font-bold text-white shadow-[0_0_35px_rgba(100,105,255,0.55)] transition duration-300 group-hover:scale-105 group-hover:rotate-3 sm:h-11 sm:w-11 sm:rounded-2xl">
               R
             </span>
-            <div>
+            <div className="hidden min-[360px]:block">
               <p className="text-[10px] font-semibold uppercase tracking-[0.36em] text-blue-200/75">Intelligent Reading</p>
-              <p className="bg-gradient-to-r from-blue-300 via-indigo-200 to-violet-300 bg-clip-text text-lg font-extrabold text-transparent">
+              <p className="bg-gradient-to-r from-blue-300 via-indigo-200 to-violet-300 bg-clip-text text-base font-extrabold text-transparent sm:text-lg">
                 Readify AI
               </p>
             </div>
@@ -110,20 +127,23 @@ export default function Navbar() {
 
           <div className="hidden min-w-0 flex-1 items-center justify-center lg:flex">
             <label className="group relative w-full max-w-md">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-300/80 transition group-focus-within:text-blue-300">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 transition group-focus-within:text-blue-300">
                 <SearchIcon />
               </span>
               <input
                 type="text"
                 value={search}
-                onChange={(e) => updateSearch(e.target.value)}
+                onChange={(e) => {
+                  setSearch(e.target.value)
+                  setSearchDirty(true)
+                }}
                 placeholder="Search books, genres, or authors..."
-                className="h-11 w-full rounded-xl border border-white/15 bg-slate-950/45 pl-10 pr-4 text-sm text-white placeholder:text-slate-300/60 outline-none transition duration-300 focus:border-blue-300/60 focus:bg-slate-900/55 focus:shadow-[0_0_0_4px_rgba(96,102,255,0.18)]"
+                className="h-11 w-full rounded-xl border border-white/10 bg-black/60 pl-10 pr-4 text-sm text-white placeholder:text-zinc-400 outline-none transition duration-300 focus:border-blue-300/60 focus:bg-black/80 focus:shadow-[0_0_0_4px_rgba(96,102,255,0.18)]"
               />
             </label>
           </div>
 
-          <ul className="hidden items-center gap-1 xl:flex">
+          <ul className="hidden items-center gap-1 lg:flex">
             {navItems.map((item) => (
               <li key={item.label}>
                 <Link
@@ -147,14 +167,62 @@ export default function Navbar() {
             ) : null}
           </ul>
 
-          <button
-            type="button"
-            aria-label="Open navigation menu"
-            onClick={() => setMobileMenuOpen(true)}
-            className="ml-auto inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-slate-100 transition hover:border-blue-300/45 hover:bg-white/15 xl:hidden"
-          >
-            <MdMenu className="h-6 w-6" />
-          </button>
+          <div className="relative hidden md:block lg:hidden">
+            <button
+              type="button"
+              aria-label="Open menu"
+              onClick={() => setMenuOpen((prev) => !prev)}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-slate-100 transition hover:border-blue-300/45 hover:bg-white/15"
+            >
+              <MdMenu className="h-5 w-5" />
+            </button>
+            {menuOpen ? (
+              <div className="absolute right-0 mt-2 w-52 overflow-hidden rounded-2xl border border-white/15 bg-slate-950/90 p-2 shadow-[0_20px_60px_rgba(0,0,0,0.55)] backdrop-blur-2xl">
+                {navItems.map((item) => (
+                  <Link key={item.label} to={item.href} onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="ml-auto flex items-center gap-1.5 md:hidden">
+            <button
+              type="button"
+              aria-label="Open menu"
+              onClick={() => setMenuOpen((prev) => !prev)}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-slate-100 transition hover:border-blue-300/45 hover:bg-white/15"
+            >
+              <MdMenu className="h-4.5 w-4.5" />
+            </button>
+            <button
+              type="button"
+              aria-label="Search books"
+              onClick={() => {
+                if (!location.pathname.startsWith('/books')) {
+                  navigate('/books')
+                }
+                setMobileSearchOpen((prev) => !prev)
+              }}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-slate-100 transition hover:border-blue-300/45 hover:bg-white/15"
+            >
+              <MdSearch className="h-4.5 w-4.5" />
+            </button>
+            <Link
+              to={authUser ? '/me' : '/login'}
+              aria-label="Account"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-slate-100 transition hover:border-blue-300/45 hover:bg-white/15"
+            >
+              {authUser ? (
+                <span className="grid h-6.5 w-6.5 place-items-center rounded-md bg-gradient-to-br from-blue-500 to-violet-600 text-[11px] font-bold text-white">
+                  {avatarLabel}
+                </span>
+              ) : (
+                <MdPerson className="h-4.5 w-4.5" />
+              )}
+            </Link>
+          </div>
 
           {authUser ? (
             <div ref={profileRef} className="relative hidden xl:block">
@@ -180,6 +248,15 @@ export default function Navbar() {
                   <Link to="/" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
                     Continue Reading
                   </Link>
+                  <Link to="/saved-books" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
+                    Saved Books
+                  </Link>
+                  <Link to="/#continue-reading" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
+                    Reading History
+                  </Link>
+                  <Link to="/me" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
+                    Settings
+                  </Link>
                   {isAdmin ? (
                     <Link to="/admin/dashboard" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
                       Admin Dashboard
@@ -198,95 +275,43 @@ export default function Navbar() {
           ) : null}
         </div>
 
+        {mobileSearchOpen ? (
+          <div className="px-4 pb-3 md:hidden">
+            <label className="relative block">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
+                <SearchIcon />
+              </span>
+              <input
+                ref={mobileSearchInputRef}
+                type="text"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value)
+                  setSearchDirty(true)
+                }}
+                placeholder="Search books, genres, authors..."
+                className="h-11 w-full rounded-xl border border-white/15 bg-black/55 pl-10 pr-4 text-sm text-white placeholder:text-zinc-400 outline-none transition focus:border-blue-300/60 focus:bg-black/75"
+              />
+            </label>
+          </div>
+        ) : null}
+        {menuOpen ? (
+          <div className="px-3 pb-3 md:hidden">
+            <div className="overflow-hidden rounded-xl border border-white/15 bg-slate-950/85 p-2 backdrop-blur-xl">
+              {navItems.map((item) => (
+                <Link key={item.label} to={item.href} onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10">
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
       </nav>
 
       <div className="mx-auto mt-2 h-px w-[92%] max-w-7xl bg-gradient-to-r from-transparent via-blue-400/35 to-transparent" />
 
-      <div
-        onClick={() => setMobileMenuOpen(false)}
-        className={`fixed inset-0 z-[70] bg-slate-950/75 backdrop-blur-sm transition-opacity duration-300 xl:hidden ${
-          mobileMenuOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
-        }`}
-      />
-      <aside
-        className={`fixed right-0 top-0 z-[80] h-full w-[min(86vw,360px)] border-l border-white/15 bg-gradient-to-b from-slate-900 to-slate-950 p-5 shadow-[0_20px_80px_rgba(0,0,0,0.55)] backdrop-blur-2xl transition-transform duration-300 xl:hidden ${
-          mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
-      >
-        <div className="mb-5 flex items-center justify-between">
-          <p className="text-sm font-bold text-white">Menu</p>
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen(false)}
-            aria-label="Close navigation menu"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-slate-100 transition hover:bg-white/15"
-          >
-            <MdClose className="h-5 w-5" />
-          </button>
-        </div>
-
-        <label className="group relative mb-4 block">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-300/80 transition group-focus-within:text-blue-300">
-            <SearchIcon />
-          </span>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => updateSearch(e.target.value)}
-            placeholder="Search books..."
-            className="h-10 w-full rounded-xl border border-white/15 bg-slate-950/45 pl-10 pr-4 text-sm text-white placeholder:text-slate-300/60 outline-none transition duration-300 focus:border-blue-300/60 focus:bg-slate-900/55 focus:shadow-[0_0_0_4px_rgba(96,102,255,0.18)]"
-          />
-        </label>
-
-        <nav className="space-y-2">
-          {navItems.map((item) => (
-            <Link
-              key={item.label}
-              to={item.href}
-              onClick={() => setMobileMenuOpen(false)}
-              className="block rounded-xl border border-white/15 bg-white/[0.06] px-4 py-3 text-sm font-semibold text-slate-100 transition hover:border-blue-300/40 hover:bg-white/[0.12]"
-            >
-              {item.label}
-            </Link>
-          ))}
-          {!authUser ? (
-            <Link
-              to="/login"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block rounded-xl border border-blue-300/35 bg-blue-500/15 px-4 py-3 text-sm font-semibold text-blue-100 transition hover:border-blue-200/55 hover:bg-blue-500/25 hover:text-white"
-            >
-              Login
-            </Link>
-          ) : null}
-          {authUser ? (
-            <Link
-              to="/me"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block rounded-xl border border-white/15 bg-white/[0.06] px-4 py-3 text-sm font-semibold text-slate-100 transition hover:border-blue-300/40 hover:bg-white/[0.12]"
-            >
-              My Profile
-            </Link>
-          ) : null}
-          {authUser && isAdmin ? (
-            <Link
-              to="/admin/dashboard"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block rounded-xl border border-blue-300/35 bg-blue-500/15 px-4 py-3 text-sm font-semibold text-blue-100 transition hover:border-blue-200/55 hover:bg-blue-500/25 hover:text-white"
-            >
-              Admin Dashboard
-            </Link>
-          ) : null}
-          {authUser ? (
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="block w-full rounded-xl border border-rose-200/25 bg-rose-500/10 px-4 py-3 text-left text-sm font-semibold text-rose-200 transition hover:bg-rose-500/20"
-            >
-              Logout
-            </button>
-          ) : null}
-        </nav>
-      </aside>
     </motion.header>
   )
 }
+

@@ -1,10 +1,27 @@
 import { useEffect, useMemo, useState } from 'react'
+import apiClient from '../lib/apiClient'
+import { getProgressBookId, normalizeProgressItem } from '../lib/readingProgress'
+import { getBookThumbnailUrl, normalizeMediaUrl } from '../lib/mediaUrls'
+const normalizeProgressBook = (item) => {
+  if (!item?.book) return item
+  return {
+    ...item,
+    book: {
+      ...item.book,
+      thumbnail: getBookThumbnailUrl(item.book),
+      fileUrl: normalizeMediaUrl(item.book.fileUrl || item.book.pdf || ''),
+      pdf: normalizeMediaUrl(item.book.pdf || ''),
+    },
+  }
+}
 
-const API_BASE_URL = 'http://127.0.0.1:5000'
+function normalizeItem(item) {
+  return normalizeProgressItem(normalizeProgressBook(item))
+}
 
 export default function useProgress(userId) {
   const [progressItems, setProgressItems] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(Boolean(userId))
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -14,34 +31,70 @@ export default function useProgress(userId) {
       return
     }
 
-    const controller = new AbortController()
-
-    const fetchProgress = async () => {
+    const fetchProgress = async ({ silent = false } = {}) => {
       try {
-        setLoading(true)
-        setError('')
-
-        const response = await fetch(`${API_BASE_URL}/api/progress?userId=${encodeURIComponent(userId)}`, {
-          signal: controller.signal,
-        })
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch progress (${response.status})`)
+        if (!silent) {
+          setLoading(true)
+          setError('')
         }
-
-        const payload = await response.json()
-        setProgressItems(Array.isArray(payload) ? payload : [])
+        const response = await apiClient.get(`/api/progress?userId=${encodeURIComponent(userId)}`)
+        const payload = response.data
+        const items = (Array.isArray(payload) ? payload : []).map(normalizeItem)
+        setProgressItems(items)
       } catch (fetchError) {
-        if (fetchError.name !== 'AbortError') {
-          setError(fetchError.message || 'Unable to fetch reading progress.')
+        if (!silent) {
+          setError(fetchError?.response?.data?.message || fetchError.message || 'Unable to fetch reading progress.')
         }
       } finally {
-        setLoading(false)
+        if (!silent) {
+          setLoading(false)
+        }
       }
     }
 
     fetchProgress()
-    return () => controller.abort()
+    const onProgressUpdated = (event) => {
+      const detail = event?.detail || {}
+      const changedBookId = detail.bookId || detail.item?.bookId || detail.item?.book?._id
+      const incoming = detail.item ? normalizeItem(detail.item) : null
+      if (changedBookId || incoming) {
+        setProgressItems((prev) => {
+          const next = [...prev]
+          const targetId = changedBookId || incoming?.bookId
+          const index = next.findIndex((entry) => getProgressBookId(entry) === targetId)
+          const mergedCandidate = normalizeItem({
+            ...(index >= 0 ? next[index] : {}),
+            ...detail,
+            ...(incoming || {}),
+            bookId: targetId,
+            lastReadAt: detail.lastReadAt || incoming?.lastReadAt || new Date().toISOString(),
+          })
+          if (index >= 0) {
+            next[index] = mergedCandidate
+          } else if (incoming || targetId) {
+            next.push(mergedCandidate)
+          }
+          return next
+        })
+      }
+      // Skip immediate refetch when local payload is already provided.
+      if (!incoming) {
+        fetchProgress({ silent: true })
+      }
+    }
+    const onFocus = () => {
+      if (document.visibilityState === 'visible') fetchProgress({ silent: true })
+    }
+    window.addEventListener('progressUpdated', onProgressUpdated)
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onFocus)
+    const intervalId = window.setInterval(() => fetchProgress({ silent: true }), 60000)
+    return () => {
+      window.clearInterval(intervalId)
+      window.removeEventListener('progressUpdated', onProgressUpdated)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onFocus)
+    }
   }, [userId])
 
   const latestProgress = useMemo(() => {

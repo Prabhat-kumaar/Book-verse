@@ -17,9 +17,20 @@ const bookSchema = new mongoose.Schema(
             required: true,
             trim: true,
         },
-        pdf: {
+        fileUrl: {
             type: String,
             required: true,
+            trim: true,
+        },
+        fileType: {
+            type: String,
+            required: true,
+            enum: ['pdf', 'epub'],
+            lowercase: true,
+            trim: true,
+        },
+        pdf: {
+            type: String,
             trim: true,
         },
         thumbnail: {

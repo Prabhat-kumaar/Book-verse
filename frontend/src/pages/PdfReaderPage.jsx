@@ -1,9 +1,12 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
 import { MdFullscreen } from 'react-icons/md'
+import { ReaderSkeleton } from '../components/Skeletons'
+import apiClient from '../lib/apiClient'
+import useProgress from '../hooks/useProgress'
+import { computeProgress, getProgressForBook } from '../lib/readingProgress'
 
-const API_BASE_URL = 'http://127.0.0.1:5000'
-const DEFAULT_USER_ID = 'demo-user-1'
+const API_BASE_URL = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || '')
 const DEFAULT_TOTAL_PAGES = 200
 const AUTO_SAVE_INTERVAL_MS = 8000
 const PAGE_OVERSCAN = 2
@@ -17,6 +20,7 @@ const WHEEL_ZOOM_FACTOR = 0.0012
 const PINCH_DAMPING = 0.25
 const FULLSCREEN_DEFAULT_ZOOM = 1.1
 const CONTROLS_HIDE_DELAY_MS = 2500
+const PAGE_SYNC_DEBOUNCE_MS = 250
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
 
@@ -27,9 +31,10 @@ function parseReaderParams() {
 
   return {
     bookId: params.get('bookId') || '',
-    pdf: params.get('pdf') || '',
+    pdf: params.get('fileUrl') || params.get('pdf') || '',
     title: params.get('title') || 'Untitled Book',
     author: params.get('author') || 'Unknown Author',
+    page: Number.parseInt(params.get('page') || '1', 10),
   }
 }
 
@@ -52,6 +57,16 @@ export default function PdfReaderPage() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [error, setError] = useState('')
   const [controlsVisible, setControlsVisible] = useState(false)
+  const authUser = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('authUser')
+      return raw ? JSON.parse(raw) : null
+    } catch {
+      return null
+    }
+  }, [])
+  const resolvedUserId = authUser?._id || ''
+  const { progressItems } = useProgress(resolvedUserId)
 
   const lastSavedSnapshotRef = useRef('')
   const scrollContainerRef = useRef(null)
@@ -69,13 +84,26 @@ export default function PdfReaderPage() {
   const zoomDebounceTimerRef = useRef(null)
   const pdfDocumentRef = useRef(null)
   const controlsHideTimerRef = useRef(null)
+  const restoreSignatureRef = useRef('')
+  const pageSaveTimerRef = useRef(null)
 
   const resolvedPdfUrl = useMemo(() => {
     const raw = (params.pdf || '').trim()
     if (!raw) return ''
-    if (/^(https?:\/\/|blob:|data:)/i.test(raw)) return raw
+    if (/^(blob:|data:)/i.test(raw)) return raw
     if (raw.startsWith('/uploads/')) return `${API_BASE_URL}${raw}`
     if (raw.startsWith('uploads/')) return `${API_BASE_URL}/${raw}`
+    if (/^https?:\/\//i.test(raw)) {
+      try {
+        const parsed = new URL(raw)
+        if (parsed.pathname.startsWith('/uploads/')) {
+          return `${API_BASE_URL}${parsed.pathname}${parsed.search || ''}`
+        }
+      } catch {
+        // no-op
+      }
+      return raw
+    }
     return raw
   }, [params.pdf])
 
@@ -125,6 +153,7 @@ export default function PdfReaderPage() {
       window.removeEventListener('hashchange', onHashChange)
       if (zoomDebounceTimerRef.current) window.clearTimeout(zoomDebounceTimerRef.current)
       if (controlsHideTimerRef.current) window.clearTimeout(controlsHideTimerRef.current)
+      if (pageSaveTimerRef.current) window.clearTimeout(pageSaveTimerRef.current)
     }
   }, [])
 
@@ -139,43 +168,35 @@ export default function PdfReaderPage() {
   }, [])
 
   useEffect(() => {
-    const loadProgress = async () => {
+    const loadProgress = () => {
       if (!params.bookId) {
         setLoadingProgress(false)
         return
       }
-      try {
-        setLoadingProgress(true)
-        setError('')
-        const response = await fetch(`${API_BASE_URL}/api/progress?userId=${DEFAULT_USER_ID}`)
-        if (!response.ok) throw new Error('Unable to load reading progress.')
-
-        const progressList = await response.json()
-        const match = Array.isArray(progressList)
-          ? progressList.find((item) => item.book?._id === params.bookId || item.book === params.bookId)
-          : null
-
-        if (match && Number.isInteger(match.currentPage || match.page)) {
-          const restoredPage = Math.max(1, match.currentPage || match.page)
-          setPage(restoredPage)
-          setTotalPages(Math.max(1, match.totalPages || DEFAULT_TOTAL_PAGES))
-          restorePageRef.current = restoredPage
-          setContinueFromPage(restoredPage)
-        } else {
-          setPage(1)
-          setTotalPages(DEFAULT_TOTAL_PAGES)
-          restorePageRef.current = 1
-          setContinueFromPage(null)
-        }
-      } catch (loadError) {
-        setError(loadError.message || 'Unable to load reading progress.')
-      } finally {
-        setLoadingProgress(false)
+      const match = getProgressForBook(progressItems, params.bookId)
+      const signature = `${params.bookId}:${match?.currentPage || match?.page || params.page || 1}:${match?.totalPages || DEFAULT_TOTAL_PAGES}`
+      if (signature === restoreSignatureRef.current) return
+      restoreSignatureRef.current = signature
+      setLoadingProgress(true)
+      if (match) {
+        const computed = computeProgress(match)
+        const restoredPage = computed.currentPage
+        setPage((prev) => (prev === restoredPage ? prev : restoredPage))
+        setTotalPages((prev) => (prev === (computed.totalPages || DEFAULT_TOTAL_PAGES) ? prev : (computed.totalPages || DEFAULT_TOTAL_PAGES)))
+        restorePageRef.current = restoredPage
+        setContinueFromPage((prev) => (prev === restoredPage ? prev : restoredPage))
+      } else {
+        const fromParams = Number.isInteger(params.page) && params.page > 0 ? params.page : 1
+        setPage((prev) => (prev === fromParams ? prev : fromParams))
+        setTotalPages((prev) => (prev === DEFAULT_TOTAL_PAGES ? prev : DEFAULT_TOTAL_PAGES))
+        restorePageRef.current = fromParams
+        setContinueFromPage((prev) => (prev === null ? prev : null))
       }
+      setLoadingProgress(false)
     }
 
     loadProgress()
-  }, [params.bookId])
+  }, [params.bookId, params.page, progressItems])
 
   useEffect(() => {
     const container = scrollContainerRef.current
@@ -201,37 +222,39 @@ export default function PdfReaderPage() {
     }
   }, [applyZoom, isFullscreen, zoomScale])
 
-  const progressPercentage = useMemo(() => {
-    const safeTotal = Math.max(1, totalPages)
-    return Math.max(0, Math.min(100, Math.round((page / safeTotal) * 100)))
-  }, [page, totalPages])
+  const progressPercentage = useMemo(
+    () => computeProgress({ currentPage: page, totalPages }).progressPercentage,
+    [page, totalPages],
+  )
 
   const saveProgress = useCallback(async () => {
-    if (!params.bookId || !resolvedPdfUrl) return
+    if (!params.bookId || !resolvedPdfUrl || !resolvedUserId) return
     const snapshot = `${params.bookId}:${page}:${totalPages}`
     if (snapshot === lastSavedSnapshotRef.current) return
     try {
       setError('')
-      const response = await fetch(`${API_BASE_URL}/api/progress`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: DEFAULT_USER_ID,
+      const response = await apiClient.post('/api/progress', {
+          userId: resolvedUserId,
           bookId: params.bookId,
           currentPage: page,
           totalPages,
           progressPercentage,
-        }),
       })
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}))
-        throw new Error(payload.message || 'Failed to save progress.')
-      }
       lastSavedSnapshotRef.current = snapshot
+      window.dispatchEvent(new CustomEvent('progressUpdated', {
+        detail: {
+          bookId: params.bookId,
+          currentPage: page,
+          totalPages,
+          progressPercentage,
+          lastReadAt: new Date().toISOString(),
+          item: response?.data,
+        },
+      }))
     } catch (saveError) {
-      setError(saveError.message || 'Failed to save progress.')
+      setError(saveError?.response?.data?.message || saveError.message || 'Failed to save progress.')
     }
-  }, [page, params.bookId, progressPercentage, resolvedPdfUrl, totalPages])
+  }, [page, params.bookId, progressPercentage, resolvedPdfUrl, resolvedUserId, totalPages])
 
   const cancelAllPageTasks = useCallback(() => {
     Object.values(pageRenderTasksRef.current).forEach((task) => {
@@ -268,17 +291,20 @@ export default function PdfReaderPage() {
           return
         }
         pdfDocumentRef.current = doc
-        setTotalPages(Math.max(1, doc.numPages || 1))
+        setTotalPages((prev) => {
+          const next = Math.max(1, doc.numPages || 1)
+          return prev === next ? prev : next
+        })
         pageHeightsRef.current = Array.from({ length: Math.max(1, doc.numPages || 1) }, () => DEFAULT_PAGE_HEIGHT)
 
         const restorePage = Math.min(Math.max(1, restorePageRef.current || 1), Math.max(1, doc.numPages || 1))
         const initialStart = Math.max(1, restorePage - PAGE_OVERSCAN)
         const initialEnd = Math.min(doc.numPages, restorePage + PAGE_OVERSCAN + 2)
-        setWindowRange({ start: initialStart, end: initialEnd })
+        setWindowRange((prev) => (prev.start === initialStart && prev.end === initialEnd ? prev : { start: initialStart, end: initialEnd }))
 
         window.requestAnimationFrame(() => {
           pagesRef.current[restorePage - 1]?.scrollIntoView({ behavior: 'auto', block: 'start' })
-          setPage(restorePage)
+          setPage((prev) => (prev === restorePage ? prev : restorePage))
         })
       } catch (loadError) {
         if (!cancelled) setError(loadError?.message || 'Unable to load this PDF.')
@@ -466,7 +492,15 @@ export default function PdfReaderPage() {
   }, [applyZoom, zoomScale])
 
   useEffect(() => {
-    saveProgress()
+    if (pageSaveTimerRef.current) {
+      window.clearTimeout(pageSaveTimerRef.current)
+    }
+    pageSaveTimerRef.current = window.setTimeout(() => {
+      saveProgress()
+    }, PAGE_SYNC_DEBOUNCE_MS)
+    return () => {
+      if (pageSaveTimerRef.current) window.clearTimeout(pageSaveTimerRef.current)
+    }
   }, [page, saveProgress])
 
   useEffect(() => {
@@ -497,7 +531,7 @@ export default function PdfReaderPage() {
         <div className="overflow-hidden rounded-full border border-white/15 bg-slate-900/75 backdrop-blur-xl">
           <div className="h-1.5 rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-500 transition-all duration-300 ease-out" style={{ width: `${progressPercentage}%` }} />
         </div>
-        <p className="mt-1 text-center text-xs font-medium text-slate-300">{progressPercentage}% • Page {page} of {Math.max(1, totalPages)}</p>
+        <p className="mt-1 text-center text-xs font-medium text-slate-300">{progressPercentage}% - Page {page} of {Math.max(1, totalPages)}</p>
       </div>
 
       <header className={`fixed left-0 right-0 top-0 z-20 border-b border-white/10 bg-slate-950/75 px-3 py-2.5 backdrop-blur-xl transition-transform duration-300 sm:px-6 sm:py-3 ${headerHidden || isFullscreen ? '-translate-y-full' : 'translate-y-0'}`}>
@@ -520,7 +554,9 @@ export default function PdfReaderPage() {
 
       <main className={`min-h-0 flex-1 px-2 pb-2 pt-10 transition-all duration-500 sm:px-4 sm:pb-4 sm:pt-14 ${isFullscreen ? 'pt-2 sm:pt-3' : ''}`}>
         {loadingProgress ? (
-          <div className="h-full w-full animate-pulse rounded-2xl border border-white/10 bg-white/5" />
+          <div className="animate-[fadeIn_220ms_ease-out]">
+            <ReaderSkeleton />
+          </div>
         ) : resolvedPdfUrl ? (
           <div
             ref={readerFrameRef}
@@ -579,3 +615,5 @@ export default function PdfReaderPage() {
     </div>
   )
 }
+
+

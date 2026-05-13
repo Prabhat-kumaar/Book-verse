@@ -17,11 +17,14 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (_req, file, cb) => {
-    if (file.fieldname === 'pdf') {
-        if (file.mimetype === 'application/pdf') {
+    if (file.fieldname === 'file' || file.fieldname === 'pdf') {
+        const ext = path.extname(file.originalname || '').toLowerCase();
+        const isPdf = file.mimetype === 'application/pdf' || ext === '.pdf';
+        const isEpub = file.mimetype === 'application/epub+zip' || ext === '.epub';
+        if (isPdf || isEpub) {
             return cb(null, true);
         }
-        return cb(new Error('Only PDF files are allowed for pdf'));
+        return cb(new Error('Only PDF/EPUB files are allowed for file'));
     }
 
     if (file.fieldname === 'thumbnail') {

@@ -1,13 +1,23 @@
+import { useMemo } from 'react'
 import useBooks from '../hooks/useBooks'
+import useProgress from '../hooks/useProgress'
+import SaveBookHeart from '../components/SaveBookHeart'
+import EmptyState from '../components/EmptyState'
+import { useNavigate } from 'react-router-dom'
+import { GridSkeleton } from '../components/Skeletons'
+import { buildReaderHash } from '../lib/readerLink'
+import { applyThumbnailFallback, getBookThumbnailUrl } from '../lib/mediaUrls'
+import { buildProgressMap } from '../lib/readingProgress'
 
-function BookCard({ book }) {
-  const readerLink = `#reader?bookId=${encodeURIComponent(book._id || '')}&pdf=${encodeURIComponent(book.pdf || '')}&title=${encodeURIComponent(book.title || '')}&author=${encodeURIComponent(book.author || '')}`
+function BookCard({ book, progress }) {
+  const readerLink = buildReaderHash(book, { page: progress?.currentPage, cfi: progress?.cfi || '' })
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.05] p-3">
+    <article className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.05] p-3">
+      <SaveBookHeart bookId={book._id} book={book} />
       <div className="mb-3 h-52 w-full overflow-hidden rounded-xl bg-slate-900 ring-1 ring-white/10">
         {book.thumbnail ? (
-          <img src={book.thumbnail} alt={book.title} className="h-full w-full object-cover" />
+          <img loading="lazy" src={getBookThumbnailUrl(book)} onError={applyThumbnailFallback} alt={book.title} className="h-full w-full object-cover" />
         ) : (
           <div className="grid h-full w-full place-items-center bg-gradient-to-br from-blue-500/50 to-violet-600/50 p-3 text-center text-sm font-semibold text-white">
             {book.title}
@@ -25,7 +35,18 @@ function BookCard({ book }) {
 }
 
 export default function RecommendedPage() {
+  const navigate = useNavigate()
   const { books, loading, error } = useBooks()
+  const authUser = (() => {
+    try {
+      const raw = localStorage.getItem('authUser')
+      return raw ? JSON.parse(raw) : null
+    } catch {
+      return null
+    }
+  })()
+  const { progressItems } = useProgress(authUser?._id)
+  const progressMap = useMemo(() => buildProgressMap(progressItems), [progressItems])
   const recommendedBooks = books.slice(0, 12)
 
   return (
@@ -34,19 +55,24 @@ export default function RecommendedPage() {
       <p className="mt-1 text-sm text-slate-300">Suggestions based on available library books.</p>
 
       {loading ? (
-        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {[...Array(8)].map((_, i) => (
-            <div key={`recommended-skeleton-${i}`} className="h-80 animate-pulse rounded-2xl border border-white/10 bg-white/[0.05]" />
-          ))}
+        <div className="mt-5 animate-[fadeIn_220ms_ease-out]">
+          <GridSkeleton count={8} />
         </div>
       ) : error ? (
         <div className="mt-5 rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</div>
       ) : recommendedBooks.length === 0 ? (
-        <div className="mt-5 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-200">No books found</div>
+        <EmptyState
+          className="mt-5"
+          icon="✨"
+          title="No recommendations yet"
+          description="Read a few books and we will personalize suggestions for you."
+          actionLabel="Start Reading"
+          onAction={() => navigate('/books')}
+        />
       ) : (
         <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {recommendedBooks.map((book) => (
-            <BookCard key={book._id || `${book.title}-${book.author}`} book={book} />
+            <BookCard key={book._id || `${book.title}-${book.author}`} book={book} progress={progressMap.get(book._id)} />
           ))}
         </div>
       )}

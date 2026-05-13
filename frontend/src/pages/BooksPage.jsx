@@ -1,19 +1,27 @@
-import { useMemo } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { memo, useMemo, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import useBooks from '../hooks/useBooks'
+import useProgress from '../hooks/useProgress'
+import SaveBookHeart from '../components/SaveBookHeart'
+import EmptyState from '../components/EmptyState'
+import { GridSkeleton } from '../components/Skeletons'
+import { buildReaderHash } from '../lib/readerLink'
+import { buildProgressMap } from '../lib/readingProgress'
 
 function normalize(value) {
   return (value || '').toString().trim().toLowerCase()
 }
 
-function BookCard({ book }) {
-  const readerLink = `#reader?bookId=${encodeURIComponent(book._id || '')}&pdf=${encodeURIComponent(book.pdf || '')}&title=${encodeURIComponent(book.title || '')}&author=${encodeURIComponent(book.author || '')}`
+const BookCard = memo(function BookCard({ book, progress }) {
+  const readerLink = buildReaderHash(book, { page: progress?.currentPage, cfi: progress?.cfi || '' })
+  const [thumbFailed, setThumbFailed] = useState(false)
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.05] p-3 backdrop-blur-lg">
+    <article className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.05] p-3 backdrop-blur-lg">
+      <SaveBookHeart bookId={book._id} book={book} />
       <div className="mb-3 h-52 w-full overflow-hidden rounded-xl bg-slate-900 ring-1 ring-white/10">
-        {book.thumbnail ? (
-          <img src={book.thumbnail} alt={book.title} className="h-full w-full object-cover" />
+        {book.thumbnail && !thumbFailed ? (
+          <img loading="lazy" src={book.thumbnail} alt={book.title} onError={() => setThumbFailed(true)} className="h-full w-full object-cover" />
         ) : (
           <div className="grid h-full w-full place-items-center bg-gradient-to-br from-blue-500/50 to-violet-600/50 p-3 text-center text-sm font-semibold text-white">
             {book.title}
@@ -31,12 +39,23 @@ function BookCard({ book }) {
       </a>
     </article>
   )
-}
+})
 
 export default function BooksPage() {
+  const navigate = useNavigate()
   const { books, loading, error } = useBooks()
+  const authUser = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('authUser')
+      return raw ? JSON.parse(raw) : null
+    } catch {
+      return null
+    }
+  }, [])
+  const { progressItems } = useProgress(authUser?._id)
   const [searchParams] = useSearchParams()
   const query = searchParams.get('q') || ''
+  const progressMap = useMemo(() => buildProgressMap(progressItems), [progressItems])
 
   const filteredBooks = useMemo(() => {
     const q = normalize(query)
@@ -60,19 +79,24 @@ export default function BooksPage() {
       </div>
 
       {loading ? (
-        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {[...Array(8)].map((_, i) => (
-            <div key={`book-skeleton-${i}`} className="h-80 animate-pulse rounded-2xl border border-white/10 bg-white/[0.05]" />
-          ))}
+        <div className="mt-5 animate-[fadeIn_220ms_ease-out]">
+          <GridSkeleton count={8} />
         </div>
       ) : error ? (
         <div className="mt-5 rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</div>
       ) : filteredBooks.length === 0 ? (
-        <div className="mt-5 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-200">No books found</div>
+        <EmptyState
+          className="mt-5"
+          icon="🔍"
+          title="No books found"
+          description="Try searching with different keywords."
+          actionLabel="Browse Categories"
+          onAction={() => navigate('/categories')}
+        />
       ) : (
-        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
           {filteredBooks.map((book) => (
-            <BookCard key={book._id || `${book.title}-${book.author}`} book={book} />
+            <BookCard key={book._id || `${book.title}-${book.author}`} book={book} progress={progressMap.get(book._id)} />
           ))}
         </div>
       )}

@@ -1,12 +1,14 @@
 const express = require('express');
 const { register, login } = require('../controllers/authController');
+const { protect, admin } = require('../middleware/authMiddleware');
+const { authLimiter } = require('../middleware/rateLimitMiddleware');
 
 const router = express.Router();
 
-router.post('/register', (req, res, next) => {
-    req.body.role = 'admin';
+router.post('/register', protect, admin, (req, res, next) => {
+    req.allowAdminCreation = true;
     register(req, res, next);
 });
-router.post('/login', login);
+router.post('/login', authLimiter, login);
 
 module.exports = router;

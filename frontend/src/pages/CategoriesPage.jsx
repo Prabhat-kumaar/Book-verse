@@ -1,19 +1,26 @@
 import { useMemo } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import useBooks from '../hooks/useBooks'
+import useProgress from '../hooks/useProgress'
+import SaveBookHeart from '../components/SaveBookHeart'
+import EmptyState from '../components/EmptyState'
+import { GridSkeleton } from '../components/Skeletons'
+import { buildReaderHash } from '../lib/readerLink'
+import { buildProgressMap } from '../lib/readingProgress'
 
 function normalize(value) {
   return (value || '').toString().trim().toLowerCase()
 }
 
-function CategoryBookCard({ book }) {
-  const readerLink = `#reader?bookId=${encodeURIComponent(book._id || '')}&pdf=${encodeURIComponent(book.pdf || '')}&title=${encodeURIComponent(book.title || '')}&author=${encodeURIComponent(book.author || '')}`
+function CategoryBookCard({ book, progress }) {
+  const readerLink = buildReaderHash(book, { page: progress?.currentPage, cfi: progress?.cfi || '' })
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.05] p-3 backdrop-blur-lg">
+    <article className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.05] p-3 backdrop-blur-lg">
+      <SaveBookHeart bookId={book._id} book={book} />
       <div className="mb-3 h-52 w-full overflow-hidden rounded-xl bg-slate-900 ring-1 ring-white/10">
         {book.thumbnail ? (
-          <img src={book.thumbnail} alt={book.title} className="h-full w-full object-cover" />
+          <img loading="lazy" src={book.thumbnail} alt={book.title} className="h-full w-full object-cover" />
         ) : (
           <div className="grid h-full w-full place-items-center bg-gradient-to-br from-blue-500/50 to-violet-600/50 p-3 text-center text-sm font-semibold text-white">
             {book.title}
@@ -34,7 +41,17 @@ function CategoryBookCard({ book }) {
 }
 
 export default function CategoriesPage() {
+  const navigate = useNavigate()
   const { books, loading, error } = useBooks()
+  const authUser = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('authUser')
+      return raw ? JSON.parse(raw) : null
+    } catch {
+      return null
+    }
+  }, [])
+  const { progressItems } = useProgress(authUser?._id)
   const [searchParams] = useSearchParams()
   const activeCategory = searchParams.get('category') || ''
 
@@ -53,14 +70,8 @@ export default function CategoriesPage() {
     return books.filter((book) => normalize(book.category) === wanted)
   }, [books, activeCategory])
 
-  const randomBooks = useMemo(() => {
-    const copy = [...books]
-    for (let i = copy.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1))
-      ;[copy[i], copy[j]] = [copy[j], copy[i]]
-    }
-    return copy.slice(0, 9)
-  }, [books])
+  const randomBooks = useMemo(() => books.slice(0, 9), [books])
+  const progressMap = useMemo(() => buildProgressMap(progressItems), [progressItems])
 
   const visibleBooks = activeCategory ? filteredBooks : randomBooks
 
@@ -69,15 +80,20 @@ export default function CategoriesPage() {
       <h1 className="text-2xl font-bold text-white sm:text-3xl">Categories</h1>
 
       {loading ? (
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {[...Array(8)].map((_, i) => (
-            <div key={`cat-skeleton-${i}`} className="h-20 animate-pulse rounded-xl border border-white/10 bg-white/[0.05]" />
-          ))}
+        <div className="mt-5 animate-[fadeIn_220ms_ease-out]">
+          <GridSkeleton count={8} />
         </div>
       ) : error ? (
         <div className="mt-5 rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</div>
       ) : categories.length === 0 ? (
-        <div className="mt-5 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-200">No categories found</div>
+        <EmptyState
+          className="mt-5"
+          icon="🗂️"
+          title="No categories yet"
+          description="Book categories will appear here as your library grows."
+          actionLabel="Explore Books"
+          onAction={() => navigate('/books')}
+        />
       ) : (
         <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {categories.map((category) => {
@@ -102,11 +118,19 @@ export default function CategoriesPage() {
           {activeCategory ? `Books in ${activeCategory}` : 'Featured Books'}
         </h2>
         {visibleBooks.length === 0 ? (
-          <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-200">No books found</div>
+          <EmptyState
+            className="mt-3"
+            icon="📘"
+            title="No books found"
+            description="Try another category or explore all books."
+            actionLabel="Explore Books"
+            onAction={() => navigate('/books')}
+            compact
+          />
         ) : (
           <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {visibleBooks.map((book) => (
-              <CategoryBookCard key={book._id || `${book.title}-${book.author}`} book={book} />
+              <CategoryBookCard key={book._id || `${book.title}-${book.author}`} book={book} progress={progressMap.get(book._id)} />
             ))}
           </div>
         )}

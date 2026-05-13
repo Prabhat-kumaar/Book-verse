@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -11,16 +11,75 @@
   }
 
   body {
-    @apply m-0 min-h-screen font-[Manrope] text-slate-100 antialiased;
+    @apply m-0 min-h-screen font-[Outfit] text-slate-100 antialiased;
+    font-size: clamp(14px, 1.1vw, 18px);
+    overflow-x: hidden;
     background-color: #050914;
     background-image:
-      radial-gradient(circle at 10% 12%, rgba(85, 89, 255, 0.24), transparent 35%),
-      radial-gradient(circle at 88% 4%, rgba(147, 75, 255, 0.2), transparent 30%),
-      radial-gradient(circle at 50% 92%, rgba(27, 145, 255, 0.16), transparent 28%),
-      linear-gradient(160deg, #040714 0%, #081127 45%, #070b17 100%);
+      radial-gradient(circle at 12% 8%, rgba(56, 96, 255, 0.22), transparent 34%),
+      radial-gradient(circle at 86% 4%, rgba(120, 80, 255, 0.2), transparent 30%),
+      radial-gradient(circle at 50% 95%, rgba(30, 108, 255, 0.16), transparent 32%),
+      linear-gradient(165deg, #05070f 0%, #0a0f1f 46%, #06070d 100%);
+  }
+
+  h1, h2, h3, h4 {
+    line-height: 1.1;
   }
 
   #root {
     @apply min-h-screen;
+  }
+
+  :root {
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+@media (max-width: 767px) {
+  body {
+    font-size: 14px;
+  }
+
+  h1, h2 {
+    font-size: clamp(24px, 6vw, 32px);
+  }
+}
+
+@keyframes modalIn {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes heartPop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+
+@keyframes sheetUp {
+  0% {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes skeletonShimmer {
+  100% {
+    transform: translateX(220%);
   }
 }
