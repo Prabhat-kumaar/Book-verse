@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import apiClient from '../lib/apiClient'
 
 const SAVED_CACHE_KEY = 'savedBooksState:v1'
@@ -33,29 +33,54 @@ function readAuthUserId() {
   }
 }
 
+function readAuthToken() {
+  return Boolean(localStorage.getItem('authToken'))
+}
+
+function normalizeId(value) {
+  if (value == null) return ''
+  if (typeof value === 'object') return String(value._id || value.id || value.toString() || '')
+  return String(value)
+}
+
 export default function useSavedBooks() {
+  // Track auth state properly with useState
+  const [isAuthed, setIsAuthed] = useState(readAuthToken)
+
+  // Initialize state from cache
   const cacheUserId = readAuthUserId()
   const initialCache = readSavedCache()
   const scopedCache = initialCache?.userId === cacheUserId ? initialCache : null
+
   const [collections, setCollections] = useState(() => (Array.isArray(scopedCache?.collections) ? scopedCache.collections : []))
   const [savedStatus, setSavedStatus] = useState(() => (Array.isArray(scopedCache?.savedStatus) ? scopedCache.savedStatus : []))
   const [savedBooksByCollection, setSavedBooksByCollection] = useState(() => (scopedCache?.savedBooksByCollection && typeof scopedCache.savedBooksByCollection === 'object' ? scopedCache.savedBooksByCollection : {}))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [hydrated, setHydrated] = useState(false)
 
-  const [, setAuthVersion] = useState(0)
-  const isAuthed = Boolean(localStorage.getItem('authToken'))
+  // Track if initial refresh has been attempted to avoid duplicate calls
+  const hasInitialized = useRef(false)
 
+  // Monitor auth state changes from other tabs/windows
   useEffect(() => {
-    const onAuthChanged = () => setAuthVersion((prev) => prev + 1)
+    const onStorageChange = () => {
+      setIsAuthed(readAuthToken())
+    }
+    const onAuthChanged = () => {
+      setIsAuthed(readAuthToken())
+    }
+
+    window.addEventListener('storage', onStorageChange)
     window.addEventListener('authChanged', onAuthChanged)
-    window.addEventListener('storage', onAuthChanged)
+
     return () => {
+      window.removeEventListener('storage', onStorageChange)
       window.removeEventListener('authChanged', onAuthChanged)
-      window.removeEventListener('storage', onAuthChanged)
     }
   }, [])
 
+  // Persist cache whenever state changes
   useEffect(() => {
     writeSavedCache({
       userId: readAuthUserId(),
@@ -66,15 +91,19 @@ export default function useSavedBooks() {
     })
   }, [collections, savedBooksByCollection, savedStatus])
 
-  const refresh = useCallback(async () => {
-    if (!isAuthed) {
+  // Refresh function that fetches from backend (no deps to avoid recreating)
+  const refreshFn = useCallback(async () => {
+    const currentAuth = readAuthToken()
+    if (!currentAuth) {
       setCollections([])
       setSavedStatus([])
       setSavedBooksByCollection({})
       setLoading(false)
       setError('')
+      setHydrated(true)
       return
     }
+
     try {
       setLoading(true)
       setError('')
@@ -88,18 +117,32 @@ export default function useSavedBooks() {
       setError(err?.response?.data?.message || err?.message || 'Failed to load saved books')
     } finally {
       setLoading(false)
+      setHydrated(true)
+    }
+  }, [])
+
+  // Expose refresh in return object
+  const refresh = refreshFn
+
+  // Perform initial refresh on component mount and when auth changes
+  useEffect(() => {
+    if (readAuthToken() && !hasInitialized.current) {
+      hasInitialized.current = true
+      refreshFn()
+    } else if (!readAuthToken()) {
+      // Clear state if not authenticated
+      setCollections([])
+      setSavedStatus([])
+      setSavedBooksByCollection({})
+      hasInitialized.current = false
     }
   }, [isAuthed])
 
-  useEffect(() => {
-    refresh()
-  }, [refresh])
-
   const createCollection = useCallback(async (name) => {
     const res = await apiClient.post('/api/collections', { name })
-    await refresh()
+    await refreshFn()
     return res.data
-  }, [refresh])
+  }, [refreshFn])
 
   const fetchSavedBooksByCollection = useCallback(async (collectionId) => {
     if (!collectionId) return []
@@ -111,9 +154,9 @@ export default function useSavedBooks() {
 
   const saveBook = useCallback(async (bookId, collectionId, optimisticBook = null) => {
     const alreadyExists = savedStatus.some((item) => {
-      const itemBookId = item.book?._id || item.book
-      const itemCollectionId = item.collection?._id || item.collection
-      return itemBookId === bookId && itemCollectionId === collectionId
+      const itemBookId = normalizeId(item.book)
+      const itemCollectionId = normalizeId(item.collection)
+      return itemBookId === normalizeId(bookId) && itemCollectionId === normalizeId(collectionId)
     })
     if (alreadyExists) return null
 
@@ -236,6 +279,7 @@ export default function useSavedBooks() {
     collections,
     createCollection,
     error,
+    hydrated,
     isAuthed,
     loading,
     refresh,

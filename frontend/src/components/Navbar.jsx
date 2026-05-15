@@ -178,11 +178,34 @@ export default function Navbar() {
             </button>
             {menuOpen ? (
               <div className="absolute right-0 mt-2 w-52 overflow-hidden rounded-2xl border border-white/15 bg-slate-950/90 p-2 shadow-[0_20px_60px_rgba(0,0,0,0.55)] backdrop-blur-2xl">
-                {navItems.map((item) => (
-                  <Link key={item.label} to={item.href} onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
-                    {item.label}
+                {authUser ? (
+                  <>
+                    <Link to="/me" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
+                      My Profile
+                    </Link>
+                    <Link to="/" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
+                      Continue Reading
+                    </Link>
+                    <Link to="/saved-books" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
+                      Saved Books
+                    </Link>
+                    <Link to="/#continue-reading" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
+                      Reading History
+                    </Link>
+                    <Link to="/me" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
+                      Settings
+                    </Link>
+                    {isAdmin ? (
+                      <Link to="/admin/dashboard" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
+                        Admin Dashboard
+                      </Link>
+                    ) : null}
+                  </>
+                ) : (
+                  <Link to="/login" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm font-semibold text-blue-200 transition hover:bg-blue-500/15">
+                    Login
                   </Link>
-                ))}
+                )}
               </div>
             ) : null}
           </div>
@@ -298,11 +321,51 @@ export default function Navbar() {
         {menuOpen ? (
           <div className="px-3 pb-3 md:hidden">
             <div className="overflow-hidden rounded-xl border border-white/15 bg-slate-950/85 p-2 backdrop-blur-xl">
-              {navItems.map((item) => (
-                <Link key={item.label} to={item.href} onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10">
-                  {item.label}
-                </Link>
-              ))}
+              {authUser ? (
+                <>
+                  <Link to="/me" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10">
+                    My Profile
+                  </Link>
+                  <Link to="/" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10">
+                    Continue Reading
+                  </Link>
+                  <Link to="/saved-books" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10">
+                    Saved Books
+                  </Link>
+                  <Link to="/#continue-reading" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10">
+                    Reading History
+                  </Link>
+                  <Link to="/me" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10">
+                    Settings
+                  </Link>
+                  {isAdmin ? (
+                    <>
+                      <div className="my-2 border-t border-white/10" />
+                      <Link to="/admin/dashboard" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10">
+                        Admin Dashboard
+                      </Link>
+                    </>
+                  ) : null}
+                  <div className="my-2 border-t border-white/10" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleLogout()
+                      setMenuOpen(false)
+                    }}
+                    className="w-full rounded-lg px-3 py-2.5 text-left text-sm font-semibold text-rose-200 transition hover:bg-rose-500/15"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="my-2 border-t border-white/10" />
+                  <Link to="/login" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm font-semibold text-blue-200 transition hover:bg-blue-500/15">
+                    Login
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         ) : null}

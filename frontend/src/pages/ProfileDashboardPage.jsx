@@ -39,22 +39,22 @@ export default function ProfileDashboardPage() {
 
       <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div className="rounded-2xl border border-orange-300/25 bg-gradient-to-br from-orange-500/15 to-amber-500/10 p-4">
-          <p className="text-2xl">??</p>
+          <p className="text-2xl">🔥</p>
           <p className="mt-2 text-sm text-slate-300">Day Streak</p>
           <p className="text-2xl font-bold text-white">{streakLoading ? '...' : streakStats.currentStreak}</p>
         </div>
         <div className="rounded-2xl border border-blue-300/25 bg-gradient-to-br from-blue-500/15 to-indigo-500/10 p-4">
-          <p className="text-2xl">??</p>
+          <p className="text-2xl">📖</p>
           <p className="mt-2 text-sm text-slate-300">Pages Read Today</p>
           <p className="text-2xl font-bold text-white">{analyticsLoading ? '...' : analyticsStats.pagesToday}</p>
         </div>
         <div className="rounded-2xl border border-violet-300/25 bg-gradient-to-br from-violet-500/15 to-fuchsia-500/10 p-4">
-          <p className="text-2xl">?</p>
+          <p className="text-2xl">⏱️</p>
           <p className="mt-2 text-sm text-slate-300">Reading Hours</p>
           <p className="text-2xl font-bold text-white">{analyticsLoading ? '...' : analyticsStats.readingHours}</p>
         </div>
         <div className="rounded-2xl border border-emerald-300/25 bg-gradient-to-br from-emerald-500/15 to-cyan-500/10 p-4">
-          <p className="text-2xl">??</p>
+          <p className="text-2xl">🎯</p>
           <p className="mt-2 text-sm text-slate-300">Books Completed</p>
           <p className="text-2xl font-bold text-white">{analyticsLoading ? '...' : analyticsStats.booksCompleted}</p>
         </div>

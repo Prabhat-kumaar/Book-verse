@@ -1,10 +1,19 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { FaCheck, FaHeart, FaRegHeart, FaTimes } from 'react-icons/fa'
 import { useSavedBooksContext } from '../context/SavedBooksContext'
 
+const normalizeId = (value) => {
+  if (value == null) return ''
+  if (typeof value === 'object') return String(value._id || value.id || value.toString() || '')
+  return String(value)
+}
+
 export default function SaveBookHeart({ bookId, book = null, className = '' }) {
-  const { collections, createCollection, saveBook, savedStatus, removeSavedBook, isAuthed } = useSavedBooksContext()
+  const { collections, createCollection, saveBook, savedStatus, removeSavedBook, isAuthed, hydrated } = useSavedBooksContext()
+  const renderCountRef = useRef(0)
+  renderCountRef.current += 1
+
   const [open, setOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -15,9 +24,38 @@ export default function SaveBookHeart({ bookId, book = null, className = '' }) {
   const [submitting, setSubmitting] = useState(false)
   const [toast, setToast] = useState('')
 
-  const matches = useMemo(() => savedStatus.filter((entry) => entry.book === bookId || entry.book?._id === bookId), [savedStatus, bookId])
-  const isSaved = matches.length > 0
-  const currentCollectionIds = useMemo(() => matches.map((entry) => entry.collection?._id || entry.collection), [matches])
+  const bookIdNormalized = normalizeId(bookId)
+  const savedBookIds = Array.isArray(savedStatus)
+    ? savedStatus.map((entry) => normalizeId(entry.book))
+    : []
+
+  const isSaved = Boolean(bookIdNormalized && savedBookIds.includes(bookIdNormalized))
+  const matches = Array.isArray(savedStatus)
+    ? savedStatus.filter((entry) => normalizeId(entry.book) === bookIdNormalized)
+    : []
+  const currentCollectionIds = matches.map((entry) => normalizeId(entry.collection))
+
+  useEffect(() => {
+    console.log('[SaveBookHeart] render', {
+      renderCount: renderCountRef.current,
+      hydrated,
+      savedStatusLength: Array.isArray(savedStatus) ? savedStatus.length : 0,
+      savedStatus: Array.isArray(savedStatus) ? savedStatus.slice(0, 10) : savedStatus,
+      bookId: bookIdNormalized,
+      isSaved,
+    })
+  }, [hydrated, savedStatus, bookIdNormalized, isSaved])
+
+  if (!isAuthed) return null
+  if (!hydrated) {
+    return (
+      <div
+        className={`absolute right-3 top-3 z-40 grid h-9 w-24 place-items-center rounded-full border border-white/20 bg-slate-950/75 text-white shadow-[0_8px_26px_rgba(0,0,0,0.45)] transition duration-200 ${className}`}
+      >
+        loading...
+      </div>
+    )
+  }
 
   useEffect(() => {
     if (!mounted) return undefined
@@ -107,25 +145,22 @@ export default function SaveBookHeart({ bookId, book = null, className = '' }) {
       <button
         type="button"
         onClick={onHeartClick}
-        className={`absolute right-3 top-3 z-40 grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-slate-950/75 text-white shadow-[0_8px_26px_rgba(0,0,0,0.45)] transition duration-200 hover:scale-110 hover:border-violet-300/45 hover:bg-slate-900/90 ${
-          pop ? 'animate-[heartPop_260ms_ease-out]' : ''
-        } ${className}`}
+        className={`absolute right-3 top-3 z-40 grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-slate-950/75 text-white shadow-[0_8px_26px_rgba(0,0,0,0.45)] transition duration-200 hover:scale-110 hover:border-violet-300/45 hover:bg-slate-900/90 ${pop ? 'animate-[heartPop_260ms_ease-out]' : ''
+          } ${className}`}
       >
         {isSaved ? <FaHeart className="text-red-500" /> : <FaRegHeart className="text-slate-100" />}
       </button>
 
       {mounted ? createPortal(
         <div
-          className={`fixed inset-0 z-[120] transition-all duration-[350ms] ease-[cubic-bezier(0.4,0,0.2,1)] ${
-            open ? 'bg-slate-950/70 backdrop-blur-sm opacity-100' : 'bg-slate-950/0 opacity-0'
-          }`}
+          className={`fixed inset-0 z-[120] transition-all duration-[350ms] ease-[cubic-bezier(0.4,0,0.2,1)] ${open ? 'bg-slate-950/70 backdrop-blur-sm opacity-100' : 'bg-slate-950/0 opacity-0'
+            }`}
           onClick={closeSheet}
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className={`absolute inset-x-0 bottom-0 rounded-t-3xl border border-white/20 bg-slate-900/90 shadow-[0_-18px_50px_rgba(0,0,0,0.55)] backdrop-blur-2xl transition-all duration-[350ms] ease-[cubic-bezier(0.4,0,0.2,1)] sm:inset-auto sm:bottom-4 sm:left-1/2 sm:w-[460px] sm:-translate-x-1/2 sm:rounded-3xl ${
-              open ? 'translate-y-0' : 'translate-y-full'
-            }`}
+            className={`absolute inset-x-0 bottom-0 rounded-t-3xl border border-white/20 bg-slate-900/90 shadow-[0_-18px_50px_rgba(0,0,0,0.55)] backdrop-blur-2xl transition-all duration-[350ms] ease-[cubic-bezier(0.4,0,0.2,1)] sm:inset-auto sm:bottom-4 sm:left-1/2 sm:w-[460px] sm:-translate-x-1/2 sm:rounded-3xl ${open ? 'translate-y-0' : 'translate-y-full'
+              }`}
             style={{ transformOrigin: 'bottom center' }}
           >
             <div className="flex h-[80vh] flex-col overflow-hidden sm:h-[72vh]">
@@ -143,11 +178,10 @@ export default function SaveBookHeart({ bookId, book = null, className = '' }) {
                     return (
                       <label
                         key={collection._id}
-                        className={`flex cursor-pointer items-center justify-between rounded-2xl border px-3 py-3 transition duration-200 ${
-                          selected
-                            ? 'border-blue-300/40 bg-gradient-to-r from-blue-500/15 to-violet-500/15 shadow-[inset_3px_0_0_0_rgba(99,102,241,0.95)]'
-                            : 'border-white/15 bg-white/[0.04] hover:border-blue-300/30 hover:bg-white/[0.08]'
-                        }`}
+                        className={`flex cursor-pointer items-center justify-between rounded-2xl border px-3 py-3 transition duration-200 ${selected
+                          ? 'border-blue-300/40 bg-gradient-to-r from-blue-500/15 to-violet-500/15 shadow-[inset_3px_0_0_0_rgba(99,102,241,0.95)]'
+                          : 'border-white/15 bg-white/[0.04] hover:border-blue-300/30 hover:bg-white/[0.08]'
+                          }`}
                       >
                         <div>
                           <p className="text-sm font-semibold text-white">{collection.name}</p>
@@ -194,7 +228,7 @@ export default function SaveBookHeart({ bookId, book = null, className = '' }) {
                 {error ? <p className="mt-3 text-xs text-rose-200">{error}</p> : null}
               </div>
 
-            <div className="border-t border-white/10 p-4">
+              <div className="border-t border-white/10 p-4">
                 <button
                   type="button"
                   disabled={submitting}

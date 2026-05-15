@@ -29,22 +29,18 @@ function toAbsoluteUrl(value) {
   return raw
 }
 
-function buildThemeStyles({ isDarkMode, isMobile, isTablet }) {
-  const textColor = isDarkMode ? '#E5E7EB' : '#111827'
-  const headingColor = isDarkMode ? '#F8FAFC' : '#111827'
-  const bgColor = isDarkMode ? '#0b1220' : '#ffffff'
-
+function buildThemeStyles({ theme, isMobile, isTablet }) {
   return {
     html: {
-      background: `${bgColor} !important`,
+      background: `${theme.background} !important`,
     },
     body: {
       margin: '0',
       padding: isMobile ? '14px 12px 20px' : isTablet ? '18px 20px 24px' : '20px 24px 28px',
       width: '100%',
       'max-width': '100%',
-      color: `${textColor} !important`,
-      background: `${bgColor} !important`,
+      color: `${theme.text} !important`,
+      background: `${theme.background} !important`,
       'line-height': '1.7',
       'font-size': isMobile ? '17px' : '19px',
       'word-break': 'normal',
@@ -55,24 +51,24 @@ function buildThemeStyles({ isDarkMode, isMobile, isTablet }) {
       '-webkit-font-smoothing': 'antialiased',
     },
     '*': {
-      color: `${textColor} !important`,
+      color: `${theme.text} !important`,
     },
     'body *': {
-      color: `${textColor} !important`,
-      'border-color': isDarkMode ? 'rgba(255,255,255,0.28)' : 'rgba(15,23,42,0.26)',
+      color: `${theme.text} !important`,
+      'border-color': theme.borderColor,
     },
     p: {
-      color: `${textColor} !important`,
+      color: `${theme.text} !important`,
       margin: '0 0 1em 0',
     },
-    h1: { 'line-height': '1.3', margin: '0 0 0.8em 0', color: `${headingColor} !important` },
-    h2: { 'line-height': '1.35', margin: '0 0 0.8em 0', color: `${headingColor} !important` },
-    h3: { 'line-height': '1.4', margin: '0 0 0.7em 0', color: `${headingColor} !important` },
-    a: { color: `${isDarkMode ? '#93C5FD' : '#1D4ED8'} !important` },
-    span: { color: `${textColor} !important` },
-    div: { color: `${textColor} !important` },
-    li: { color: `${textColor} !important` },
-    blockquote: { color: `${textColor} !important` },
+    h1: { 'line-height': '1.3', margin: '0 0 0.8em 0', color: `${theme.heading} !important` },
+    h2: { 'line-height': '1.35', margin: '0 0 0.8em 0', color: `${theme.heading} !important` },
+    h3: { 'line-height': '1.4', margin: '0 0 0.7em 0', color: `${theme.heading} !important` },
+    a: { color: `${theme.link} !important` },
+    span: { color: `${theme.text} !important` },
+    div: { color: `${theme.text} !important` },
+    li: { color: `${theme.text} !important` },
+    blockquote: { color: `${theme.text} !important` },
     img: {
       display: 'block',
       'max-width': '100%',
@@ -97,16 +93,32 @@ function buildThemeStyles({ isDarkMode, isMobile, isTablet }) {
   }
 }
 
-function applyRenditionTheme(rendition, { isDarkMode, isMobile, isTablet }) {
+function applyRenditionTheme(rendition, { theme, isMobile, isTablet }) {
   if (!rendition) return
-  rendition.themes.register('app-light', buildThemeStyles({ isDarkMode: false, isMobile, isTablet }))
-  rendition.themes.register('app-dark', buildThemeStyles({ isDarkMode: true, isMobile, isTablet }))
-  rendition.themes.select(isDarkMode ? 'app-dark' : 'app-light')
-  rendition.themes.override('color', isDarkMode ? '#E5E7EB' : '#111827')
-  rendition.themes.override('background', isDarkMode ? '#0b1220' : '#ffffff')
+  rendition.themes.register('app-light', buildThemeStyles({
+    theme: {
+      text: '#111827',
+      heading: '#111827',
+      background: '#ffffff',
+      borderColor: 'rgba(15,23,42,0.26)',
+      link: '#1D4ED8',
+    }, isMobile, isTablet
+  }))
+  rendition.themes.register('app-dark', buildThemeStyles({
+    theme: {
+      text: '#E5E7EB',
+      heading: '#F8FAFC',
+      background: '#0b1220',
+      borderColor: 'rgba(255,255,255,0.28)',
+      link: '#93C5FD',
+    }, isMobile, isTablet
+  }))
+  rendition.themes.select(theme.background === '#0b1220' ? 'app-dark' : 'app-light')
+  rendition.themes.override('color', theme.text)
+  rendition.themes.override('background', theme.background)
 }
 
-function applyContentStabilityStyles(content, { isDarkMode, isMobile, isTablet }) {
+function applyContentStabilityStyles(content, { theme, isMobile, isTablet }) {
   const doc = content?.document
   if (!doc) return
 
@@ -125,8 +137,6 @@ function applyContentStabilityStyles(content, { isDarkMode, isMobile, isTablet }
     doc.head.appendChild(styleEl)
   }
 
-  const textColor = isDarkMode ? '#E5E7EB' : '#111827'
-  const bgColor = isDarkMode ? '#0b1220' : '#ffffff'
   const fontSize = isMobile ? '17px' : isTablet ? '18px' : '19px'
   styleEl.textContent = `
     html, body {
@@ -140,8 +150,8 @@ function applyContentStabilityStyles(content, { isDarkMode, isMobile, isTablet }
       text-orientation: mixed !important;
       column-count: 1 !important;
       column-width: auto !important;
-      background: ${bgColor} !important;
-      color: ${textColor} !important;
+      background: ${theme.background} !important;
+      color: ${theme.text} !important;
       font-size: ${fontSize} !important;
       line-height: 1.7 !important;
       overflow-wrap: break-word !important;
@@ -202,6 +212,19 @@ export default function EpubReaderPage() {
   const [progressPercent, setProgressPercent] = useState(0)
   const [virtualTotalPages, setVirtualTotalPages] = useState(100)
   const [virtualCurrentPage, setVirtualCurrentPage] = useState(1)
+
+  const theme = useMemo(() => ({
+    text: isDarkMode ? '#E5E7EB' : '#111827',
+    heading: isDarkMode ? '#F8FAFC' : '#111827',
+    background: isDarkMode ? '#0b1220' : '#ffffff',
+    borderColor: isDarkMode ? 'rgba(255,255,255,0.28)' : 'rgba(15,23,42,0.26)',
+    link: isDarkMode ? '#93C5FD' : '#1D4ED8',
+  }), [isDarkMode])
+  const themeRef = useRef(theme)
+
+  useEffect(() => {
+    themeRef.current = theme
+  }, [theme])
   const currentCfiRef = useRef('')
   const lastRelocationSnapshotRef = useRef('')
   const lastSyncedSnapshotRef = useRef('')
@@ -265,10 +288,17 @@ export default function EpubReaderPage() {
   useEffect(() => {
     const rendition = renditionRef.current
     if (!rendition) return
-    applyRenditionTheme(rendition, { isDarkMode, isMobile, isTablet })
+    applyRenditionTheme(rendition, { theme, isMobile, isTablet })
     const contents = rendition.getContents?.() || []
-    contents.forEach((content) => applyContentStabilityStyles(content, { isDarkMode, isMobile, isTablet }))
-  }, [isDarkMode, isMobile, isTablet])
+    contents.forEach((content) => applyContentStabilityStyles(content, { theme, isMobile, isTablet }))
+  }, [theme, isMobile, isTablet])
+
+  useEffect(() => {
+    if (viewerRef.current) {
+      viewerRef.current.style.backgroundColor = theme.background
+      viewerRef.current.style.color = theme.text
+    }
+  }, [theme])
 
   useEffect(() => {
     if (!resolvedFileUrl || !viewerRef.current) return undefined
@@ -276,96 +306,96 @@ export default function EpubReaderPage() {
     setError('')
     let active = true
 
-    ; (async () => {
-      try {
-        // Ensure previous instances are fully cleaned before re-initializing.
-        renditionRef.current?.destroy()
-        bookRef.current?.destroy()
-        renditionRef.current = null
-        bookRef.current = null
+      ; (async () => {
+        try {
+          // Ensure previous instances are fully cleaned before re-initializing.
+          renditionRef.current?.destroy()
+          bookRef.current?.destroy()
+          renditionRef.current = null
+          bookRef.current = null
 
-        const book = await loadEpubBook(resolvedFileUrl)
-        if (!active || !viewerRef.current) return
-        const rendition = book.renderTo(viewerRef.current, {
-          width: '100%',
-          height: '100%',
-          spread: 'none',
-          manager: 'continuous',
-          flow: 'scrolled-doc',
-          allowScriptedContent: false,
-        })
-        rendition.flow('scrolled-doc')
-        applyRenditionTheme(rendition, { isDarkMode, isMobile, isTablet })
-        rendition.hooks.content.register((content) => {
-          applyContentStabilityStyles(content, { isDarkMode, isMobile, isTablet })
-        })
-        bookRef.current = book
-        renditionRef.current = rendition
-        await book.ready
-        try {
-          await book.locations.generate(1200)
-          const locationsCount = getLocationsCount(book)
-          const safeTotal = Math.max(1, locationsCount || 100)
-          setVirtualTotalPages(safeTotal)
-        } catch {
-          setVirtualTotalPages(100)
-        }
-        const savedCfi = params.cfi || localStorage.getItem(progressKey)
-        try {
-          await rendition.display(savedCfi || undefined)
-        } catch {
-          await rendition.display()
-        }
-        const epubContainer = viewerRef.current?.querySelector('.epub-container')
-        const epubView = viewerRef.current?.querySelector('.epub-view')
-        if (epubContainer) {
-          epubContainer.style.height = '100%'
-          epubContainer.style.overflowY = 'auto'
-          epubContainer.style.overflowX = 'hidden'
-          epubContainer.style.webkitOverflowScrolling = 'touch'
-        }
-        if (epubView) {
-          epubView.style.height = 'auto'
-          epubView.style.minHeight = '100%'
-        }
-        const onRelocated = (location) => {
-          const cfi = location?.start?.cfi
-          if (cfi) {
-            localStorage.setItem(progressKey, cfi)
-            currentCfiRef.current = cfi
+          const book = await loadEpubBook(resolvedFileUrl)
+          if (!active || !viewerRef.current) return
+          const rendition = book.renderTo(viewerRef.current, {
+            width: '100%',
+            height: '100%',
+            spread: 'none',
+            manager: 'continuous',
+            flow: 'scrolled-doc',
+            allowScriptedContent: false,
+          })
+          rendition.flow('scrolled-doc')
+          applyRenditionTheme(rendition, { theme: themeRef.current, isMobile, isTablet })
+          rendition.hooks.content.register((content) => {
+            applyContentStabilityStyles(content, { theme: themeRef.current, isMobile, isTablet })
+          })
+          bookRef.current = book
+          renditionRef.current = rendition
+          await book.ready
+          try {
+            await book.locations.generate(1200)
+            const locationsCount = getLocationsCount(book)
+            const safeTotal = Math.max(1, locationsCount || 100)
+            setVirtualTotalPages(safeTotal)
+          } catch {
+            setVirtualTotalPages(100)
           }
-          const rawPercentage = typeof location?.start?.percentage === 'number'
-            ? location.start.percentage
-            : (cfi && book.locations ? book.locations.percentageFromCfi(cfi) : 0)
-          const safeRaw = Number.isFinite(rawPercentage) ? rawPercentage : 0
-          const safeTotal = Math.max(1, getLocationsCount(book) || virtualTotalPages || 100)
-          const page = Math.max(1, Math.min(safeTotal, Math.round((safeRaw || 0) * safeTotal) || 1))
-          const computed = computeProgress({ currentPage: page, totalPages: safeTotal, progressPercentage: safeRaw * 100 })
-          const snapshot = `${computed.currentPage}:${computed.totalPages}:${computed.progressPercentage}:${cfi || ''}`
-          if (snapshot === lastRelocationSnapshotRef.current) return
-          lastRelocationSnapshotRef.current = snapshot
-          setVirtualTotalPages((prev) => (prev === safeTotal ? prev : safeTotal))
-          setVirtualCurrentPage((prev) => (prev === computed.currentPage ? prev : computed.currentPage))
-          setProgressPercent((prev) => (prev === computed.progressPercentage ? prev : computed.progressPercentage))
-          const contents = rendition.getContents?.() || []
-          contents.forEach((content) => applyContentStabilityStyles(content, { isDarkMode, isMobile, isTablet }))
-          applyRenditionTheme(rendition, { isDarkMode, isMobile, isTablet })
+          const savedCfi = params.cfi || localStorage.getItem(progressKey)
+          try {
+            await rendition.display(savedCfi || undefined)
+          } catch {
+            await rendition.display()
+          }
+          const epubContainer = viewerRef.current?.querySelector('.epub-container')
+          const epubView = viewerRef.current?.querySelector('.epub-view')
+          if (epubContainer) {
+            epubContainer.style.height = '100%'
+            epubContainer.style.overflowY = 'auto'
+            epubContainer.style.overflowX = 'hidden'
+            epubContainer.style.webkitOverflowScrolling = 'touch'
+          }
+          if (epubView) {
+            epubView.style.height = 'auto'
+            epubView.style.minHeight = '100%'
+          }
+          const onRelocated = (location) => {
+            const cfi = location?.start?.cfi
+            if (cfi) {
+              localStorage.setItem(progressKey, cfi)
+              currentCfiRef.current = cfi
+            }
+            const rawPercentage = typeof location?.start?.percentage === 'number'
+              ? location.start.percentage
+              : (cfi && book.locations ? book.locations.percentageFromCfi(cfi) : 0)
+            const safeRaw = Number.isFinite(rawPercentage) ? rawPercentage : 0
+            const safeTotal = Math.max(1, getLocationsCount(book) || virtualTotalPages || 100)
+            const page = Math.max(1, Math.min(safeTotal, Math.round((safeRaw || 0) * safeTotal) || 1))
+            const computed = computeProgress({ currentPage: page, totalPages: safeTotal, progressPercentage: safeRaw * 100 })
+            const snapshot = `${computed.currentPage}:${computed.totalPages}:${computed.progressPercentage}:${cfi || ''}`
+            if (snapshot === lastRelocationSnapshotRef.current) return
+            lastRelocationSnapshotRef.current = snapshot
+            setVirtualTotalPages((prev) => (prev === safeTotal ? prev : safeTotal))
+            setVirtualCurrentPage((prev) => (prev === computed.currentPage ? prev : computed.currentPage))
+            setProgressPercent((prev) => (prev === computed.progressPercentage ? prev : computed.progressPercentage))
+            const contents = rendition.getContents?.() || []
+            contents.forEach((content) => applyContentStabilityStyles(content, { theme: themeRef.current, isMobile, isTablet }))
+            applyRenditionTheme(rendition, { theme: themeRef.current, isMobile, isTablet })
+          }
+          const onRendered = () => {
+            const contents = rendition.getContents?.() || []
+            contents.forEach((content) => applyContentStabilityStyles(content, { theme: themeRef.current, isMobile, isTablet }))
+            applyRenditionTheme(rendition, { theme: themeRef.current, isMobile, isTablet })
+          }
+          rendition.on('relocated', onRelocated)
+          rendition.on('rendered', onRendered)
+          if (active) setLoading(false)
+        } catch (loadErr) {
+          if (active) {
+            setError(loadErr?.message || 'Failed to load EPUB.')
+            setLoading(false)
+          }
         }
-        const onRendered = () => {
-          const contents = rendition.getContents?.() || []
-          contents.forEach((content) => applyContentStabilityStyles(content, { isDarkMode, isMobile, isTablet }))
-          applyRenditionTheme(rendition, { isDarkMode, isMobile, isTablet })
-        }
-        rendition.on('relocated', onRelocated)
-        rendition.on('rendered', onRendered)
-        if (active) setLoading(false)
-      } catch (loadErr) {
-      if (active) {
-          setError(loadErr?.message || 'Failed to load EPUB.')
-          setLoading(false)
-        }
-      }
-    })()
+      })()
 
     return () => {
       active = false
@@ -437,7 +467,7 @@ export default function EpubReaderPage() {
   }
 
   return (
-    <section className={`mx-auto flex h-screen w-full items-center justify-center px-0 py-0 md:px-4 md:py-6 ${fontScaleClass}`}>
+    <section style={{ backgroundColor: theme.background, color: theme.text }} className={`mx-auto flex h-screen w-full items-center justify-center px-0 py-0 md:px-4 md:py-6 ${fontScaleClass}`}>
       <div ref={frameRef} className={`mx-auto flex h-[96vh] max-h-[96vh] flex-col ${isDarkMode ? 'border border-white/10 bg-slate-950/70' : 'border border-slate-200 bg-white'} ${readerShellClass} ${isFullscreen ? '!h-[100dvh] !max-h-[100dvh] !w-full !max-w-none !rounded-none border-0' : ''}`}>
         <header className={`flex shrink-0 items-center justify-between gap-2 border-b px-3 py-2.5 sm:px-4 sm:py-3 ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
           <div className="min-w-0">
@@ -466,9 +496,13 @@ export default function EpubReaderPage() {
         <div className={`relative min-h-0 flex-1 w-full overflow-hidden ${isFullscreenTransitioning ? 'opacity-95' : 'opacity-100'} transition-opacity duration-200`}>
           {loading ? <ReaderSkeleton /> : null}
           {error ? <p className="p-4 text-sm text-rose-600">{error}</p> : null}
-          <div id="viewer" ref={viewerRef} className="h-full w-full [contain:layout_paint_style] [&_.epub-container]:!w-full [&_.epub-container]:!h-full [&_.epub-container]:!overflow-y-auto [&_.epub-container]:!overflow-x-hidden [&_.epub-container]:[scroll-behavior:smooth] [&_.epub-container]:[-webkit-overflow-scrolling:touch] [&_.epub-view]:!w-full [&_.epub-view]:!h-auto [&_.epub-view]:!min-h-full [&_iframe]:!w-full [&_iframe]:!border-0" />
+          <div
+            id="viewer"
+            ref={viewerRef}
+            style={{ backgroundColor: theme.background, color: theme.text }}
+            className="h-full w-full [contain:layout_paint_style] [&_.epub-container]:!w-full [&_.epub-container]:!h-full [&_.epub-container]:!overflow-y-auto [&_.epub-container]:!overflow-x-hidden [&_.epub-container]:[scroll-behavior:smooth] [&_.epub-container]:[-webkit-overflow-scrolling:touch] [&_.epub-view]:!w-full [&_.epub-view]:!h-auto [&_.epub-view]:!min-h-full [&_iframe]:!w-full [&_iframe]:!border-0"
+          />
         </div>
-
       </div>
     </section>
   )
