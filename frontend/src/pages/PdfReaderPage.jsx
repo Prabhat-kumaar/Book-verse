@@ -3,10 +3,11 @@ import * as pdfjsLib from 'pdfjs-dist'
 import { MdFullscreen } from 'react-icons/md'
 import { ReaderSkeleton } from '../components/Skeletons'
 import apiClient from '../lib/apiClient'
+import { API_URL } from '../lib/apiConfig'
 import useProgress from '../hooks/useProgress'
 import { computeProgress, getProgressForBook } from '../lib/readingProgress'
 
-const API_BASE_URL = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || '')
+const API = API_URL
 const DEFAULT_TOTAL_PAGES = 200
 const AUTO_SAVE_INTERVAL_MS = 8000
 const PAGE_OVERSCAN = 2
@@ -91,13 +92,13 @@ export default function PdfReaderPage() {
     const raw = (params.pdf || '').trim()
     if (!raw) return ''
     if (/^(blob:|data:)/i.test(raw)) return raw
-    if (raw.startsWith('/uploads/')) return `${API_BASE_URL}${raw}`
-    if (raw.startsWith('uploads/')) return `${API_BASE_URL}/${raw}`
+    if (raw.startsWith('/uploads/')) return `${API}${raw}`
+    if (raw.startsWith('uploads/')) return `${API}/${raw}`
     if (/^https?:\/\//i.test(raw)) {
       try {
         const parsed = new URL(raw)
         if (parsed.pathname.startsWith('/uploads/')) {
-          return `${API_BASE_URL}${parsed.pathname}${parsed.search || ''}`
+          return `${API}${parsed.pathname}${parsed.search || ''}`
         }
       } catch {
         // no-op

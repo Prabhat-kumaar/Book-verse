@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import useBooks from '../hooks/useBooks'
+import useRecommendations from '../hooks/useRecommendations'
 import useProgress from '../hooks/useProgress'
 import SaveBookHeart from '../components/SaveBookHeart'
 import EmptyState from '../components/EmptyState'
@@ -36,7 +36,7 @@ function BookCard({ book, progress }) {
 
 export default function RecommendedPage() {
   const navigate = useNavigate()
-  const { books, loading, error } = useBooks()
+  const { recommendedBooks, loading, error } = useRecommendations()
   const authUser = (() => {
     try {
       const raw = localStorage.getItem('authUser')
@@ -47,8 +47,6 @@ export default function RecommendedPage() {
   })()
   const { progressItems } = useProgress(authUser?._id)
   const progressMap = useMemo(() => buildProgressMap(progressItems), [progressItems])
-  const recommendedBooks = books.slice(0, 12)
-
   return (
     <section className="rounded-2xl border border-white/10 bg-white/[0.05] p-5 sm:p-7">
       <h1 className="text-2xl font-bold text-white sm:text-3xl">Recommended</h1>

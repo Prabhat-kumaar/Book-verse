@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import apiClient from '../lib/apiClient'
+import { API_URL, buildApiUrl } from '../lib/apiConfig'
 
 const SAVED_CACHE_KEY = 'savedBooksState:v1'
 
@@ -107,6 +108,9 @@ export default function useSavedBooks() {
     try {
       setLoading(true)
       setError('')
+      console.info('[useSavedBooks] API_URL:', API_URL)
+      console.info('[useSavedBooks] Request URL:', buildApiUrl('/api/collections'))
+      console.info('[useSavedBooks] Request URL:', buildApiUrl('/api/saved-books/status'))
       const [collectionsRes, statusRes] = await Promise.all([
         apiClient.get('/api/collections'),
         apiClient.get('/api/saved-books/status'),
@@ -114,7 +118,9 @@ export default function useSavedBooks() {
       setCollections(Array.isArray(collectionsRes.data) ? collectionsRes.data : [])
       setSavedStatus(Array.isArray(statusRes.data) ? statusRes.data : [])
     } catch (err) {
-      setError(err?.response?.data?.message || err?.message || 'Failed to load saved books')
+      const message = err?.response?.data?.message || err?.message || 'Failed to load saved books'
+      setError(message)
+      console.error('[useSavedBooks] Failed to load saved books:', message)
     } finally {
       setLoading(false)
       setHydrated(true)
@@ -139,17 +145,33 @@ export default function useSavedBooks() {
   }, [isAuthed])
 
   const createCollection = useCallback(async (name) => {
-    const res = await apiClient.post('/api/collections', { name })
-    await refreshFn()
-    return res.data
+    try {
+      console.info('[useSavedBooks] Request URL:', buildApiUrl('/api/collections'))
+      const res = await apiClient.post('/api/collections', { name })
+      await refreshFn()
+      return res.data
+    } catch (error) {
+      const message = error?.response?.data?.message || error?.message || 'Failed to create collection'
+      setError(message)
+      console.error('[useSavedBooks] Failed to create collection:', message)
+      throw error
+    }
   }, [refreshFn])
 
   const fetchSavedBooksByCollection = useCallback(async (collectionId) => {
     if (!collectionId) return []
-    const res = await apiClient.get(`/api/saved-books/${collectionId}`)
-    const list = Array.isArray(res.data) ? res.data : []
-    setSavedBooksByCollection((prev) => ({ ...prev, [collectionId]: list }))
-    return list
+    try {
+      console.info('[useSavedBooks] Request URL:', buildApiUrl(`/api/saved-books/${collectionId}`))
+      const res = await apiClient.get(`/api/saved-books/${collectionId}`)
+      const list = Array.isArray(res.data) ? res.data : []
+      setSavedBooksByCollection((prev) => ({ ...prev, [collectionId]: list }))
+      return list
+    } catch (error) {
+      const message = error?.response?.data?.message || error?.message || 'Failed to load saved books for this collection'
+      setError(message)
+      console.error('[useSavedBooks] Failed to fetch collection books:', message)
+      throw error
+    }
   }, [])
 
   const saveBook = useCallback(async (bookId, collectionId, optimisticBook = null) => {
@@ -190,6 +212,7 @@ export default function useSavedBooks() {
     }
 
     try {
+      console.info('[useSavedBooks] Request URL:', buildApiUrl('/api/saved-books'))
       const res = await apiClient.post('/api/saved-books', { bookId, collectionId })
       const saved = res.data
       if (!saved?._id) return saved
@@ -207,6 +230,9 @@ export default function useSavedBooks() {
       })
       return saved
     } catch (error) {
+      const message = error?.response?.data?.message || error?.message || 'Failed to save book'
+      setError(message)
+      console.error('[useSavedBooks] Failed to save book:', message)
       setSavedStatus((prev) => prev.filter((item) => item._id !== tempId))
       setCollections((prev) =>
         prev.map((collection) =>
@@ -256,8 +282,12 @@ export default function useSavedBooks() {
     }
 
     try {
+      console.info('[useSavedBooks] Request URL:', buildApiUrl(`/api/saved-books/${savedId}`))
       await apiClient.delete(`/api/saved-books/${savedId}`)
     } catch (error) {
+      const message = error?.response?.data?.message || error?.message || 'Failed to remove saved book'
+      setError(message)
+      console.error('[useSavedBooks] Failed to remove saved book:', message)
       if (target) {
         setSavedStatus((prev) => [...prev, target])
       }

@@ -1,31 +1,29 @@
 import axios from 'axios'
+import { API_URL, buildApiUrl } from './apiConfig'
 
-const resolveApiBaseUrl = () => {
-  // In local dev, use Vite proxy to avoid host/IP mismatch network errors.
-  if (import.meta.env.DEV) return '/'
-  return import.meta.env.VITE_API_URL || '/'
-}
-
-const API_BASE_URL = resolveApiBaseUrl()
+console.info('[apiClient] API URL:', API_URL)
 
 const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_URL,
   timeout: 0,
 })
 
 apiClient.interceptors.request.use(
   (config) => {
     const url = config.url || ''
-    const isPublicAuthEndpoint =
-      url.startsWith('/api/auth/login') ||
-      url.startsWith('/api/auth/register')
-    const needsAuth = url.startsWith('/api/') && !isPublicAuthEndpoint
+    const isAbsolute = /^https?:\/\//i.test(url)
+    const normalizedRelativeUrl = isAbsolute
+      ? url
+      : `/${(url.startsWith('/') ? url.slice(1) : url).replace(/^api\/?/i, '')}`
+    if (!isAbsolute) {
+      config.url = normalizedRelativeUrl
+    }
+    const finalUrl = isAbsolute ? url : buildApiUrl(normalizedRelativeUrl)
+    console.info('[apiClient] Final request:', finalUrl)
     const token = localStorage.getItem('authToken')
 
-    if (needsAuth) {
-      if (!token) {
-        return Promise.reject(new Error('Please login first'))
-      }
+    // Attach auth only when a token exists. Do not block public endpoints.
+    if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
 
@@ -39,6 +37,16 @@ apiClient.interceptors.request.use(
     return config
   },
   (error) => Promise.reject(error),
+)
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status
+    const message = error?.response?.data?.message || error?.message || 'Request failed'
+    console.error('[apiClient] Request failed:', { status, message, url: error?.config?.url })
+    return Promise.reject(error)
+  },
 )
 
 export default apiClient

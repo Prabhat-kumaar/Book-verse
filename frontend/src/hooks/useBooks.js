@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
+import apiClient from '../lib/apiClient'
+import { API_URL, buildApiUrl } from '../lib/apiConfig'
 import { getBookThumbnailUrl, normalizeMediaUrl } from '../lib/mediaUrls'
-
-const API_BASE_URL = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || '')
 
 export default function useBooks() {
   const [books, setBooks] = useState([])
@@ -15,16 +15,12 @@ export default function useBooks() {
       try {
         setLoading(true)
         setError('')
+        const requestUrl = buildApiUrl('/api/books')
+        console.info('[useBooks] API URL:', API_URL)
+        console.info('[useBooks] Final request:', requestUrl)
 
-        const response = await fetch(`${API_BASE_URL}/api/books`, {
-          signal: controller.signal,
-        })
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch books (${response.status})`)
-        }
-
-        const payload = await response.json()
+        const response = await apiClient.get('/api/books', { signal: controller.signal })
+        const payload = response?.data
         const resolvedBooks = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
         const normalizedBooks = resolvedBooks.map((book) => ({
           ...book,
@@ -34,8 +30,15 @@ export default function useBooks() {
         }))
         setBooks(normalizedBooks)
       } catch (fetchError) {
-        if (fetchError.name !== 'AbortError') {
-          setError(fetchError.message || 'Unable to fetch books right now.')
+        if (fetchError.name !== 'AbortError' && fetchError.code !== 'ERR_CANCELED') {
+          const status = fetchError?.response?.status
+          const message =
+            fetchError?.response?.data?.message ||
+            (status ? `Failed to fetch books (${status})` : '') ||
+            fetchError.message ||
+            'Unable to fetch books right now.'
+          setError(message)
+          console.error('[useBooks] Failed to fetch books:', message)
         }
       } finally {
         setLoading(false)

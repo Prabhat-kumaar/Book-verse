@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { memo, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import useBooks from '../hooks/useBooks'
+import useRecommendations from '../hooks/useRecommendations'
 import useProgress from '../hooks/useProgress'
 import SaveBookHeart from '../components/SaveBookHeart'
 import EmptyState from '../components/EmptyState'
@@ -87,7 +87,7 @@ const BookCard = memo(function BookCard({ book, index }) {
 
 export default function HomePage() {
   const navigate = useNavigate()
-  const { books, loading, error } = useBooks()
+  const { books, topBooks, loading, error } = useRecommendations()
   const authUser = (() => {
     try {
       const raw = localStorage.getItem('authUser')
@@ -150,7 +150,11 @@ export default function HomePage() {
     .filter((item) => item.book)
     .sort((a, b) => new Date(b.lastReadAt || 0).getTime() - new Date(a.lastReadAt || 0).getTime()), [progressItems])
   const featuredBook = safeRecommendedBooks[0] || booksWithProgress[0]
-  const topTenBooks = booksWithProgress.slice(0, 10)
+  const topTenBooks = useMemo(() => {
+    const topIds = new Set(topBooks.map((book) => book?._id).filter(Boolean))
+    const prioritized = booksWithProgress.filter((book) => topIds.has(book._id))
+    return prioritized.length > 0 ? prioritized.slice(0, 10) : booksWithProgress.slice(0, 10)
+  }, [booksWithProgress, topBooks])
 
   const handleStartReading = () => {
     const section = document.getElementById('books-section')

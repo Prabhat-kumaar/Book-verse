@@ -29,70 +29,8 @@ fs.mkdirSync(uploadsDir, { recursive: true });
 app.set('trust proxy', true);
 
 // ================= MIDDLEWARE =================
-const parseAllowedOrigins = () => {
-    const configured = (process.env.CORS_ALLOWED_ORIGINS || process.env.FRONTEND_URL || '')
-        .split(',')
-        .map((origin) => origin.trim())
-        .filter(Boolean);
-
-    const devDefaults = [
-        'http://localhost:5173',
-        'http://127.0.0.1:5173',
-        'http://localhost:4173',
-        'http://127.0.0.1:4173',
-        'http://localhost:3000',
-        'http://127.0.0.1:3000',
-    ];
-
-    if ((process.env.NODE_ENV || '').toLowerCase() !== 'production') {
-        return [...new Set([...configured, ...devDefaults])];
-    }
-
-    return [...new Set(configured)];
-};
-
-const allowedOrigins = parseAllowedOrigins();
-const isProduction = (process.env.NODE_ENV || '').toLowerCase() === 'production';
-
-const isPrivateIPv4 = (hostname) => {
-    const match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-    if (!match) return false;
-
-    const octets = match.slice(1).map(Number);
-    if (octets.some((n) => Number.isNaN(n) || n < 0 || n > 255)) return false;
-
-    if (octets[0] === 10) return true;
-    if (octets[0] === 192 && octets[1] === 168) return true;
-    if (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) return true;
-
-    return false;
-};
-
-const isAllowedDevOrigin = (origin) => {
-    try {
-        const url = new URL(origin);
-        const isHttp = url.protocol === 'http:' || url.protocol === 'https:';
-        if (!isHttp || !url.port) return false;
-
-        const devPorts = new Set(['3000', '4173', '5173']);
-        if (!devPorts.has(url.port)) return false;
-
-        if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') return true;
-        if (isPrivateIPv4(url.hostname)) return true;
-
-        return false;
-    } catch (_error) {
-        return false;
-    }
-};
-
 app.use(cors({
-    origin: (origin, callback) => {
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.includes(origin)) return callback(null, true);
-        if (!isProduction && isAllowedDevOrigin(origin)) return callback(null, true);
-        return callback(new Error('CORS: Origin not allowed'));
-    },
+    origin: true,
     credentials: true,
 }));
 app.use(express.json({ limit: '100mb' }));
@@ -165,10 +103,6 @@ app.use((req, res) => {
 
 // ================= ERROR HANDLER =================
 app.use((err, req, res, next) => {
-    if (err.message === 'CORS: Origin not allowed') {
-        return res.status(403).json({ message: 'Origin not allowed by CORS policy' });
-    }
-
     if (err.type === 'entity.too.large') {
         return res.status(413).json({
             message: 'Request entity too large. Reduce file size or switch to chunked upload.',

@@ -1,9 +1,10 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || ''
+import { API_URL } from './apiConfig'
+
+const API = API_URL
 
 function resolveAbsoluteUploadPath(path) {
   const sanitized = path.startsWith('/') ? path : `/${path}`
-  if (API_BASE_URL) return `${API_BASE_URL}${sanitized}`
-  return sanitized
+  return `${API}${sanitized}`
 }
 
 export function normalizeMediaUrl(value = '') {

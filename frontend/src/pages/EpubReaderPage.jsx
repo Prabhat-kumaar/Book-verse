@@ -3,9 +3,10 @@ import ePub from 'epubjs'
 import { ReaderSkeleton } from '../components/Skeletons'
 import { MdDarkMode, MdFullscreen, MdFullscreenExit, MdLightMode } from 'react-icons/md'
 import apiClient from '../lib/apiClient'
+import { API_URL } from '../lib/apiConfig'
 import { computeProgress } from '../lib/readingProgress'
 
-const API_BASE_URL = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || '')
+const API = API_URL
 const EPUB_PROGRESS_SYNC_MS = 4000
 
 function parseReaderParams() {
@@ -24,8 +25,8 @@ function parseReaderParams() {
 function toAbsoluteUrl(value) {
   const raw = (value || '').trim()
   if (!raw) return ''
-  if (raw.startsWith('/uploads/')) return `${API_BASE_URL}${raw}`
-  if (raw.startsWith('uploads/')) return `${API_BASE_URL}/${raw}`
+  if (raw.startsWith('/uploads/')) return `${API}${raw}`
+  if (raw.startsWith('uploads/')) return `${API}/${raw}`
   return raw
 }
 
