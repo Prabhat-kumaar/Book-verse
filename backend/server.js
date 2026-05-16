@@ -29,10 +29,37 @@ fs.mkdirSync(uploadsDir, { recursive: true });
 app.set('trust proxy', true);
 
 // ================= MIDDLEWARE =================
-app.use(cors({
-    origin: true,
+const allowedOrigins = new Set([
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://book-verse-flax-one.vercel.app',
+]);
+
+const corsOptions = {
+    origin(origin, callback) {
+        // Allow non-browser requests (no Origin header), e.g., curl/health checks.
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.has(origin)) return callback(null, true);
+
+        try {
+            const { hostname, protocol } = new URL(origin);
+            const isVercelPreview = protocol === 'https:' && hostname.endsWith('.vercel.app');
+            if (isVercelPreview) return callback(null, true);
+        } catch (_error) {
+            // Fall through to rejection below.
+        }
+
+        return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
     credentials: true,
-}));
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
+    optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 
