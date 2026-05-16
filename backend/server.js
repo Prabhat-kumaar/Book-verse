@@ -7,6 +7,8 @@ const path = require('path');
 const fs = require('fs');
 const http = require('http');
 
+dotenv.config();
+
 const connectDB = require('./config/db');
 
 const authRoutes = require('./routes/authRoutes');
@@ -17,13 +19,9 @@ const savedRoutes = require('./routes/savedRoutes');
 const streakRoutes = require('./routes/streakRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 
-dotenv.config();
-
 if (!process.env.JWT_SECRET || !process.env.JWT_SECRET.trim()) {
     throw new Error('Missing required environment variable: JWT_SECRET');
 }
-
-connectDB();
 
 const app = express();
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -186,6 +184,7 @@ app.use((err, req, res, next) => {
 // ================= START SERVER =================
 const DEFAULT_PORT = parseInt(process.env.PORT, 10) || 5000;
 const MAX_PORT = DEFAULT_PORT + 5;
+const isRailway = Boolean(process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_STATIC_URL);
 
 const startServer = (port) => {
     const server = http.createServer(app);
@@ -193,12 +192,16 @@ const startServer = (port) => {
     server.on('error', (error) => {
         if (error.code === 'EADDRINUSE') {
             const nextPort = port + 1;
-            if (nextPort <= MAX_PORT) {
+            if (!isRailway && nextPort <= MAX_PORT) {
                 console.warn(`Port ${port} is already in use. Trying port ${nextPort}...`);
                 startServer(nextPort);
                 return;
             }
-            console.error(`Port ${port} is already in use. Tried ports ${DEFAULT_PORT}-${MAX_PORT}. Set a different PORT and restart.`);
+            if (isRailway) {
+                console.error(`Port ${port} is already in use.`);
+            } else {
+                console.error(`Port ${port} is already in use. Tried ports ${DEFAULT_PORT}-${MAX_PORT}. Set a different PORT and restart.`);
+            }
         } else {
             console.error('Server startup error:', error);
         }
@@ -210,4 +213,14 @@ const startServer = (port) => {
     });
 };
 
-startServer(DEFAULT_PORT);
+const bootstrap = async () => {
+    try {
+        await connectDB();
+        startServer(DEFAULT_PORT);
+    } catch (error) {
+        console.error('Failed to start application:', error.message);
+        process.exit(1);
+    }
+};
+
+bootstrap();

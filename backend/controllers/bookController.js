@@ -161,7 +161,13 @@ const getAllBooks = async (req, res, next) => {
     try {
         const { category } = req.query;
         const filter = category ? { category: { $regex: new RegExp(category.trim(), 'i') } } : {};
-        const books = await Book.find(filter).sort({ createdAt: -1 });
+        const books = await Book.find(filter || {}).sort({ createdAt: -1 });
+
+        const dbName = Book.db?.name || 'unknown';
+        const collectionName = Book.collection?.name || 'unknown';
+        const totalDocsInCollection = await Book.countDocuments({});
+        console.log(`[Books Debug] DB: ${dbName} | Collection: ${collectionName} | Query: ${JSON.stringify(filter)} | Matched: ${books.length} | Total docs: ${totalDocsInCollection}`);
+
         const formattedBooks = books.map(book => ({
             ...book._doc,
             fileUrl: formatUrl(req, book.fileUrl),

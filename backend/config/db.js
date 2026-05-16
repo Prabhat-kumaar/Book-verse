@@ -1,20 +1,16 @@
 const mongoose = require('mongoose');
 
 const connectDB = async () => {
-    try {
-        const uri = process.env.MONGO_URI;
-        if (!uri) {
-            throw new Error('MONGO_URI is not set');
-        }
-        const conn = await mongoose.connect(uri, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-        });
-        console.log(`MongoDB connected: ${conn.connection.host}`);
-    } catch (error) {
-        console.error(`MongoDB connection error: ${error.message}`);
-        process.exit(1);
+    const uri = process.env.MONGO_URI;
+    if (!uri || !uri.trim()) {
+        throw new Error('Missing required environment variable: MONGO_URI');
     }
+
+    const dbName = (process.env.MONGO_DB_NAME || '').trim() || undefined;
+    const conn = await mongoose.connect(uri, dbName ? { dbName } : undefined);
+
+    console.log(`MongoDB connected: ${conn.connection.host}`);
+    console.log(`MongoDB database in use: ${conn.connection.name}`);
 };
 
 module.exports = connectDB;
