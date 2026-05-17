@@ -11,8 +11,6 @@ const normalizeId = (value) => {
 
 export default function SaveBookHeart({ bookId, book = null, className = '' }) {
   const { collections, createCollection, saveBook, savedStatus, removeSavedBook, isAuthed, hydrated } = useSavedBooksContext()
-  const renderCountRef = useRef(0)
-  renderCountRef.current += 1
 
   const [open, setOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -25,38 +23,21 @@ export default function SaveBookHeart({ bookId, book = null, className = '' }) {
   const [toast, setToast] = useState('')
 
   const bookIdNormalized = normalizeId(bookId)
+
+  // Derive saved status from context — recalculated on every render so it
+  // always reflects the latest savedStatus array (including after refresh).
   const savedBookIds = Array.isArray(savedStatus)
     ? savedStatus.map((entry) => normalizeId(entry.book))
     : []
 
   const isSaved = Boolean(bookIdNormalized && savedBookIds.includes(bookIdNormalized))
+
   const matches = Array.isArray(savedStatus)
     ? savedStatus.filter((entry) => normalizeId(entry.book) === bookIdNormalized)
     : []
   const currentCollectionIds = matches.map((entry) => normalizeId(entry.collection))
 
-  useEffect(() => {
-    console.log('[SaveBookHeart] render', {
-      renderCount: renderCountRef.current,
-      hydrated,
-      savedStatusLength: Array.isArray(savedStatus) ? savedStatus.length : 0,
-      savedStatus: Array.isArray(savedStatus) ? savedStatus.slice(0, 10) : savedStatus,
-      bookId: bookIdNormalized,
-      isSaved,
-    })
-  }, [hydrated, savedStatus, bookIdNormalized, isSaved])
-
-  if (!isAuthed) return null
-  if (!hydrated) {
-    return (
-      <div
-        className={`absolute right-3 top-3 z-40 grid h-9 w-24 place-items-center rounded-full border border-white/20 bg-slate-950/75 text-white shadow-[0_8px_26px_rgba(0,0,0,0.45)] transition duration-200 ${className}`}
-      >
-        loading...
-      </div>
-    )
-  }
-
+  // ── body scroll lock when sheet is open ──────────────────────────────────
   useEffect(() => {
     if (!mounted) return undefined
     const originalOverflow = document.body.style.overflow
@@ -66,11 +47,24 @@ export default function SaveBookHeart({ bookId, book = null, className = '' }) {
     }
   }, [mounted])
 
+  // ── auto-dismiss toast ────────────────────────────────────────────────────
   useEffect(() => {
     if (!toast) return undefined
     const timer = setTimeout(() => setToast(''), 2200)
     return () => clearTimeout(timer)
   }, [toast])
+
+  if (!isAuthed) return null
+
+  if (!hydrated) {
+    return (
+      <div
+        className={`absolute right-3 top-3 z-40 grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-slate-950/75 text-white shadow-[0_8px_26px_rgba(0,0,0,0.45)] transition duration-200 ${className}`}
+      >
+        <FaRegHeart className="animate-pulse text-slate-400" />
+      </div>
+    )
+  }
 
   const onHeartClick = () => {
     if (!isAuthed) return
@@ -124,9 +118,9 @@ export default function SaveBookHeart({ bookId, book = null, className = '' }) {
 
       if (toAdd.length > 0) {
         const first = collections.find((c) => c._id === toAdd[0])?.name || 'collection'
-        setToast(`Saved to ${first} \u2713`)
+        setToast(`Saved to ${first} ✓`)
       } else if (selectedCollectionIds.length === 0 && currentCollectionIds.length > 0) {
-        setToast('Removed from saved \u2713')
+        setToast('Removed from saved ✓')
       }
       setPop(true)
       setTimeout(() => setPop(false), 260)
@@ -137,8 +131,6 @@ export default function SaveBookHeart({ bookId, book = null, className = '' }) {
       setSubmitting(false)
     }
   }
-
-  if (!isAuthed) return null
 
   return (
     <>
