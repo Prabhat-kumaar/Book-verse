@@ -45,10 +45,8 @@ function normalizeId(value) {
 }
 
 export default function useSavedBooks() {
-  // Track auth state properly with useState
   const [isAuthed, setIsAuthed] = useState(readAuthToken)
 
-  // Initialize state from cache
   const cacheUserId = readAuthUserId()
   const initialCache = readSavedCache()
   const scopedCache = initialCache?.userId === cacheUserId ? initialCache : null
@@ -60,21 +58,14 @@ export default function useSavedBooks() {
   const [error, setError] = useState('')
   const [hydrated, setHydrated] = useState(false)
 
-  // Track if initial refresh has been attempted to avoid duplicate calls
   const hasInitialized = useRef(false)
 
-  // Monitor auth state changes from other tabs/windows
+  // Monitor auth state changes
   useEffect(() => {
-    const onStorageChange = () => {
-      setIsAuthed(readAuthToken())
-    }
-    const onAuthChanged = () => {
-      setIsAuthed(readAuthToken())
-    }
-
+    const onStorageChange = () => setIsAuthed(readAuthToken())
+    const onAuthChanged = () => setIsAuthed(readAuthToken())
     window.addEventListener('storage', onStorageChange)
     window.addEventListener('authChanged', onAuthChanged)
-
     return () => {
       window.removeEventListener('storage', onStorageChange)
       window.removeEventListener('authChanged', onAuthChanged)
@@ -92,7 +83,6 @@ export default function useSavedBooks() {
     })
   }, [collections, savedBooksByCollection, savedStatus])
 
-  // Refresh function that fetches from backend (no deps to avoid recreating)
   const refreshFn = useCallback(async () => {
     const currentAuth = readAuthToken()
     if (!currentAuth) {
@@ -127,33 +117,32 @@ export default function useSavedBooks() {
     }
   }, [])
 
-  // Expose refresh in return object
   const refresh = refreshFn
 
-  // Perform initial refresh on component mount and when auth changes
+  // ── KEY FIX: Always fetch from server on mount/auth change ──────────────
   useEffect(() => {
-    if (readAuthToken() && !hasInitialized.current) {
-      hasInitialized.current = true
+    if (readAuthToken()) {
+      // Always refresh from server — never rely on cache for savedStatus
+      // This ensures red heart shows correctly after every page refresh
       refreshFn()
-    } else if (!readAuthToken()) {
-      // Clear state if not authenticated
+      hasInitialized.current = true
+    } else {
       setCollections([])
       setSavedStatus([])
       setSavedBooksByCollection({})
+      setHydrated(true)
       hasInitialized.current = false
     }
   }, [isAuthed])
 
   const createCollection = useCallback(async (name) => {
     try {
-      console.info('[useSavedBooks] Request URL:', buildApiUrl('/api/collections'))
       const res = await apiClient.post('/api/collections', { name })
       await refreshFn()
       return res.data
     } catch (error) {
       const message = error?.response?.data?.message || error?.message || 'Failed to create collection'
       setError(message)
-      console.error('[useSavedBooks] Failed to create collection:', message)
       throw error
     }
   }, [refreshFn])
@@ -161,7 +150,6 @@ export default function useSavedBooks() {
   const fetchSavedBooksByCollection = useCallback(async (collectionId) => {
     if (!collectionId) return []
     try {
-      console.info('[useSavedBooks] Request URL:', buildApiUrl(`/api/saved-books/${collectionId}`))
       const res = await apiClient.get(`/api/saved-books/${collectionId}`)
       const list = Array.isArray(res.data) ? res.data : []
       setSavedBooksByCollection((prev) => ({ ...prev, [collectionId]: list }))
@@ -169,7 +157,6 @@ export default function useSavedBooks() {
     } catch (error) {
       const message = error?.response?.data?.message || error?.message || 'Failed to load saved books for this collection'
       setError(message)
-      console.error('[useSavedBooks] Failed to fetch collection books:', message)
       throw error
     }
   }, [])
@@ -212,11 +199,11 @@ export default function useSavedBooks() {
     }
 
     try {
-      console.info('[useSavedBooks] Request URL:', buildApiUrl('/api/saved-books'))
       const res = await apiClient.post('/api/saved-books', { bookId, collectionId })
       const saved = res.data
       if (!saved?._id) return saved
 
+      // Replace optimistic entry with real server response
       setSavedStatus((prev) =>
         prev.map((item) => (item._id === tempId ? saved : item)),
       )
@@ -232,7 +219,7 @@ export default function useSavedBooks() {
     } catch (error) {
       const message = error?.response?.data?.message || error?.message || 'Failed to save book'
       setError(message)
-      console.error('[useSavedBooks] Failed to save book:', message)
+      // Rollback optimistic update
       setSavedStatus((prev) => prev.filter((item) => item._id !== tempId))
       setCollections((prev) =>
         prev.map((collection) =>
@@ -282,12 +269,11 @@ export default function useSavedBooks() {
     }
 
     try {
-      console.info('[useSavedBooks] Request URL:', buildApiUrl(`/api/saved-books/${savedId}`))
       await apiClient.delete(`/api/saved-books/${savedId}`)
     } catch (error) {
       const message = error?.response?.data?.message || error?.message || 'Failed to remove saved book'
       setError(message)
-      console.error('[useSavedBooks] Failed to remove saved book:', message)
+      // Rollback
       if (target) {
         setSavedStatus((prev) => [...prev, target])
       }
