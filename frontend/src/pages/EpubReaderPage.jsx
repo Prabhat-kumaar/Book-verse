@@ -125,7 +125,7 @@ export default function EpubReaderPage() {
   const frameRef = useRef(null)
   const bookRef = useRef(null)
   const renditionRef = useRef(null)
-  const lastSyncedRef = useRef('')
+  const lastSavedCfi = useRef(null)
   const touchStartXRef = useRef(0)
   const progressMetaRef = useRef({
     percentage: 0,
@@ -228,7 +228,11 @@ export default function EpubReaderPage() {
         }
         if (!savedCfi) savedCfi = localStorage.getItem(progressKey) || ''
 
-        await rendition.display(savedCfi || undefined)
+        if (savedCfi) {
+          await rendition.display(savedCfi)
+        } else {
+          await rendition.display()
+        }
 
         const onRelocated = (location) => {
           const cfi = location?.start?.cfi || ''
@@ -266,7 +270,20 @@ export default function EpubReaderPage() {
           }
         }
 
-        const onLocationChanged = (location) => onRelocated(location)
+        const onLocationChanged = (loc) => {
+          const cfi = loc?.start?.cfi || ''
+          const href = loc?.start?.href || ''
+          if (cfi) setCurrentCfi((prev) => (prev === cfi ? prev : cfi))
+          const match = toc.find((item) => (
+            href && item?.href && (href.includes(item.href) || item.href.includes(href))
+          ))
+          if (match) {
+            setCurrentChapterTitle(match.label || '')
+            const idx = toc.findIndex((item) => item.id === match.id)
+            if (idx >= 0) setActiveChapterIndex(idx)
+          }
+          onRelocated(loc)
+        }
         rendition.on('relocated', onRelocated)
         rendition.on('locationChanged', onLocationChanged)
         setLoadingMessage('Loading book...')
@@ -288,27 +305,36 @@ export default function EpubReaderPage() {
     }
   }, [authUser?._id, isDarkMode, locationsKey, params.bookId, params.cfi, progressKey, resolvedFileUrl])
 
+  const saveProgress = async ({ cfi, percentage, chapter }) => {
+    if (!authUser?._id || !params.bookId || !cfi) return
+    const meta = progressMetaRef.current
+    const payload = {
+      userId: authUser._id,
+      bookId: params.bookId,
+      currentPage: meta.currentPage,
+      totalPages: meta.totalPages,
+      progressPercentage: typeof percentage === 'number' ? percentage : meta.percentage,
+      locationCfi: cfi,
+      chapterTitle: chapter || meta.chapterTitle || '',
+      chapterIndex: Math.max(0, meta.chapterIndex || 0),
+    }
+    await apiClient.post('/api/progress', payload)
+  }
+
   useEffect(() => {
-    if (!authUser?._id || !params.bookId || !currentCfi) return
+    if (!currentCfi) return
+    if (currentCfi === lastSavedCfi.current) return
+
     const timer = window.setTimeout(async () => {
-      const meta = progressMetaRef.current
-      const payload = {
-        userId: authUser._id,
-        bookId: params.bookId,
-        currentPage: meta.currentPage,
-        totalPages: meta.totalPages,
-        progressPercentage: meta.percentage,
-        locationCfi: currentCfi,
-        chapterTitle: meta.chapterTitle || '',
-        chapterIndex: Math.max(0, meta.chapterIndex || 0),
-      }
-      const snapshot = JSON.stringify(payload)
-      if (snapshot === lastSyncedRef.current) return
       try {
-        await apiClient.post('/api/progress', payload)
-        lastSyncedRef.current = snapshot
-      } catch {
-        // no-op
+        await saveProgress({
+          cfi: currentCfi,
+          percentage: progressMetaRef.current.percentage,
+          chapter: currentChapterTitle || progressMetaRef.current.chapterTitle,
+        })
+        lastSavedCfi.current = currentCfi
+      } catch (err) {
+        console.error('Progress save failed:', err)
       }
     }, EPUB_PROGRESS_SYNC_MS)
 
@@ -348,26 +374,31 @@ export default function EpubReaderPage() {
   const handleChapterClick = async (item, index) => {
     const rendition = renditionRef.current
     const book = bookRef.current
-    if (!rendition || !item?.href) return
+    if (!rendition || !book || !item?.href) return
     try {
       await rendition.display(item.href)
-      if (typeof index === 'number') setActiveChapterIndex(index)
-      setCurrentChapterTitle(item.label || '')
-      setShowToc(false)
-    } catch (err) {
-      console.error('Chapter nav failed:', err)
+    } catch (e1) {
       try {
-        const spineItem = book?.spine?.get?.(item.href)
-        if (spineItem?.href) {
+        const spineItem = book.spine.get(item.href)
+        if (spineItem) {
           await rendition.display(spineItem.href)
-          if (typeof index === 'number') setActiveChapterIndex(index)
-          setCurrentChapterTitle(item.label || '')
-          setShowToc(false)
+        } else {
+          const allItems = book.spine?.spineItems || []
+          const match = allItems.find((s) => (
+            s?.href && item?.href && (
+              normalizeHref(s.href).includes(normalizeHref(item.href)) ||
+              normalizeHref(item.href).includes(normalizeHref(s.href))
+            )
+          ))
+          if (match) await rendition.display(match.href)
         }
-      } catch {
-        // no-op
+      } catch (e2) {
+        console.error('Chapter navigation failed:', item.href, e2)
       }
     }
+    if (typeof index === 'number') setActiveChapterIndex(index)
+    setCurrentChapterTitle(item.label || '')
+    if (window.innerWidth < 768) setShowToc(false)
   }
 
   const goNextChapter = async () => {
@@ -414,15 +445,17 @@ export default function EpubReaderPage() {
 
         <div className="epub-reader-body">
           <aside className={`toc-sidebar ${showToc ? 'open' : ''}`}>
-            <p className="toc-title">Table of Contents</p>
+            <div className="toc-header">
+              <p className="toc-title">Table of Contents</p>
+              <button type="button" className="toc-close" onClick={() => setShowToc(false)}>X</button>
+            </div>
             <div className="toc-list">
               {tocItems.map((item, index) => (
                 <button
                   key={item.id}
                   type="button"
-                  className={`toc-item ${index === activeChapterIndex ? 'active' : ''}`}
+                  className={`toc-item ${index === activeChapterIndex ? 'active' : ''} ${item.depth > 0 ? 'sub-item' : ''}`}
                   onClick={() => handleChapterClick(item, index)}
-                  style={{ paddingLeft: `${12 + item.depth * 14}px` }}
                 >
                   {item.label}
                 </button>
