@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ePub from 'epubjs'
 import { MdDarkMode, MdFullscreen, MdFullscreenExit, MdLightMode, MdMenuBook } from 'react-icons/md'
-import { ReaderSkeleton } from '../components/Skeletons'
 import apiClient from '../lib/apiClient'
 import { API_URL } from '../lib/apiConfig'
 import './epubReader.css'
 
 const API = API_URL
 const EPUB_PROGRESS_SYNC_MS = 2000
-const SWIPE_MIN_DISTANCE = 40
+const SWIPE_MIN_DISTANCE = 80
 
 function parseReaderParams() {
   const hash = window.location.hash || ''
@@ -31,32 +30,45 @@ function toAbsoluteUrl(value) {
   return raw
 }
 
-function getProgressKey({ bookId, fileUrl }) {
-  return `epubProgress:${bookId || fileUrl || ''}`
+function getProgressKey({ bookId }) {
+  return `progress-${bookId || ''}`
 }
 
-function getLocationsKey({ bookId, fileUrl }) {
-  return `epubLocations:${bookId || fileUrl || ''}`
+function getLocationsKey(bookId, fileUrl) {
+  const urlHash = (fileUrl || '')
+    .split('')
+    .reduce((hash, char) => (((hash << 5) - hash) + char.charCodeAt(0)) | 0, 0)
+    .toString(36)
+  return `epub-locations-${bookId || 'unknown'}-${urlHash}`
 }
 
-function normalizeHref(href = '') {
-  return href.split('#')[0].trim().toLowerCase()
+function loadCachedLocations(locKey, book) {
+  try {
+    const raw = localStorage.getItem(locKey)
+    if (!raw) return false
+
+    const cached = JSON.parse(raw)
+    const ONE_WEEK = 7 * 24 * 60 * 60 * 1000
+    if (!cached?.data || cached?.version !== '1' || (Date.now() - Number(cached.savedAt || 0)) > ONE_WEEK) {
+      localStorage.removeItem(locKey)
+      return false
+    }
+
+    book.locations.load(cached.data)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function getActiveHref(locationHref = '') {
+  return locationHref.split('#')[0].split('/').pop() || ''
 }
 
 function getLocationsCount(book) {
   const raw = book?.locations?.length
   const value = typeof raw === 'function' ? raw.call(book.locations) : raw
   return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0
-}
-
-function findChapterIndexFromLocation(location, toc = []) {
-  const href = normalizeHref(location?.start?.href || '')
-  if (!toc.length) return -1
-
-  const hrefMatch = toc.findIndex((item) => href && (normalizeHref(item.href).includes(href) || href.includes(normalizeHref(item.href))))
-  if (hrefMatch >= 0) return hrefMatch
-
-  return -1
 }
 
 function flattenToc(items = [], depth = 0) {
@@ -67,9 +79,7 @@ function flattenToc(items = [], depth = 0) {
       href: item.href || '',
       depth,
     })
-    if (item.subitems?.length) {
-      acc.push(...flattenToc(item.subitems, depth + 1))
-    }
+    if (item.subitems?.length) acc.push(...flattenToc(item.subitems, depth + 1))
     return acc
   }, [])
 }
@@ -78,19 +88,17 @@ function buildThemeStyles({ dark }) {
   return {
     body: {
       margin: '0',
-      padding: '20px 18px',
+      padding: '24px 32px',
       color: dark ? '#f1f5f9' : '#111827',
       background: dark ? '#0b1220' : '#ffffff',
       'line-height': '1.7',
-      'font-size': '18px',
       '-webkit-font-smoothing': 'antialiased',
+      'box-sizing': 'border-box',
+      'max-width': '100%',
     },
     p: { margin: '0 0 1em 0' },
     img: { 'max-width': '100%', height: 'auto' },
     a: { color: dark ? '#93c5fd' : '#1d4ed8' },
-    h1: { color: dark ? '#f8fafc' : '#111827' },
-    h2: { color: dark ? '#f8fafc' : '#111827' },
-    h3: { color: dark ? '#f8fafc' : '#111827' },
   }
 }
 
@@ -107,47 +115,103 @@ async function loadEpubBook(fileUrl) {
 
 export default function EpubReaderPage() {
   const [params, setParams] = useState(parseReaderParams)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [loadingState, setLoadingState] = useState('idle')
+  const [errorMessage, setErrorMessage] = useState('')
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('epubTheme') === 'dark')
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [fontSize, setFontSize] = useState(() => parseInt(localStorage.getItem('reader-font-size') || '100', 10))
   const [tocItems, setTocItems] = useState([])
-  const [activeChapter, setActiveChapter] = useState('')
+  const [activeFilename, setActiveFilename] = useState('')
   const [currentChapterLabel, setCurrentChapterLabel] = useState('')
   const [progressPercent, setProgressPercent] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [currentCfi, setCurrentCfi] = useState('')
-  const [currentSpineHref, setCurrentSpineHref] = useState('')
-  const [loadingMessage, setLoadingMessage] = useState('Loading book...')
+  const [currentSpineIndex, setCurrentSpineIndex] = useState(0)
+
   const viewerRef = useRef(null)
   const frameRef = useRef(null)
   const bookRef = useRef(null)
   const renditionRef = useRef(null)
   const lastSavedCfi = useRef(null)
-  const touchStartXRef = useRef(0)
+  const touchStartX = useRef(0)
+  const touchStartY = useRef(0)
   const locationTimerRef = useRef(null)
-  const progressMetaRef = useRef({
-    percentage: 0,
-    currentPage: 1,
-    totalPages: 1,
-    chapterTitle: '',
-    chapterIndex: 0,
-  })
+  const spineItemsRef = useRef([])
+  const spineIndexRef = useRef(0)
+  const progressMetaRef = useRef({ percentage: 0, currentPage: 1, totalPages: 1, chapterTitle: '', chapterIndex: 0 })
 
-  const authUser = useMemo(() => {
+  const getAuthUser = () => {
     try {
       const raw = localStorage.getItem('authUser')
       return raw ? JSON.parse(raw) : null
     } catch {
       return null
     }
-  }, [])
+  }
 
   const resolvedFileUrl = useMemo(() => toAbsoluteUrl(params.fileUrl), [params.fileUrl])
-  const progressKey = useMemo(() => getProgressKey(params), [params])
-  const locationsKey = useMemo(() => getLocationsKey(params), [params])
+  const fileUrl = resolvedFileUrl
+  const bookId = params?.bookId || ''
+  const progressKey = useMemo(() => getProgressKey({ bookId }), [bookId])
+  const locationsKey = useMemo(() => getLocationsKey(bookId, fileUrl), [bookId, fileUrl])
+
+  const updateSpineIndex = (idx) => {
+    spineIndexRef.current = idx
+    setCurrentSpineIndex(idx)
+  }
+
+  const increaseFontSize = () => {
+    const newSize = Math.min(fontSize + 10, 200)
+    setFontSize(newSize)
+    renditionRef.current?.themes.fontSize(`${newSize}%`)
+    localStorage.setItem('reader-font-size', String(newSize))
+  }
+
+  const decreaseFontSize = () => {
+    const newSize = Math.max(fontSize - 10, 60)
+    setFontSize(newSize)
+    renditionRef.current?.themes.fontSize(`${newSize}%`)
+    localStorage.setItem('reader-font-size', String(newSize))
+  }
+
+  async function goNextChapter() {
+    const items = spineItemsRef.current
+    const nextIdx = spineIndexRef.current + 1
+    if (!items || nextIdx >= items.length || !renditionRef.current) return
+    try {
+      await renditionRef.current.display(items[nextIdx].href)
+      updateSpineIndex(nextIdx)
+    } catch (e) {
+      console.error('Next chapter error:', e)
+    }
+  }
+
+  async function goPrevChapter() {
+    const items = spineItemsRef.current
+    const prevIdx = spineIndexRef.current - 1
+    if (!items || prevIdx < 0 || !renditionRef.current) return
+    try {
+      await renditionRef.current.display(items[prevIdx].href)
+      updateSpineIndex(prevIdx)
+    } catch (e) {
+      console.error('Prev chapter error:', e)
+    }
+  }
+
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
+  }
+
+  const handleTouchEnd = (e) => {
+    const dx = touchStartX.current - e.changedTouches[0].clientX
+    const dy = Math.abs(touchStartY.current - e.changedTouches[0].clientY)
+    if (dy > 60) return
+    if (dx > SWIPE_MIN_DISTANCE) goNextChapter()
+    if (dx < -SWIPE_MIN_DISTANCE) goPrevChapter()
+  }
 
   useEffect(() => {
     const onHashChange = () => setParams(parseReaderParams())
@@ -156,17 +220,29 @@ export default function EpubReaderPage() {
   }, [])
 
   useEffect(() => {
-    if (!activeChapter) return
+    if (!activeFilename) return
     const activeEl = document.querySelector('.toc-item.active')
     if (activeEl) activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-  }, [activeChapter])
+  }, [activeFilename])
 
   useEffect(() => {
     localStorage.setItem('epubTheme', isDarkMode ? 'dark' : 'light')
     if (!renditionRef.current) return
+    renditionRef.current.themes.default({
+      body: {
+        background: isDarkMode ? '#1a1a2e !important' : '#ffffff !important',
+        color: isDarkMode ? '#e2e8f0 !important' : '#1a1a2e !important',
+      },
+    })
     renditionRef.current.themes.register('app-theme', buildThemeStyles({ dark: isDarkMode }))
     renditionRef.current.themes.select('app-theme')
   }, [isDarkMode])
+
+  useEffect(() => {
+    if (!renditionRef.current) return
+    renditionRef.current.themes.fontSize(`${fontSize}%`)
+    localStorage.setItem('reader-font-size', String(fontSize))
+  }, [fontSize])
 
   useEffect(() => {
     const onFullscreenChange = () => {
@@ -178,197 +254,214 @@ export default function EpubReaderPage() {
   }, [])
 
   useEffect(() => {
-    if (!resolvedFileUrl || !viewerRef.current || bookRef.current) return undefined
-    let active = true
+    if (!viewerRef.current || !fileUrl || !bookId) return undefined
 
-    ;(async () => {
+    let isDestroyed = false
+    const abortController = new AbortController()
+
+    const initReader = async () => {
       try {
-        setLoading(true)
-        setError('')
-        const book = await loadEpubBook(resolvedFileUrl)
-        if (!active || !viewerRef.current) return
+        setLoadingState('loading')
+        setErrorMessage('')
+
+        if (locationTimerRef.current) window.clearTimeout(locationTimerRef.current)
+        if (renditionRef.current?.destroy) renditionRef.current.destroy()
+        if (bookRef.current) {
+          bookRef.current.destroy()
+          bookRef.current = null
+          renditionRef.current = null
+        }
+        if (viewerRef.current) viewerRef.current.innerHTML = ''
+
+        const book = await loadEpubBook(fileUrl)
+        if (isDestroyed || !viewerRef.current) return
+        bookRef.current = book
 
         const rendition = book.renderTo(viewerRef.current, {
           manager: 'continuous',
           flow: 'scrolled',
           width: '100%',
           height: '100%',
+          allowScriptedContent: false,
+          allowPopups: false,
           spread: 'none',
-          allowScriptedContent: true,
-          allowPopups: true,
         })
-
-        bookRef.current = book
+        if (isDestroyed) return
         renditionRef.current = rendition
+
         rendition.themes.register('app-theme', buildThemeStyles({ dark: isDarkMode }))
         rendition.themes.select('app-theme')
+        rendition.themes.override('*', {
+          'max-width': '100% !important',
+          'overflow-x': 'hidden !important',
+        })
+        rendition.themes.override('body', {
+          margin: '0 auto',
+          padding: '24px 32px',
+          'max-width': '100%',
+          'box-sizing': 'border-box',
+        })
 
-        await book.ready
+        const savedFontSize = parseInt(localStorage.getItem('reader-font-size') || '100', 10) || 100
+        rendition.themes.fontSize(`${savedFontSize}%`)
+        setFontSize(savedFontSize)
 
-        setLoadingMessage('Generating page map...')
-        const savedLocations = localStorage.getItem(locationsKey)
-        if (savedLocations) {
-          book.locations.load(savedLocations)
+        if (isDarkMode) {
+          rendition.themes.default({
+            body: {
+              background: '#1a1a2e !important',
+              color: '#e2e8f0 !important',
+            },
+          })
         } else {
-          await book.locations.generate(1024)
-          localStorage.setItem(locationsKey, book.locations.save())
+          rendition.themes.default({
+            body: {
+              background: '#ffffff !important',
+              color: '#1a1a2e !important',
+            },
+          })
         }
 
-        const count = Math.max(1, getLocationsCount(book) || 1)
-        setTotalPages(count)
-
-        const toc = await book.loaded.navigation.then((nav) => flattenToc(nav.toc || []))
+        await book.loaded.navigation
+        if (isDestroyed) return
+        const nav = await book.loaded.navigation
+        const toc = flattenToc(nav.toc || [])
         setTocItems(toc)
 
+        await book.spine.ready
+        if (isDestroyed) return
+        spineItemsRef.current = book.spine?.spineItems || []
+
         let savedCfi = params.cfi || ''
-        if (!savedCfi && authUser?._id && params.bookId) {
+        const authUser = getAuthUser()
+        if (!savedCfi && authUser?._id) {
           try {
-            const response = await apiClient.get(`/api/progress?userId=${encodeURIComponent(authUser._id)}`)
-            const match = (response?.data || []).find((item) => (item?.book?._id || item?.book) === params.bookId)
+            const response = await apiClient.get(
+              `/api/progress?userId=${encodeURIComponent(authUser._id)}`,
+              { signal: abortController.signal },
+            )
+            const match = (response?.data || []).find((item) => (item?.book?._id || item?.book) === bookId)
             savedCfi = match?.locationCfi || ''
-          } catch {
-            // no-op
+          } catch (err) {
+            if (abortController.signal.aborted || err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') return
+            console.debug('Progress lookup skipped:', err?.message || err)
           }
         }
         if (!savedCfi) savedCfi = localStorage.getItem(progressKey) || ''
+        await rendition.display(savedCfi || undefined)
 
-        if (savedCfi) {
-          await rendition.display(savedCfi)
+        const cacheHit = loadCachedLocations(locationsKey, book)
+        if (cacheHit) {
+          setTotalPages(Math.max(1, getLocationsCount(book) || 1))
         } else {
-          await rendition.display()
+          setTotalPages(1)
+          book.locations.generate(1024).then(() => {
+            if (!isDestroyed) {
+              try {
+                localStorage.setItem(locationsKey, JSON.stringify({
+                  data: book.locations.save(),
+                  savedAt: Date.now(),
+                  version: '1',
+                }))
+              } catch (e) {
+                console.warn('Could not cache locations:', e)
+              }
+              setTotalPages(Math.max(1, getLocationsCount(book) || 1))
+            }
+          })
         }
 
         const onLocationChanged = (loc) => {
           if (locationTimerRef.current) window.clearTimeout(locationTimerRef.current)
           locationTimerRef.current = window.setTimeout(() => {
             if (!loc?.start?.href) return
+            const activeFile = getActiveHref(loc.start.href)
+            setActiveFilename(activeFile)
+            const match = toc.find((item) => getActiveHref(item?.href || '') === activeFile)
+            if (match) setCurrentChapterLabel(match.label || '')
 
-            const currentHref = (loc.start.href || '').split('#')[0]
-            const match = toc.find((item) => {
-              const tocHref = (item?.href || '').split('#')[0]
-              if (!tocHref) return false
-              return currentHref.endsWith(tocHref)
-                || tocHref.endsWith(currentHref)
-                || currentHref.includes(tocHref)
-                || tocHref.includes(currentHref)
-            })
+            const idx = spineItemsRef.current.findIndex((item) => (
+              loc.start.href.includes(item?.href || '') || (item?.href || '').includes(loc.start.href)
+            ))
+            if (idx >= 0) updateSpineIndex(idx)
 
-            if (match) {
-              setActiveChapter(match.href)
-              setCurrentChapterLabel(match.label || '')
-            }
+            const cfi = loc.start.cfi || ''
+            if (!cfi) return
+            setCurrentCfi((prev) => (prev === cfi ? prev : cfi))
+            localStorage.setItem(progressKey, cfi)
 
-            const cfi = loc?.start?.cfi || ''
-            if (cfi) {
-              setCurrentCfi((prev) => (prev === cfi ? prev : cfi))
-              localStorage.setItem(progressKey, cfi)
-              const pct = book?.locations?.percentageFromCfi ? book.locations.percentageFromCfi(cfi) : 0
-              const percent = Math.max(0, Math.min(100, Math.round((pct || 0) * 100)))
-              const total = Math.max(1, getLocationsCount(book) || 1)
-              const pageNumber = Math.max(1, Math.min(total, (loc?.start?.location || 0) + 1))
-
-              setProgressPercent(percent)
-              setCurrentPage(pageNumber)
-              setTotalPages(total)
-              setCurrentSpineHref(loc?.start?.href || '')
-
-              const chapterIdx = findChapterIndexFromLocation(loc, toc)
-              progressMetaRef.current = {
-                percentage: percent,
-                currentPage: pageNumber,
-                totalPages: total,
-                chapterTitle: match?.label || progressMetaRef.current.chapterTitle,
-                chapterIndex: chapterIdx >= 0 ? chapterIdx : progressMetaRef.current.chapterIndex,
-              }
+            const pct = book.locations.percentageFromCfi ? book.locations.percentageFromCfi(cfi) : 0
+            const percent = Math.max(0, Math.min(100, Math.round((pct || 0) * 100)))
+            const total = Math.max(1, getLocationsCount(book) || 1)
+            const pageNumber = Math.max(1, Math.min(total, (loc?.start?.location || 0) + 1))
+            setProgressPercent(percent)
+            setCurrentPage(pageNumber)
+            setTotalPages(total)
+            progressMetaRef.current = {
+              percentage: percent,
+              currentPage: pageNumber,
+              totalPages: total,
+              chapterTitle: match?.label || progressMetaRef.current.chapterTitle,
+              chapterIndex: idx >= 0 ? idx : progressMetaRef.current.chapterIndex,
             }
           }, 300)
         }
+
         rendition.on('locationChanged', onLocationChanged)
-        setLoadingMessage('Loading book...')
-        setLoading(false)
-      } catch (loadErr) {
-        if (active) {
-          setError(loadErr?.message || 'Failed to load EPUB.')
-          setLoading(false)
+        if (!isDestroyed) {
+          setLoadingState('ready')
+        }
+      } catch (_loadErr) {
+        if (!isDestroyed) {
+          setLoadingState('error')
+          setErrorMessage('Failed to load book. Please try again.')
         }
       }
-    })()
+    }
+
+    initReader()
 
     return () => {
-      active = false
+      isDestroyed = true
+      abortController.abort()
       if (locationTimerRef.current) window.clearTimeout(locationTimerRef.current)
-      renditionRef.current?.destroy()
-      bookRef.current?.destroy()
-      renditionRef.current = null
-      bookRef.current = null
+      if (renditionRef.current?.destroy) renditionRef.current.destroy()
+      if (bookRef.current) {
+        bookRef.current.destroy()
+        bookRef.current = null
+        renditionRef.current = null
+      }
     }
-  }, [])
+  }, [fileUrl, bookId])
 
   const saveProgress = async ({ cfi, percentage, chapter }) => {
-    if (!authUser?._id || !params.bookId || !cfi) return
+    const authUser = getAuthUser()
+    if (!authUser?._id || !bookId || !cfi) return
     const meta = progressMetaRef.current
-    const payload = {
+    await apiClient.post('/api/progress', {
       userId: authUser._id,
-      bookId: params.bookId,
+      bookId,
       currentPage: meta.currentPage,
       totalPages: meta.totalPages,
       progressPercentage: typeof percentage === 'number' ? percentage : meta.percentage,
       locationCfi: cfi,
       chapterTitle: chapter || meta.chapterTitle || '',
       chapterIndex: Math.max(0, meta.chapterIndex || 0),
-    }
-    await apiClient.post('/api/progress', payload)
+    })
   }
 
   useEffect(() => {
-    if (!currentCfi) return
-    if (currentCfi === lastSavedCfi.current) return
-
+    if (!currentCfi || currentCfi === lastSavedCfi.current) return
     const timer = window.setTimeout(async () => {
       try {
-        await saveProgress({
-          cfi: currentCfi,
-          percentage: progressMetaRef.current.percentage,
-          chapter: currentChapterLabel || progressMetaRef.current.chapterTitle,
-        })
+        await saveProgress({ cfi: currentCfi, percentage: progressMetaRef.current.percentage, chapter: currentChapterLabel || progressMetaRef.current.chapterTitle })
         lastSavedCfi.current = currentCfi
       } catch (err) {
         console.error('Progress save failed:', err)
       }
     }, EPUB_PROGRESS_SYNC_MS)
-
     return () => window.clearTimeout(timer)
   }, [currentCfi])
-
-  useEffect(() => {
-    const onKeyDown = (event) => {
-      if (!renditionRef.current) return
-      if (event.key === 'ArrowLeft') renditionRef.current.prev()
-      if (event.key === 'ArrowRight') renditionRef.current.next()
-    }
-
-    const onTouchStart = (event) => {
-      touchStartXRef.current = event.changedTouches?.[0]?.clientX || 0
-    }
-
-    const onTouchEnd = (event) => {
-      if (!renditionRef.current) return
-      const endX = event.changedTouches?.[0]?.clientX || 0
-      const delta = endX - touchStartXRef.current
-      if (Math.abs(delta) < SWIPE_MIN_DISTANCE) return
-      if (delta > 0) renditionRef.current.prev()
-      else renditionRef.current.next()
-    }
-
-    window.addEventListener('keydown', onKeyDown)
-    window.addEventListener('touchstart', onTouchStart, { passive: true })
-    window.addEventListener('touchend', onTouchEnd, { passive: true })
-    return () => {
-      window.removeEventListener('keydown', onKeyDown)
-      window.removeEventListener('touchstart', onTouchStart)
-      window.removeEventListener('touchend', onTouchEnd)
-    }
-  }, [])
 
   const handleChapterClick = async (item, index) => {
     const rendition = renditionRef.current
@@ -376,49 +469,18 @@ export default function EpubReaderPage() {
     if (!rendition || !book || !item?.href) return
     try {
       await rendition.display(item.href)
-    } catch {
-      try {
-        const spineItem = book.spine.get(item.href)
-        if (spineItem) {
-          await rendition.display(spineItem.href)
-        } else {
-          const allItems = book.spine?.spineItems || []
-          const match = allItems.find((s) => (
-            s?.href && item?.href && (
-              normalizeHref(s.href).includes(normalizeHref(item.href)) ||
-              normalizeHref(item.href).includes(normalizeHref(s.href))
-            )
-          ))
-          if (match) await rendition.display(match.href)
-        }
-      } catch (e2) {
-        console.error('Chapter navigation failed:', item.href, e2)
-      }
+      if (typeof index === 'number') updateSpineIndex(index)
+    } catch (e) {
+      console.error('Chapter navigation failed:', item.href, e)
     }
-    if (typeof index === 'number') progressMetaRef.current.chapterIndex = index
-    setActiveChapter(item.href || '')
+    setActiveFilename(getActiveHref(item.href || ''))
     setCurrentChapterLabel(item.label || '')
     if (window.innerWidth < 768) setSidebarOpen(false)
   }
 
-  const goNextChapter = async () => {
-    const book = bookRef.current
-    const rendition = renditionRef.current
-    if (!book || !rendition) return
-    const spineItems = book.spine?.spineItems || []
-    const currentIndex = spineItems.findIndex((item) => item?.href === currentSpineHref)
-    const next = spineItems[currentIndex + 1]
-    if (next?.href) await rendition.display(next.href)
-  }
-
-  const goPrevChapter = async () => {
-    const book = bookRef.current
-    const rendition = renditionRef.current
-    if (!book || !rendition) return
-    const spineItems = book.spine?.spineItems || []
-    const currentIndex = spineItems.findIndex((item) => item?.href === currentSpineHref)
-    const prev = spineItems[currentIndex - 1]
-    if (prev?.href) await rendition.display(prev.href)
+  const isTocItemActive = (item) => {
+    if (!activeFilename || !item?.href) return false
+    return getActiveHref(item.href) === activeFilename
   }
 
   const toggleFullscreen = async () => {
@@ -428,24 +490,26 @@ export default function EpubReaderPage() {
   }
 
   return (
-    <section className={`epub-reader-root ${isDarkMode ? 'dark' : 'light'}`}>
+    <section className={`epub-reader-root ${isDarkMode ? 'dark dark-mode' : 'light'}`}>
       <div ref={frameRef} className={`epub-reader-shell ${isFullscreen ? 'fullscreen' : ''}`}>
-        <header className="epub-reader-header">
+        <header className="epub-reader-header reader-header">
           <div className="book-meta">
-            <p className="book-title">{params.title}</p>
+            <p className="book-title header-title">{params.title}</p>
             <p className="book-subtitle">{params.author}{currentChapterLabel ? ` - ${currentChapterLabel}` : ''}</p>
           </div>
           <div className="header-actions">
+            <button type="button" className="hamburger-btn" onClick={() => setSidebarOpen((v) => !v)} aria-label="Toggle Table of Contents">?</button>
             <button type="button" onClick={() => setSidebarOpen((v) => !v)}><MdMenuBook /></button>
-            <button type="button" className="toc-toggle-btn" onClick={() => setSidebarOpen((v) => !v)} aria-label="Toggle Table of Contents">☰ Contents</button>
             <button type="button" onClick={() => setIsDarkMode((v) => !v)}>{isDarkMode ? <MdLightMode /> : <MdDarkMode />}</button>
+            <button type="button" onClick={decreaseFontSize}>A-</button>
+            <button type="button" onClick={increaseFontSize}>A+</button>
             <button type="button" onClick={toggleFullscreen}>{isFullscreen ? <MdFullscreenExit /> : <MdFullscreen />}</button>
             <button type="button" onClick={() => { window.location.hash = '' }}>Exit</button>
           </div>
         </header>
 
         <div className="epub-reader-body">
-          {sidebarOpen ? <div className="toc-overlay visible" onClick={() => setSidebarOpen(false)} /> : null}
+          <div className={`toc-overlay ${sidebarOpen ? 'active' : ''}`} onClick={() => setSidebarOpen(false)} />
           <aside className={`toc-sidebar ${sidebarOpen ? 'open' : ''}`}>
             <div className="toc-header">
               <p className="toc-title">Table of Contents</p>
@@ -453,12 +517,7 @@ export default function EpubReaderPage() {
             </div>
             <div className="toc-list">
               {tocItems.map((item, index) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={`toc-item ${activeChapter && (((item.href || '').split('#')[0] === activeChapter.split('#')[0]) || activeChapter.includes((item.href || '').split('#')[0])) ? 'active' : ''} ${item.depth > 0 ? 'sub-item' : ''}`}
-                  onClick={() => handleChapterClick(item, index)}
-                >
+                <button key={item.id} type="button" className={`toc-item ${isTocItemActive(item) ? 'active' : ''} ${item.depth > 0 ? 'sub-item' : ''}`} onClick={() => handleChapterClick(item, index)}>
                   {item.label}
                 </button>
               ))}
@@ -466,24 +525,42 @@ export default function EpubReaderPage() {
           </aside>
 
           <div className="reader-main">
-            <div className="reader-controls nav-buttons">
-              <button type="button" onClick={() => renditionRef.current?.prev()}>Previous Page</button>
-              <button type="button" onClick={() => renditionRef.current?.next()}>Next Page</button>
-              <button type="button" onClick={goPrevChapter}>Previous Chapter</button>
-              <button type="button" onClick={goNextChapter}>Next Chapter</button>
+            <div className="reader-content">
+              {loadingState === 'loading' ? (
+                <div className="reader-loading">
+                  <div className="spinner" />
+                  <p>Loading book...</p>
+                </div>
+              ) : null}
+
+              {loadingState === 'error' ? (
+                <div className="reader-error">
+                  <p>{errorMessage}</p>
+                  <button type="button" onClick={() => window.location.reload()}>Try Again</button>
+                </div>
+              ) : null}
+
+              <div
+                id="viewer"
+                ref={viewerRef}
+                className="epub-viewer"
+                style={{ visibility: loadingState === 'ready' ? 'visible' : 'hidden' }}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+              />
             </div>
 
-            <div className="reader-stage reader-container">
-              {loading ? <ReaderSkeleton /> : null}
-              {loading ? <p className="reader-loading">{loadingMessage}</p> : null}
-              {error ? <p className="reader-error">{error}</p> : null}
-              <div id="viewer" ref={viewerRef} className="epub-viewer" />
+            <div className="progress-bar-container">
+              <div className="progress-bar-fill" style={{ width: `${progressPercent}%` }} />
             </div>
 
-            <footer className="reader-footer">
-              <p>Page {currentPage} of {totalPages}</p>
-              <p>{progressPercent}% complete</p>
-            </footer>
+            <div className="reader-nav nav-buttons">
+              <div className="nav-row secondary">
+                <button type="button" onClick={goPrevChapter}>Prev Chapter</button>
+                <button type="button" onClick={goNextChapter}>Next Chapter</button>
+              </div>
+              <span className="reader-status">Page {currentPage} / {totalPages} - {progressPercent}% - Chapter {currentSpineIndex + 1}</span>
+            </div>
           </div>
         </div>
       </div>

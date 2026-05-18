@@ -63,5 +63,6 @@ const progressSchema = new mongoose.Schema(
 );
 
 progressSchema.index({ userId: 1, book: 1 }, { unique: true });
+progressSchema.index({ userId: 1, lastReadAt: -1 });
 
 module.exports = mongoose.model('Progress', progressSchema);

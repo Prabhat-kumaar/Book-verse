@@ -2,6 +2,7 @@ const Progress = require('../models/Progress');
 const Book = require('../models/Book');
 const User = require('../models/User');
 const ReadingAnalyticsDay = require('../models/ReadingAnalyticsDay');
+const validate = require('../utils/validate');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const SESSION_GAP_MS = 10 * 60 * 1000;
@@ -169,8 +170,8 @@ const updateReadingAnalytics = async ({
 
 const trackProgress = async (req, res, next) => {
     try {
+        const userIdFromToken = req.user?._id?.toString?.().trim?.() || '';
         const {
-            userId,
             bookId,
             page,
             currentPage,
@@ -181,11 +182,18 @@ const trackProgress = async (req, res, next) => {
             chapterTitle = '',
             chapterIndex,
         } = req.body;
-        const trimmedUserId = userId?.trim();
         const resolvedCurrentPage = Number.isInteger(currentPage) ? currentPage : page;
 
-        if (!trimmedUserId || !bookId || resolvedCurrentPage === undefined) {
-            return res.status(400).json({ message: 'userId, bookId, and currentPage are required' });
+        if (!userIdFromToken) {
+            return res.status(401).json({ message: 'Not authorized' });
+        }
+
+        if (!bookId || !validate.objectId(bookId)) {
+            return res.status(400).json({ message: 'Valid bookId is required' });
+        }
+
+        if (resolvedCurrentPage === undefined) {
+            return res.status(400).json({ message: 'currentPage is required' });
         }
 
         if (!Number.isInteger(resolvedCurrentPage) || resolvedCurrentPage < 0) {
@@ -193,9 +201,16 @@ const trackProgress = async (req, res, next) => {
         }
 
         const safeTotalPages = Number.isInteger(totalPages) && totalPages > 0 ? totalPages : 1;
+        if (progressPercentage !== undefined) {
+            const pct = Number(progressPercentage);
+            if (Number.isNaN(pct) || pct < 0 || pct > 100) {
+                return res.status(400).json({ message: 'percentage must be between 0 and 100' });
+            }
+        }
+
         const safeProgressPercentage =
-            typeof progressPercentage === 'number' && Number.isFinite(progressPercentage)
-                ? Math.max(0, Math.min(100, progressPercentage))
+            progressPercentage !== undefined
+                ? Number(progressPercentage)
                 : Math.max(0, Math.min(100, (resolvedCurrentPage / safeTotalPages) * 100));
 
         if (!Number.isInteger(safeTotalPages) || safeTotalPages < 1) {
@@ -207,17 +222,18 @@ const trackProgress = async (req, res, next) => {
             return res.status(404).json({ message: 'Book not found' });
         }
 
-        const existingProgress = await Progress.findOne({ userId: trimmedUserId, book: bookId });
+        const existingProgress = await Progress.findOne({ userId: userIdFromToken, book: bookId });
 
         const updated = await Progress.findOneAndUpdate(
-            { userId: trimmedUserId, book: bookId },
+            { userId: userIdFromToken, book: bookId },
             {
+                userId: userIdFromToken,
                 page: resolvedCurrentPage,
                 currentPage: resolvedCurrentPage,
                 totalPages: safeTotalPages,
                 progressPercentage: safeProgressPercentage,
-                locationCfi: typeof locationCfi === 'string' ? locationCfi.trim() : '',
-                chapterTitle: typeof chapterTitle === 'string' ? chapterTitle.trim() : '',
+                locationCfi: validate.sanitize(locationCfi, 2000),
+                chapterTitle: validate.sanitize(chapterTitle, 200),
                 chapterIndex: Number.isInteger(chapterIndex) && chapterIndex >= 0 ? chapterIndex : 0,
                 lastReadAt: Date.now(),
             },
@@ -230,11 +246,11 @@ const trackProgress = async (req, res, next) => {
 
         const qualifiesForStreak = resolvedCurrentPage >= 1 || Number(readingSeconds) >= 60;
         const streakResult = await updateUserStreak({
-            userId: trimmedUserId,
+            userId: userIdFromToken,
             qualifies: qualifiesForStreak,
         });
         const analyticsResult = await updateReadingAnalytics({
-            userId: trimmedUserId,
+            userId: userIdFromToken,
             existingProgress,
             resolvedCurrentPage,
             safeProgressPercentage,
@@ -255,11 +271,10 @@ const trackProgress = async (req, res, next) => {
 
 const getProgressByUser = async (req, res, next) => {
     try {
-        const userId = (req.query.userId || req.user?._id || '').toString().trim();
+        const userId = (req.user?._id || '').toString().trim();
 
         if (!userId) {
-            res.status(400);
-            throw new Error('userId query parameter is required');
+            return res.status(401).json({ message: 'Not authorized' });
         }
 
         const progress = await Progress.find({ userId }).populate('book');

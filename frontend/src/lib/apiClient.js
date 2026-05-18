@@ -1,7 +1,8 @@
 import axios from 'axios'
 import { API_URL, buildApiUrl } from './apiConfig'
 
-console.info('[apiClient] API URL:', API_URL)
+const isDev = import.meta.env.DEV
+isDev && console.log('[apiClient] API URL:', API_URL)
 
 const apiClient = axios.create({
   baseURL: API_URL,
@@ -19,7 +20,7 @@ apiClient.interceptors.request.use(
       config.url = normalizedRelativeUrl
     }
     const finalUrl = isAbsolute ? url : buildApiUrl(normalizedRelativeUrl)
-    console.info('[apiClient] Final request:', finalUrl)
+    isDev && console.log('[apiClient] Final request:', finalUrl)
     const token = localStorage.getItem('authToken')
 
     // Attach auth only when a token exists. Do not block public endpoints.
@@ -44,7 +45,7 @@ apiClient.interceptors.response.use(
   (error) => {
     const status = error?.response?.status
     const message = error?.response?.data?.message || error?.message || 'Request failed'
-    console.error('[apiClient] Request failed:', { status, message, url: error?.config?.url })
+    isDev && console.error('[apiClient] Request failed:', { status, message, url: error?.config?.url })
     return Promise.reject(error)
   },
 )

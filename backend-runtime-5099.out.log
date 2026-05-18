@@ -1,0 +1,10 @@
+MongoDB connected: ac-a3yyedo-shard-00-00.akvgyit.mongodb.net
+MongoDB database in use: readify
+========================================
+  Book-verse API Server
+  Environment : development
+  Port        : 5099
+  MongoDB     : Connected
+  Started at  : 2026-05-18T12:32:08.808Z
+========================================
+Local: http://localhost:5099/api

@@ -1,4 +1,8 @@
 const Book = require('../models/Book');
+const validate = require('../utils/validate');
+const isDev = process.env.NODE_ENV !== 'production';
+const devLog = (...args) => isDev && console.log(...args);
+const devError = (...args) => console.error(...args);
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const asTrimmedString = (value) => (typeof value === 'string' ? value.trim() : '');
@@ -48,33 +52,42 @@ const getFileTypeFromPathOrMime = (rawUrl = '', mime = '') => {
     return 'pdf';
 };
 
-// Format URL: dynamically generate correct URLs for any host
+const normalizeBackendOrigin = (value = '') => {
+    const raw = asTrimmedString(value).replace(/\/+$/, '');
+    if (!raw) return '';
+    if (/^https?:\/\//i.test(raw)) return raw;
+    return `https://${raw}`;
+};
+
+// Format URL: preserve external URLs and only rewrite explicit local hosts.
 const formatUrl = (req, urlValue) => {
     const value = asTrimmedString(urlValue);
     if (!value) return '';
 
     const baseUrl = `${req.protocol}://${req.get('host')}`;
-    console.log(`[formatUrl] Input: ${value} | baseUrl: ${baseUrl}`);
+    const backendUrl = normalizeBackendOrigin(process.env.BACKEND_URL || process.env.RAILWAY_STATIC_URL || '');
 
-    // If it's a full URL, replace localhost/127.0.0.1 with current host
     if (/^https?:\/\//i.test(value)) {
-        const currentHost = req.get('host').split(':')[0]; // Get host without port
-        const normalizedUrl = value.replace(/localhost|127\.0\.0\.1/g, currentHost);
-        console.log(`[formatUrl] Full URL normalized -> Result: ${normalizedUrl}`);
-        return normalizedUrl;
+        const isLocalUrl =
+            value.startsWith('http://localhost') ||
+            value.startsWith('http://127.0.0.1') ||
+            value.startsWith('https://localhost') ||
+            value.startsWith('https://127.0.0.1');
+
+        if (!isLocalUrl) return value;
+        if (!backendUrl) return value;
+
+        try {
+            const parsed = new URL(value);
+            return `${backendUrl}${parsed.pathname}${parsed.search || ''}`;
+        } catch {
+            return value;
+        }
     }
 
-    // If it's already a path with /uploads, prepend baseUrl
-    if (value.startsWith('/uploads/')) {
-        const result = `${baseUrl}${value}`;
-        console.log(`[formatUrl] /uploads path detected -> Result: ${result}`);
-        return result;
-    }
-
-    // If plain filename, assume it belongs in /uploads
-    const result = `${baseUrl}/uploads/${value}`;
-    console.log(`[formatUrl] Plain filename detected -> Result: ${result}`);
-    return result;
+    if (value.startsWith('/uploads/')) return `${baseUrl}${value}`;
+    if (value.startsWith('uploads/')) return `${baseUrl}/${value}`;
+    return `${baseUrl}/uploads/${value}`;
 };
 
 const normalizeBookPayload = (req, bookDoc) => {
@@ -96,12 +109,12 @@ const normalizeBookPayload = (req, bookDoc) => {
 
 const addBook = async (req, res, next) => {
     try {
-        const title = asTrimmedString(req.body.title);
-        const author = asTrimmedString(req.body.author);
-        const category = asTrimmedString(req.body.category);
+        const title = validate.sanitize(req.body.title, 200);
+        const author = validate.sanitize(req.body.author, 200);
+        const category = validate.sanitize(req.body.category, 100);
 
-        const fileUrlInput = asTrimmedString(req.body.fileUrl) || asTrimmedString(req.body.pdf);
-        const thumbnailUrlInput = asTrimmedString(req.body.thumbnail);
+        const fileUrlInput = validate.sanitize(req.body.fileUrl || req.body.pdf, 500);
+        const thumbnailUrlInput = validate.sanitize(req.body.thumbnail, 500);
 
         const uploadFile = req.files?.file?.[0] || req.files?.pdf?.[0];
         const thumbnailFile = req.files?.thumbnail?.[0];
@@ -137,15 +150,20 @@ const addBook = async (req, res, next) => {
         const fileType = getFileTypeFromPathOrMime(fileUrl, uploadFile?.mimetype);
         const pdf = fileType === 'pdf' ? fileUrl : '';
 
-        if (!title || !author || !category || !fileUrl || !thumbnail) {
-            return res.status(400).json({ success: false, message: 'All book fields are required and cannot be empty' });
+        const requiredCheck = validate.required(
+            { title, author, category, fileUrl, thumbnail },
+            ['title', 'author', 'category', 'fileUrl', 'thumbnail']
+        );
+
+        if (!requiredCheck.valid) {
+            return res.status(400).json({ success: false, message: requiredCheck.message });
         }
 
         const book = await Book.create({ title, author, category, fileUrl, fileType, pdf, thumbnail });
         const formattedBook = {
             ...book._doc,
-            fileUrl: formatUrl(req, book.fileUrl),
-            thumbnail: formatUrl(req, book.thumbnail)
+            fileUrl: book.fileUrl ? formatUrl(req, book.fileUrl) : null,
+            thumbnail: book.thumbnail ? formatUrl(req, book.thumbnail) : null
         };
         res.status(201).json({ success: true, data: formattedBook });
     } catch (error) {
@@ -157,23 +175,44 @@ const addBook = async (req, res, next) => {
     }
 };
 
+const parsePagination = (query) => {
+    const page = Math.max(1, parseInt(query.page, 10) || 1);
+    const limit = Math.min(50, parseInt(query.limit, 10) || 12);
+    const skip = (page - 1) * limit;
+    return { page, limit, skip };
+};
+
 const getAllBooks = async (req, res, next) => {
     try {
+        const { page, limit, skip } = parsePagination(req.query || {});
         const { category } = req.query;
         const filter = category ? { category: { $regex: new RegExp(category.trim(), 'i') } } : {};
-        const books = await Book.find(filter || {}).sort({ createdAt: -1 });
+        const [books, total] = await Promise.all([
+            Book.find(filter)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            Book.countDocuments(filter),
+        ]);
 
-        const dbName = Book.db?.name || 'unknown';
-        const collectionName = Book.collection?.name || 'unknown';
-        const totalDocsInCollection = await Book.countDocuments({});
-        console.log(`[Books Debug] DB: ${dbName} | Collection: ${collectionName} | Query: ${JSON.stringify(filter)} | Matched: ${books.length} | Total docs: ${totalDocsInCollection}`);
-
-        const formattedBooks = books.map(book => ({
-            ...book._doc,
-            fileUrl: formatUrl(req, book.fileUrl),
-            thumbnail: formatUrl(req, book.thumbnail)
+        const formattedBooks = books.map((book) => ({
+            ...book,
+            fileUrl: book.fileUrl ? formatUrl(req, book.fileUrl) : null,
+            thumbnail: book.thumbnail ? formatUrl(req, book.thumbnail) : null,
+            coverImage: book.coverImage ? formatUrl(req, book.coverImage) : null,
         }));
-        res.json({ success: true, count: formattedBooks.length, data: formattedBooks });
+        res.json({
+            success: true,
+            books: formattedBooks,
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+                hasMore: page * limit < total,
+            },
+        });
     } catch (error) {
         next(error);
     }
@@ -181,15 +220,36 @@ const getAllBooks = async (req, res, next) => {
 
 const getBooksByCategory = async (req, res, next) => {
     try {
+        const { page, limit, skip } = parsePagination(req.query || {});
         const { category } = req.params;
         const categoryRegex = new RegExp(escapeRegex(category.trim()), 'i');
-        const books = await Book.find({ category: { $regex: categoryRegex } });
-        const formattedBooks = books.map(book => ({
-            ...book._doc,
-            fileUrl: formatUrl(req, book.fileUrl),
-            thumbnail: formatUrl(req, book.thumbnail)
+        const filter = { category: { $regex: categoryRegex } };
+        const [books, total] = await Promise.all([
+            Book.find(filter)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            Book.countDocuments(filter),
+        ]);
+
+        const formattedBooks = books.map((book) => ({
+            ...book,
+            fileUrl: book.fileUrl ? formatUrl(req, book.fileUrl) : null,
+            thumbnail: book.thumbnail ? formatUrl(req, book.thumbnail) : null,
+            coverImage: book.coverImage ? formatUrl(req, book.coverImage) : null,
         }));
-        res.json({ success: true, count: formattedBooks.length, data: formattedBooks });
+        res.json({
+            success: true,
+            books: formattedBooks,
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+                hasMore: page * limit < total,
+            },
+        });
     } catch (error) {
         next(error);
     }
@@ -203,8 +263,8 @@ const getBookById = async (req, res, next) => {
         }
         const formattedBook = {
             ...book._doc,
-            fileUrl: formatUrl(req, book.fileUrl),
-            thumbnail: formatUrl(req, book.thumbnail)
+            fileUrl: book.fileUrl ? formatUrl(req, book.fileUrl) : null,
+            thumbnail: book.thumbnail ? formatUrl(req, book.thumbnail) : null
         };
         res.json({ success: true, data: formattedBook });
     } catch (error) {
@@ -217,27 +277,37 @@ const updateBook = async (req, res, next) => {
         const bookId = req.params.id;
         const { title, author, category, fileUrl: rawFileUrl, fileType: rawFileType, pdf, thumbnail } = req.body;
 
+        if (!validate.objectId(bookId)) {
+            return res.status(400).json({ success: false, message: 'Invalid ID format' });
+        }
+
         const book = await Book.findById(bookId);
         if (!book) {
             return res.status(404).json({ success: false, message: 'Book not found' });
         }
 
-        book.title = title || book.title;
-        book.author = author || book.author;
-        book.category = category || book.category;
+        const cleanTitle = title !== undefined ? validate.sanitize(title, 200) : '';
+        const cleanAuthor = author !== undefined ? validate.sanitize(author, 200) : '';
+        const cleanCategory = category !== undefined ? validate.sanitize(category, 100) : '';
+        const cleanFileUrl = validate.sanitize(rawFileUrl || pdf, 500);
+        const cleanThumbnail = validate.sanitize(thumbnail, 500);
 
-        const nextFileUrl = rawFileUrl || pdf || book.fileUrl || book.pdf;
+        book.title = cleanTitle || book.title;
+        book.author = cleanAuthor || book.author;
+        book.category = cleanCategory || book.category;
+
+        const nextFileUrl = cleanFileUrl || book.fileUrl || book.pdf;
         const nextFileType = rawFileType || getFileTypeFromPathOrMime(nextFileUrl);
         book.fileUrl = nextFileUrl;
         book.fileType = nextFileType;
         book.pdf = nextFileType === 'pdf' ? nextFileUrl : '';
-        book.thumbnail = thumbnail || book.thumbnail;
+        book.thumbnail = cleanThumbnail || book.thumbnail;
 
         const updatedBook = await book.save();
         const formattedBook = {
             ...updatedBook._doc,
-            fileUrl: formatUrl(req, updatedBook.fileUrl),
-            thumbnail: formatUrl(req, updatedBook.thumbnail)
+            fileUrl: updatedBook.fileUrl ? formatUrl(req, updatedBook.fileUrl) : null,
+            thumbnail: updatedBook.thumbnail ? formatUrl(req, updatedBook.thumbnail) : null
         };
         res.json({ success: true, data: formattedBook });
     } catch (error) {

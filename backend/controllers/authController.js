@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Admin = require('../models/Admin');
 const jwt = require('jsonwebtoken');
+const validate = require('../utils/validate');
 
 const generateToken = (id, role) => {
     return jwt.sign({ id, role }, process.env.JWT_SECRET, {
@@ -23,16 +24,26 @@ const register = async (req, res, next) => {
     try {
         const { username, email, password } = req.body;
 
-        if (!username || !password) {
-            return res.status(400).json({ message: 'Username and password are required' });
+        const requiredCheck = validate.required(req.body, ['username', 'email', 'password']);
+        if (!requiredCheck.valid) {
+            return res.status(400).json({ message: requiredCheck.message });
         }
 
-        const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+        const cleanUsername = validate.sanitize(username, 100);
+        const normalizedEmail = validate.sanitize(email, 254).toLowerCase();
+
+        if (!validate.email(normalizedEmail)) {
+            return res.status(400).json({ message: 'Invalid email format' });
+        }
+
+        if (!validate.password(password)) {
+            return res.status(400).json({ message: 'Password must be at least 6 characters' });
+        }
 
         const userExists = await User.findOne({
             $or: [
-                { username: username.trim() },
-                ...(normalizedEmail ? [{ email: normalizedEmail }] : []),
+                { username: cleanUsername },
+                { email: normalizedEmail },
             ],
         });
 
@@ -41,8 +52,8 @@ const register = async (req, res, next) => {
         }
 
         const user = await User.create({
-            username: username.trim(),
-            email: normalizedEmail || undefined,
+            username: cleanUsername,
+            email: normalizedEmail,
             password,
             role: req.allowAdminCreation ? 'admin' : 'user',
         });
