@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { FaCheck, FaHeart, FaRegHeart, FaTimes } from 'react-icons/fa'
 import { useSavedBooksContext } from '../context/SavedBooksContext'

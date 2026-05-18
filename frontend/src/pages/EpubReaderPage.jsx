@@ -111,10 +111,10 @@ export default function EpubReaderPage() {
   const [error, setError] = useState('')
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('epubTheme') === 'dark')
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [showToc, setShowToc] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [tocItems, setTocItems] = useState([])
-  const [activeChapterIndex, setActiveChapterIndex] = useState(0)
-  const [currentChapterTitle, setCurrentChapterTitle] = useState('')
+  const [activeChapter, setActiveChapter] = useState('')
+  const [currentChapterLabel, setCurrentChapterLabel] = useState('')
   const [progressPercent, setProgressPercent] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -127,6 +127,7 @@ export default function EpubReaderPage() {
   const renditionRef = useRef(null)
   const lastSavedCfi = useRef(null)
   const touchStartXRef = useRef(0)
+  const locationTimerRef = useRef(null)
   const progressMetaRef = useRef({
     percentage: 0,
     currentPage: 1,
@@ -155,6 +156,12 @@ export default function EpubReaderPage() {
   }, [])
 
   useEffect(() => {
+    if (!activeChapter) return
+    const activeEl = document.querySelector('.toc-item.active')
+    if (activeEl) activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [activeChapter])
+
+  useEffect(() => {
     localStorage.setItem('epubTheme', isDarkMode ? 'dark' : 'light')
     if (!renditionRef.current) return
     renditionRef.current.themes.register('app-theme', buildThemeStyles({ dark: isDarkMode }))
@@ -171,16 +178,13 @@ export default function EpubReaderPage() {
   }, [])
 
   useEffect(() => {
-    if (!resolvedFileUrl || !viewerRef.current) return undefined
+    if (!resolvedFileUrl || !viewerRef.current || bookRef.current) return undefined
     let active = true
 
     ;(async () => {
       try {
         setLoading(true)
         setError('')
-        renditionRef.current?.destroy()
-        bookRef.current?.destroy()
-
         const book = await loadEpubBook(resolvedFileUrl)
         if (!active || !viewerRef.current) return
 
@@ -234,57 +238,51 @@ export default function EpubReaderPage() {
           await rendition.display()
         }
 
-        const onRelocated = (location) => {
-          const cfi = location?.start?.cfi || ''
-          if (!cfi) return
-          setCurrentCfi((prev) => (prev === cfi ? prev : cfi))
-          setCurrentSpineHref(location?.start?.href || '')
-          localStorage.setItem(progressKey, cfi)
-
-          const percentageRaw = book.locations.percentageFromCfi(cfi) || 0
-          const percent = Math.max(0, Math.min(100, Math.round(percentageRaw * 100)))
-          const total = Math.max(1, getLocationsCount(book) || 1)
-          const pageNumber = Math.max(1, Math.min(total, (location?.start?.location || 0) + 1))
-
-          setProgressPercent(percent)
-          setCurrentPage(pageNumber)
-          setTotalPages(total)
-
-          const chapterIdx = findChapterIndexFromLocation(location, toc)
-          if (chapterIdx >= 0) {
-            setActiveChapterIndex(chapterIdx)
-            setCurrentChapterTitle(toc[chapterIdx]?.label || '')
-          }
-          progressMetaRef.current = {
-            percentage: percent,
-            currentPage: pageNumber,
-            totalPages: total,
-            chapterTitle: chapterIdx >= 0 ? (toc[chapterIdx]?.label || '') : progressMetaRef.current.chapterTitle,
-            chapterIndex: chapterIdx >= 0 ? chapterIdx : progressMetaRef.current.chapterIndex,
-          }
-
-          const viewport = viewerRef.current?.querySelector('iframe')
-          if (viewport) {
-            viewport.classList.add('page-fade')
-            window.setTimeout(() => viewport.classList.remove('page-fade'), 160)
-          }
-        }
-
         const onLocationChanged = (loc) => {
-          const cfi = loc?.start?.cfi || ''
-          const href = loc?.start?.href || ''
-          if (cfi) setCurrentCfi((prev) => (prev === cfi ? prev : cfi))
-          const match = toc.find((item) => (
-            href && item?.href && (href.includes(item.href) || item.href.includes(href))
-          ))
-          if (match) {
-            setCurrentChapterTitle(match.label || '')
-            const idx = toc.findIndex((item) => item.id === match.id)
-            if (idx >= 0) setActiveChapterIndex(idx)
-          }
-          onRelocated(loc)
+          if (locationTimerRef.current) window.clearTimeout(locationTimerRef.current)
+          locationTimerRef.current = window.setTimeout(() => {
+            if (!loc?.start?.href) return
+
+            const currentHref = (loc.start.href || '').split('#')[0]
+            const match = toc.find((item) => {
+              const tocHref = (item?.href || '').split('#')[0]
+              if (!tocHref) return false
+              return currentHref.endsWith(tocHref)
+                || tocHref.endsWith(currentHref)
+                || currentHref.includes(tocHref)
+                || tocHref.includes(currentHref)
+            })
+
+            if (match) {
+              setActiveChapter(match.href)
+              setCurrentChapterLabel(match.label || '')
+            }
+
+            const cfi = loc?.start?.cfi || ''
+            if (cfi) {
+              setCurrentCfi((prev) => (prev === cfi ? prev : cfi))
+              localStorage.setItem(progressKey, cfi)
+              const pct = book?.locations?.percentageFromCfi ? book.locations.percentageFromCfi(cfi) : 0
+              const percent = Math.max(0, Math.min(100, Math.round((pct || 0) * 100)))
+              const total = Math.max(1, getLocationsCount(book) || 1)
+              const pageNumber = Math.max(1, Math.min(total, (loc?.start?.location || 0) + 1))
+
+              setProgressPercent(percent)
+              setCurrentPage(pageNumber)
+              setTotalPages(total)
+              setCurrentSpineHref(loc?.start?.href || '')
+
+              const chapterIdx = findChapterIndexFromLocation(loc, toc)
+              progressMetaRef.current = {
+                percentage: percent,
+                currentPage: pageNumber,
+                totalPages: total,
+                chapterTitle: match?.label || progressMetaRef.current.chapterTitle,
+                chapterIndex: chapterIdx >= 0 ? chapterIdx : progressMetaRef.current.chapterIndex,
+              }
+            }
+          }, 300)
         }
-        rendition.on('relocated', onRelocated)
         rendition.on('locationChanged', onLocationChanged)
         setLoadingMessage('Loading book...')
         setLoading(false)
@@ -298,12 +296,13 @@ export default function EpubReaderPage() {
 
     return () => {
       active = false
+      if (locationTimerRef.current) window.clearTimeout(locationTimerRef.current)
       renditionRef.current?.destroy()
       bookRef.current?.destroy()
       renditionRef.current = null
       bookRef.current = null
     }
-  }, [authUser?._id, isDarkMode, locationsKey, params.bookId, params.cfi, progressKey, resolvedFileUrl])
+  }, [])
 
   const saveProgress = async ({ cfi, percentage, chapter }) => {
     if (!authUser?._id || !params.bookId || !cfi) return
@@ -330,7 +329,7 @@ export default function EpubReaderPage() {
         await saveProgress({
           cfi: currentCfi,
           percentage: progressMetaRef.current.percentage,
-          chapter: currentChapterTitle || progressMetaRef.current.chapterTitle,
+          chapter: currentChapterLabel || progressMetaRef.current.chapterTitle,
         })
         lastSavedCfi.current = currentCfi
       } catch (err) {
@@ -377,7 +376,7 @@ export default function EpubReaderPage() {
     if (!rendition || !book || !item?.href) return
     try {
       await rendition.display(item.href)
-    } catch (e1) {
+    } catch {
       try {
         const spineItem = book.spine.get(item.href)
         if (spineItem) {
@@ -396,9 +395,10 @@ export default function EpubReaderPage() {
         console.error('Chapter navigation failed:', item.href, e2)
       }
     }
-    if (typeof index === 'number') setActiveChapterIndex(index)
-    setCurrentChapterTitle(item.label || '')
-    if (window.innerWidth < 768) setShowToc(false)
+    if (typeof index === 'number') progressMetaRef.current.chapterIndex = index
+    setActiveChapter(item.href || '')
+    setCurrentChapterLabel(item.label || '')
+    if (window.innerWidth < 768) setSidebarOpen(false)
   }
 
   const goNextChapter = async () => {
@@ -433,10 +433,11 @@ export default function EpubReaderPage() {
         <header className="epub-reader-header">
           <div className="book-meta">
             <p className="book-title">{params.title}</p>
-            <p className="book-subtitle">{params.author}{currentChapterTitle ? ` - ${currentChapterTitle}` : ''}</p>
+            <p className="book-subtitle">{params.author}{currentChapterLabel ? ` - ${currentChapterLabel}` : ''}</p>
           </div>
           <div className="header-actions">
-            <button type="button" onClick={() => setShowToc((v) => !v)}><MdMenuBook /></button>
+            <button type="button" onClick={() => setSidebarOpen((v) => !v)}><MdMenuBook /></button>
+            <button type="button" className="toc-toggle-btn" onClick={() => setSidebarOpen((v) => !v)} aria-label="Toggle Table of Contents">☰ Contents</button>
             <button type="button" onClick={() => setIsDarkMode((v) => !v)}>{isDarkMode ? <MdLightMode /> : <MdDarkMode />}</button>
             <button type="button" onClick={toggleFullscreen}>{isFullscreen ? <MdFullscreenExit /> : <MdFullscreen />}</button>
             <button type="button" onClick={() => { window.location.hash = '' }}>Exit</button>
@@ -444,17 +445,18 @@ export default function EpubReaderPage() {
         </header>
 
         <div className="epub-reader-body">
-          <aside className={`toc-sidebar ${showToc ? 'open' : ''}`}>
+          {sidebarOpen ? <div className="toc-overlay visible" onClick={() => setSidebarOpen(false)} /> : null}
+          <aside className={`toc-sidebar ${sidebarOpen ? 'open' : ''}`}>
             <div className="toc-header">
               <p className="toc-title">Table of Contents</p>
-              <button type="button" className="toc-close" onClick={() => setShowToc(false)}>X</button>
+              <button type="button" className="toc-close" onClick={() => setSidebarOpen(false)}>X</button>
             </div>
             <div className="toc-list">
               {tocItems.map((item, index) => (
                 <button
                   key={item.id}
                   type="button"
-                  className={`toc-item ${index === activeChapterIndex ? 'active' : ''} ${item.depth > 0 ? 'sub-item' : ''}`}
+                  className={`toc-item ${activeChapter && (((item.href || '').split('#')[0] === activeChapter.split('#')[0]) || activeChapter.includes((item.href || '').split('#')[0])) ? 'active' : ''} ${item.depth > 0 ? 'sub-item' : ''}`}
                   onClick={() => handleChapterClick(item, index)}
                 >
                   {item.label}
@@ -464,7 +466,7 @@ export default function EpubReaderPage() {
           </aside>
 
           <div className="reader-main">
-            <div className="reader-controls">
+            <div className="reader-controls nav-buttons">
               <button type="button" onClick={() => renditionRef.current?.prev()}>Previous Page</button>
               <button type="button" onClick={() => renditionRef.current?.next()}>Next Page</button>
               <button type="button" onClick={goPrevChapter}>Previous Chapter</button>
