@@ -124,11 +124,28 @@
   flex: 1;
   min-height: 0;
   padding: 8px;
+  height: calc(100vh - 120px);
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .epub-viewer {
   height: 100%;
   width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.epub-viewer .epub-container {
+  height: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.epub-viewer iframe {
+  width: 100% !important;
+  height: 100% !important;
+  border: 0;
 }
 
 .reader-footer {
@@ -142,6 +159,18 @@
 .reader-error {
   color: #fda4af;
   padding: 12px;
+}
+
+.reader-loading {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 5;
+  margin: 0;
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.7);
 }
 
 .page-fade {

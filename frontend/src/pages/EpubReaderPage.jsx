@@ -7,7 +7,7 @@ import { API_URL } from '../lib/apiConfig'
 import './epubReader.css'
 
 const API = API_URL
-const EPUB_PROGRESS_SYNC_MS = 3000
+const EPUB_PROGRESS_SYNC_MS = 2000
 const SWIPE_MIN_DISTANCE = 40
 
 function parseReaderParams() {
@@ -118,13 +118,21 @@ export default function EpubReaderPage() {
   const [progressPercent, setProgressPercent] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [currentCfi, setCurrentCfi] = useState('')
+  const [loadingMessage, setLoadingMessage] = useState('Loading book...')
   const viewerRef = useRef(null)
   const frameRef = useRef(null)
   const bookRef = useRef(null)
   const renditionRef = useRef(null)
-  const currentCfiRef = useRef('')
   const lastSyncedRef = useRef('')
   const touchStartXRef = useRef(0)
+  const progressMetaRef = useRef({
+    percentage: 0,
+    currentPage: 1,
+    totalPages: 1,
+    chapterTitle: '',
+    chapterIndex: 0,
+  })
 
   const authUser = useMemo(() => {
     try {
@@ -176,12 +184,12 @@ export default function EpubReaderPage() {
         if (!active || !viewerRef.current) return
 
         const rendition = book.renderTo(viewerRef.current, {
-          manager: 'continuous',
+          manager: 'default',
           flow: 'paginated',
           width: '100%',
           height: '100%',
           spread: 'none',
-          allowScriptedContent: false,
+          allowScriptedContent: true,
         })
 
         bookRef.current = book
@@ -191,6 +199,7 @@ export default function EpubReaderPage() {
 
         await book.ready
 
+        setLoadingMessage('Generating page map...')
         const savedLocations = localStorage.getItem(locationsKey)
         if (savedLocations) {
           book.locations.load(savedLocations)
@@ -222,7 +231,7 @@ export default function EpubReaderPage() {
         const onRelocated = (location) => {
           const cfi = location?.start?.cfi || ''
           if (!cfi) return
-          currentCfiRef.current = cfi
+          setCurrentCfi((prev) => (prev === cfi ? prev : cfi))
           localStorage.setItem(progressKey, cfi)
 
           const percentageRaw = book.locations.percentageFromCfi(cfi) || 0
@@ -239,6 +248,13 @@ export default function EpubReaderPage() {
             setActiveChapterIndex(chapterIdx)
             setCurrentChapterTitle(toc[chapterIdx]?.label || '')
           }
+          progressMetaRef.current = {
+            percentage: percent,
+            currentPage: pageNumber,
+            totalPages: total,
+            chapterTitle: chapterIdx >= 0 ? (toc[chapterIdx]?.label || '') : progressMetaRef.current.chapterTitle,
+            chapterIndex: chapterIdx >= 0 ? chapterIdx : progressMetaRef.current.chapterIndex,
+          }
 
           const viewport = viewerRef.current?.querySelector('iframe')
           if (viewport) {
@@ -247,7 +263,10 @@ export default function EpubReaderPage() {
           }
         }
 
+        const onLocationChanged = (location) => onRelocated(location)
         rendition.on('relocated', onRelocated)
+        rendition.on('locationChanged', onLocationChanged)
+        setLoadingMessage('Loading book...')
         setLoading(false)
       } catch (loadErr) {
         if (active) {
@@ -267,22 +286,21 @@ export default function EpubReaderPage() {
   }, [authUser?._id, isDarkMode, locationsKey, params.bookId, params.cfi, progressKey, resolvedFileUrl])
 
   useEffect(() => {
-    if (!authUser?._id || !params.bookId || !currentCfiRef.current) return
-    const chapterTitle = tocItems[activeChapterIndex]?.label || currentChapterTitle || ''
-    const payload = {
-      userId: authUser._id,
-      bookId: params.bookId,
-      currentPage,
-      totalPages,
-      progressPercentage: progressPercent,
-      locationCfi: currentCfiRef.current,
-      chapterTitle,
-      chapterIndex: Math.max(0, activeChapterIndex),
-    }
-    const snapshot = JSON.stringify(payload)
-    if (snapshot === lastSyncedRef.current) return
-
+    if (!authUser?._id || !params.bookId || !currentCfi) return
     const timer = window.setTimeout(async () => {
+      const meta = progressMetaRef.current
+      const payload = {
+        userId: authUser._id,
+        bookId: params.bookId,
+        currentPage: meta.currentPage,
+        totalPages: meta.totalPages,
+        progressPercentage: meta.percentage,
+        locationCfi: currentCfi,
+        chapterTitle: meta.chapterTitle || '',
+        chapterIndex: Math.max(0, meta.chapterIndex || 0),
+      }
+      const snapshot = JSON.stringify(payload)
+      if (snapshot === lastSyncedRef.current) return
       try {
         await apiClient.post('/api/progress', payload)
         lastSyncedRef.current = snapshot
@@ -292,7 +310,7 @@ export default function EpubReaderPage() {
     }, EPUB_PROGRESS_SYNC_MS)
 
     return () => window.clearTimeout(timer)
-  }, [activeChapterIndex, authUser?._id, currentChapterTitle, currentPage, params.bookId, progressPercent, tocItems, totalPages])
+  }, [currentCfi])
 
   useEffect(() => {
     const onKeyDown = (event) => {
@@ -385,6 +403,7 @@ export default function EpubReaderPage() {
 
             <div className="reader-stage">
               {loading ? <ReaderSkeleton /> : null}
+              {loading ? <p className="reader-loading">{loadingMessage}</p> : null}
               {error ? <p className="reader-error">{error}</p> : null}
               <div id="viewer" ref={viewerRef} className="epub-viewer" />
             </div>
