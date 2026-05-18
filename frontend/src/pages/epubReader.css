@@ -129,6 +129,11 @@
   overflow-x: hidden;
 }
 
+.reader-container {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
 .epub-viewer {
   height: 100%;
   width: 100%;
@@ -145,7 +150,12 @@
 .epub-viewer iframe {
   width: 100% !important;
   height: 100% !important;
+  max-width: 100% !important;
   border: 0;
+}
+
+.epub-container iframe {
+  max-width: 100% !important;
 }
 
 .reader-footer {

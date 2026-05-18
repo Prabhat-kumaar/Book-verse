@@ -59,19 +59,19 @@ function findChapterIndexFromLocation(location, toc = []) {
   return -1
 }
 
-function flattenToc(items = [], depth = 0, result = []) {
-  items.forEach((item) => {
-    result.push({
-      id: item.id || item.href || `${item.label}-${result.length}`,
+function flattenToc(items = [], depth = 0) {
+  return items.reduce((acc, item) => {
+    acc.push({
+      id: item.id || item.href || `${item.label}-${acc.length}`,
       label: item.label || 'Untitled Chapter',
       href: item.href || '',
       depth,
     })
-    if (Array.isArray(item.subitems) && item.subitems.length) {
-      flattenToc(item.subitems, depth + 1, result)
+    if (item.subitems?.length) {
+      acc.push(...flattenToc(item.subitems, depth + 1))
     }
-  })
-  return result
+    return acc
+  }, [])
 }
 
 function buildThemeStyles({ dark }) {
@@ -119,6 +119,7 @@ export default function EpubReaderPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [currentCfi, setCurrentCfi] = useState('')
+  const [currentSpineHref, setCurrentSpineHref] = useState('')
   const [loadingMessage, setLoadingMessage] = useState('Loading book...')
   const viewerRef = useRef(null)
   const frameRef = useRef(null)
@@ -184,12 +185,13 @@ export default function EpubReaderPage() {
         if (!active || !viewerRef.current) return
 
         const rendition = book.renderTo(viewerRef.current, {
-          manager: 'default',
-          flow: 'paginated',
+          manager: 'continuous',
+          flow: 'scrolled',
           width: '100%',
           height: '100%',
           spread: 'none',
           allowScriptedContent: true,
+          allowPopups: true,
         })
 
         bookRef.current = book
@@ -232,6 +234,7 @@ export default function EpubReaderPage() {
           const cfi = location?.start?.cfi || ''
           if (!cfi) return
           setCurrentCfi((prev) => (prev === cfi ? prev : cfi))
+          setCurrentSpineHref(location?.start?.href || '')
           localStorage.setItem(progressKey, cfi)
 
           const percentageRaw = book.locations.percentageFromCfi(cfi) || 0
@@ -342,16 +345,50 @@ export default function EpubReaderPage() {
     }
   }, [])
 
-  const goToChapter = async (index) => {
-    const item = tocItems[index]
-    if (!item?.href || !renditionRef.current) return
-    setActiveChapterIndex(index)
-    setCurrentChapterTitle(item.label || '')
-    await renditionRef.current.display(item.href)
+  const handleChapterClick = async (item, index) => {
+    const rendition = renditionRef.current
+    const book = bookRef.current
+    if (!rendition || !item?.href) return
+    try {
+      await rendition.display(item.href)
+      if (typeof index === 'number') setActiveChapterIndex(index)
+      setCurrentChapterTitle(item.label || '')
+      setShowToc(false)
+    } catch (err) {
+      console.error('Chapter nav failed:', err)
+      try {
+        const spineItem = book?.spine?.get?.(item.href)
+        if (spineItem?.href) {
+          await rendition.display(spineItem.href)
+          if (typeof index === 'number') setActiveChapterIndex(index)
+          setCurrentChapterTitle(item.label || '')
+          setShowToc(false)
+        }
+      } catch {
+        // no-op
+      }
+    }
   }
 
-  const goPrevChapter = () => goToChapter(Math.max(0, activeChapterIndex - 1))
-  const goNextChapter = () => goToChapter(Math.min(tocItems.length - 1, activeChapterIndex + 1))
+  const goNextChapter = async () => {
+    const book = bookRef.current
+    const rendition = renditionRef.current
+    if (!book || !rendition) return
+    const spineItems = book.spine?.spineItems || []
+    const currentIndex = spineItems.findIndex((item) => item?.href === currentSpineHref)
+    const next = spineItems[currentIndex + 1]
+    if (next?.href) await rendition.display(next.href)
+  }
+
+  const goPrevChapter = async () => {
+    const book = bookRef.current
+    const rendition = renditionRef.current
+    if (!book || !rendition) return
+    const spineItems = book.spine?.spineItems || []
+    const currentIndex = spineItems.findIndex((item) => item?.href === currentSpineHref)
+    const prev = spineItems[currentIndex - 1]
+    if (prev?.href) await rendition.display(prev.href)
+  }
 
   const toggleFullscreen = async () => {
     if (!frameRef.current) return
@@ -384,7 +421,7 @@ export default function EpubReaderPage() {
                   key={item.id}
                   type="button"
                   className={`toc-item ${index === activeChapterIndex ? 'active' : ''}`}
-                  onClick={() => goToChapter(index)}
+                  onClick={() => handleChapterClick(item, index)}
                   style={{ paddingLeft: `${12 + item.depth * 14}px` }}
                 >
                   {item.label}
@@ -401,7 +438,7 @@ export default function EpubReaderPage() {
               <button type="button" onClick={goNextChapter}>Next Chapter</button>
             </div>
 
-            <div className="reader-stage">
+            <div className="reader-stage reader-container">
               {loading ? <ReaderSkeleton /> : null}
               {loading ? <p className="reader-loading">{loadingMessage}</p> : null}
               {error ? <p className="reader-error">{error}</p> : null}
