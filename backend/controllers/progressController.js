@@ -169,7 +169,18 @@ const updateReadingAnalytics = async ({
 
 const trackProgress = async (req, res, next) => {
     try {
-        const { userId, bookId, page, currentPage, totalPages, progressPercentage, readingSeconds = 0 } = req.body;
+        const {
+            userId,
+            bookId,
+            page,
+            currentPage,
+            totalPages,
+            progressPercentage,
+            readingSeconds = 0,
+            locationCfi = '',
+            chapterTitle = '',
+            chapterIndex,
+        } = req.body;
         const trimmedUserId = userId?.trim();
         const resolvedCurrentPage = Number.isInteger(currentPage) ? currentPage : page;
 
@@ -205,6 +216,9 @@ const trackProgress = async (req, res, next) => {
                 currentPage: resolvedCurrentPage,
                 totalPages: safeTotalPages,
                 progressPercentage: safeProgressPercentage,
+                locationCfi: typeof locationCfi === 'string' ? locationCfi.trim() : '',
+                chapterTitle: typeof chapterTitle === 'string' ? chapterTitle.trim() : '',
+                chapterIndex: Number.isInteger(chapterIndex) && chapterIndex >= 0 ? chapterIndex : 0,
                 lastReadAt: Date.now(),
             },
             {

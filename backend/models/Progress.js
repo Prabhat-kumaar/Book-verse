@@ -37,6 +37,21 @@ const progressSchema = new mongoose.Schema(
             max: 100,
             default: 0,
         },
+        locationCfi: {
+            type: String,
+            default: '',
+            trim: true,
+        },
+        chapterTitle: {
+            type: String,
+            default: '',
+            trim: true,
+        },
+        chapterIndex: {
+            type: Number,
+            min: 0,
+            default: 0,
+        },
         lastReadAt: {
             type: Date,
             default: Date.now,

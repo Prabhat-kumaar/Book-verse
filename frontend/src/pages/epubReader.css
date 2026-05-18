@@ -1,0 +1,166 @@
+.epub-reader-root {
+  height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.epub-reader-root.dark {
+  background: #030712;
+  color: #f8fafc;
+}
+
+.epub-reader-root.light {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.epub-reader-shell {
+  height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.epub-reader-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.book-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.book-subtitle {
+  margin: 2px 0 0;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.header-actions button,
+.reader-controls button,
+.toc-item {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.45);
+  color: inherit;
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.epub-reader-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.toc-sidebar {
+  width: 0;
+  overflow: hidden;
+  border-right: 1px solid transparent;
+  transition: width 0.2s ease;
+}
+
+.toc-sidebar.open {
+  width: 280px;
+  border-right-color: rgba(148, 163, 184, 0.25);
+}
+
+.toc-title {
+  margin: 0;
+  padding: 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.toc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 8px 12px;
+}
+
+.toc-item {
+  text-align: left;
+  font-size: 12px;
+  background: transparent;
+}
+
+.toc-item.active {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.6);
+}
+
+.reader-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.reader-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.reader-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  padding: 8px;
+}
+
+.epub-viewer {
+  height: 100%;
+  width: 100%;
+}
+
+.reader-footer {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-top: 1px solid rgba(148, 163, 184, 0.25);
+  font-size: 12px;
+}
+
+.reader-error {
+  color: #fda4af;
+  padding: 12px;
+}
+
+.page-fade {
+  opacity: 0.45;
+  transition: opacity 0.16s ease;
+}
+
+@media (max-width: 768px) {
+  .toc-sidebar.open {
+    width: 76vw;
+    max-width: 300px;
+  }
+
+  .reader-controls {
+    gap: 6px;
+  }
+
+  .reader-controls button {
+    font-size: 11px;
+    padding: 6px 8px;
+  }
+}
