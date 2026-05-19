@@ -2,10 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import ePub from 'epubjs'
 import { MdDarkMode, MdFullscreen, MdFullscreenExit, MdLightMode, MdMenuBook } from 'react-icons/md'
 import apiClient from '../lib/apiClient'
-import { API_URL } from '../lib/apiConfig'
+import { API_ORIGIN } from '../lib/apiConfig'
 import './epubReader.css'
 
-const API = API_URL
+const API = API_ORIGIN
 const EPUB_PROGRESS_SYNC_MS = 2000
 const SWIPE_MIN_DISTANCE = 80
 
@@ -25,8 +25,8 @@ function parseReaderParams() {
 function toAbsoluteUrl(value) {
   const raw = (value || '').trim()
   if (!raw) return ''
-  if (raw.startsWith('/uploads/')) return `${API}${raw}`
-  if (raw.startsWith('uploads/')) return `${API}/${raw}`
+  if (raw.startsWith('/uploads/')) return API ? `${API}${raw}` : raw
+  if (raw.startsWith('uploads/')) return API ? `${API}/${raw}` : `/${raw}`
   return raw
 }
 

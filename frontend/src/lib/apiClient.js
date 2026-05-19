@@ -4,9 +4,12 @@ import { API_URL, buildApiUrl } from './apiConfig'
 const isDev = import.meta.env.DEV
 isDev && console.log('[apiClient] API URL:', API_URL)
 
+const REQUEST_TIMEOUT_MS = 20000
+
 const apiClient = axios.create({
   baseURL: API_URL,
-  timeout: 0,
+  timeout: REQUEST_TIMEOUT_MS,
+  withCredentials: import.meta.env.VITE_API_WITH_CREDENTIALS === 'true',
 })
 
 apiClient.interceptors.request.use(
@@ -22,17 +25,19 @@ apiClient.interceptors.request.use(
     const finalUrl = isAbsolute ? url : buildApiUrl(normalizedRelativeUrl)
     isDev && console.log('[apiClient] Final request:', finalUrl)
     const token = localStorage.getItem('authToken')
+    const headers = config.headers || {}
+    config.headers = headers
 
     // Attach auth only when a token exists. Do not block public endpoints.
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+      headers.Authorization = `Bearer ${token}`
     }
 
     if (config.data instanceof FormData) {
       // Let the browser set multipart boundary automatically.
-      delete config.headers['Content-Type']
-    } else if (!config.headers['Content-Type']) {
-      config.headers['Content-Type'] = 'application/json'
+      delete headers['Content-Type']
+    } else if (!headers['Content-Type']) {
+      headers['Content-Type'] = 'application/json'
     }
 
     return config

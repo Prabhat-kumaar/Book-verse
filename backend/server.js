@@ -6,6 +6,7 @@ const fs = require('fs');
 const http = require('http');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const mongoose = require('mongoose');
 
 dotenv.config();
 const isDev = process.env.NODE_ENV !== 'production';
@@ -30,8 +31,19 @@ if (!process.env.JWT_SECRET || !process.env.JWT_SECRET.trim()) {
 const app = express();
 const uploadsDir = path.join(__dirname, 'uploads');
 fs.mkdirSync(uploadsDir, { recursive: true });
-app.set('trust proxy', true);
+// Railway/production ke liye
+app.set('trust proxy', process.env.RAILWAY_ENVIRONMENT ? 1 : false);
 app.disable('x-powered-by');
+const parseCsvEnv = (value = '') =>
+    String(value || '')
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+const backendPublicOrigin =
+    (process.env.BACKEND_URL || process.env.RENDER_EXTERNAL_URL || process.env.RAILWAY_STATIC_URL || '')
+        .trim()
+        .replace(/\/+$/, '');
+const connectSrc = ["'self'", ...(backendPublicOrigin ? [backendPublicOrigin] : [])];
 app.use(
     helmet({
         contentSecurityPolicy: {
@@ -41,7 +53,7 @@ app.use(
                 styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
                 fontSrc: ["'self'", 'https://fonts.gstatic.com'],
                 imgSrc: ["'self'", 'data:', 'https://res.cloudinary.com', 'blob:'],
-                connectSrc: ["'self'", 'https://book-verse-production.up.railway.app'],
+                connectSrc,
                 frameSrc: ["'self'", 'blob:'],
                 objectSrc: ["'none'"],
             },
@@ -52,20 +64,27 @@ app.use(
 );
 
 // ================= MIDDLEWARE =================
-const allowedOrigins = [
+const defaultAllowedOrigins = [
     'http://localhost:5173',
+    'http://localhost:4173',
     'http://localhost:3000',
     'https://book-verse.vercel.app',
-    'https://book-verse-git-master.vercel.app',
-    'https://book-verse-flax-one.vercel.app',
 ];
+const envAllowedOrigins = parseCsvEnv(process.env.FRONTEND_URL);
+const allowedOrigins = [...new Set([...defaultAllowedOrigins, ...envAllowedOrigins])];
+const allowedOriginPatterns = [
+    /^https:\/\/book-verse.*\.vercel\.app$/i,
+];
+
+const isAllowedOrigin = (origin = '') =>
+    allowedOrigins.includes(origin) || allowedOriginPatterns.some((pattern) => pattern.test(origin));
 
 const corsOptions = {
     origin: (origin, callback) => {
         // Allow requests with no origin (mobile apps, curl, Postman)
         if (!origin) return callback(null, true);
 
-        if (allowedOrigins.includes(origin)) {
+        if (isAllowedOrigin(origin)) {
             callback(null, true);
         } else {
             console.warn(`CORS blocked origin: ${origin}`);
@@ -215,9 +234,11 @@ app.use((err, req, res, next) => {
 // ================= START SERVER =================
 const DEFAULT_PORT = parseInt(process.env.PORT, 10) || 5000;
 const MAX_PORT = DEFAULT_PORT + 5;
+const DB_RETRY_INTERVAL_MS = Math.max(5000, parseInt(process.env.DB_RETRY_INTERVAL_MS, 10) || 15000);
 const isRailway = Boolean(process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_STATIC_URL);
+let dbRetryTimer = null;
 
-const startServer = (port) => {
+const startServer = (port, dbConnected = false) => {
     const server = http.createServer(app);
 
     server.on('error', (error) => {
@@ -245,7 +266,7 @@ const startServer = (port) => {
   Book-verse API Server
   Environment : ${process.env.NODE_ENV || 'development'}
   Port        : ${port}
-  MongoDB     : Connected
+  MongoDB     : ${dbConnected ? 'Connected' : 'Disconnected (retrying in dev)'}
   Started at  : ${new Date().toISOString()}
 ========================================
         `.trim());
@@ -256,14 +277,45 @@ const startServer = (port) => {
     });
 };
 
+const scheduleDbReconnect = () => {
+    if (!isDev || dbRetryTimer) return;
+
+    dbRetryTimer = setInterval(async () => {
+        if (mongoose.connection.readyState === 1) {
+            clearInterval(dbRetryTimer);
+            dbRetryTimer = null;
+            return;
+        }
+
+        try {
+            await connectDB();
+            console.log('MongoDB reconnected successfully.');
+            clearInterval(dbRetryTimer);
+            dbRetryTimer = null;
+        } catch (error) {
+            devError(`MongoDB reconnect failed: ${error.message}`);
+        }
+    }, DB_RETRY_INTERVAL_MS);
+};
+
 const bootstrap = async () => {
+    let dbConnected = false;
+
     try {
         await connectDB();
-        startServer(DEFAULT_PORT);
+        dbConnected = true;
     } catch (error) {
+        if (!isDev) {
+            devError('Failed to start application:', error.message);
+            process.exit(1);
+        }
+
         devError('Failed to start application:', error.message);
-        process.exit(1);
+        devError('Starting API without MongoDB (development mode).');
+        scheduleDbReconnect();
     }
+
+    startServer(DEFAULT_PORT, dbConnected);
 };
 
 bootstrap();

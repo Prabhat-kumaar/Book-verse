@@ -1,4 +1,4 @@
-const RAILWAY_BACKEND_ORIGIN = 'https://book-verse-production.up.railway.app'
+const isBrowser = typeof window !== 'undefined'
 
 function normalizeOrigin(url = '') {
   const trimmed = String(url || '').trim().replace(/\/+$/, '')
@@ -6,23 +6,41 @@ function normalizeOrigin(url = '') {
   return trimmed.replace(/\/api$/i, '')
 }
 
-const envOrigin = normalizeOrigin(import.meta.env.VITE_API_URL)
+function isTemplateOrigin(origin = '') {
+  const value = String(origin || '').toLowerCase()
+  return (
+    !value ||
+    value.includes('your-render-service.onrender.com') ||
+    value.includes('your-vercel-app.vercel.app') ||
+    /<[^>]+>/.test(value)
+  )
+}
 
-// Safety guard: when env is missing or accidentally points to Vercel frontend,
-// force backend origin to Railway so deployed builds still call the API server.
-const isVercelHost = (() => {
-  if (!envOrigin) return false
-  try {
-    return /\.vercel\.app$/i.test(new URL(envOrigin).hostname)
-  } catch {
-    return true
+function isLocalHost(hostname = '') {
+  return hostname === 'localhost' || hostname === '127.0.0.1'
+}
+
+const rawEnvOrigin = normalizeOrigin(import.meta.env.VITE_API_URL)
+const envOrigin = isTemplateOrigin(rawEnvOrigin) ? '' : rawEnvOrigin
+
+const browserFallbackOrigin = (() => {
+  if (!isBrowser) return ''
+  const { protocol, hostname, port } = window.location
+  if (!isLocalHost(hostname)) return ''
+  if (import.meta.env.DEV && port === '5173') {
+    return `${protocol}//${hostname}:5000`
   }
+  return `${protocol}//${hostname}${port ? `:${port}` : ''}`
 })()
 
-const shouldUseRailway = !envOrigin || isVercelHost
+export const API_ORIGIN = envOrigin || browserFallbackOrigin
+export const API_URL = API_ORIGIN ? `${API_ORIGIN}/api` : '/api'
 
-export const API_ORIGIN = shouldUseRailway ? RAILWAY_BACKEND_ORIGIN : envOrigin
-export const API_URL = `${API_ORIGIN}/api`
+if (!envOrigin && !import.meta.env.DEV) {
+  console.warn(
+    '[apiConfig] VITE_API_URL is not set for production. Configure it to your Render backend URL.',
+  )
+}
 
 export function buildApiUrl(path = '') {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`

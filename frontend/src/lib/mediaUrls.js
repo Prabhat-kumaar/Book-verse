@@ -1,10 +1,8 @@
-import { API_URL } from './apiConfig'
-
-const API = API_URL
+import { API_ORIGIN } from './apiConfig'
 
 function resolveAbsoluteUploadPath(path) {
   const sanitized = path.startsWith('/') ? path : `/${path}`
-  return `${API}${sanitized}`
+  return API_ORIGIN ? `${API_ORIGIN}${sanitized}` : sanitized
 }
 
 export function normalizeMediaUrl(value = '') {

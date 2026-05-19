@@ -43,7 +43,13 @@ export default function AdminManageBooksPage() {
       setError('')
       const response = await apiClient.get('/api/books')
       const payload = response.data
-      const resolvedBooks = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
+      const resolvedBooks = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.books)
+          ? payload.books
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : []
       setBooks(resolvedBooks.map(normalizeBook))
     } catch (fetchError) {
       setError(fetchError.response?.data?.message || fetchError.message || 'Unable to load books.')

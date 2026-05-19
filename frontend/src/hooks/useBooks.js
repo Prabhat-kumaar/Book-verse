@@ -21,7 +21,13 @@ export default function useBooks() {
 
         const response = await apiClient.get('/api/books', { signal: controller.signal })
         const payload = response?.data
-        const resolvedBooks = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
+        const resolvedBooks = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.books)
+            ? payload.books
+            : Array.isArray(payload?.data)
+              ? payload.data
+              : []
         const normalizedBooks = resolvedBooks.map((book) => ({
           ...book,
           fileUrl: normalizeMediaUrl(book?.fileUrl || ''),

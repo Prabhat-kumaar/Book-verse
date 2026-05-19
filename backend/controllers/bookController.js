@@ -65,7 +65,12 @@ const formatUrl = (req, urlValue) => {
     if (!value) return '';
 
     const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const backendUrl = normalizeBackendOrigin(process.env.BACKEND_URL || process.env.RAILWAY_STATIC_URL || '');
+    const backendUrl = normalizeBackendOrigin(
+        process.env.BACKEND_URL ||
+        process.env.RENDER_EXTERNAL_URL ||
+        process.env.RAILWAY_STATIC_URL ||
+        ''
+    );
 
     if (/^https?:\/\//i.test(value)) {
         const isLocalUrl =
@@ -125,26 +130,10 @@ const addBook = async (req, res, next) => {
         // If files were uploaded, use only the filename (not the full URL)
         if (uploadFile) {
             fileUrl = uploadFile.filename;
-        } else if (fileUrlInput && /^https?:\/\//i.test(fileUrlInput)) {
-            // If fileUrl is a URL, extract just the filename
-            try {
-                const url = new URL(fileUrlInput);
-                fileUrl = url.pathname.split('/').pop();
-            } catch {
-                fileUrl = fileUrlInput.split('/').pop();
-            }
         }
 
         if (thumbnailFile) {
             thumbnail = thumbnailFile.filename;
-        } else if (thumbnailUrlInput && /^https?:\/\//i.test(thumbnailUrlInput)) {
-            // If thumbnail is a URL, extract just the filename
-            try {
-                const url = new URL(thumbnailUrlInput);
-                thumbnail = url.pathname.split('/').pop();
-            } catch {
-                thumbnail = thumbnailUrlInput.split('/').pop();
-            }
         }
 
         const fileType = getFileTypeFromPathOrMime(fileUrl, uploadFile?.mimetype);
