@@ -58,57 +58,52 @@ const allowedOrigins = [
     ...new Set([...defaultAllowedOrigins, ...envAllowedOrigins]),
 ];
 
-const allowedOriginPatterns = [
-    /^https:\/\/([a-z0-9-]+)\.vercel\.app$/i,
+const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://readifyai.vercel.app',
 ];
 
-const isAllowedOrigin = (origin = '') => {
-    return (
-        allowedOrigins.includes(origin) ||
-        allowedOriginPatterns.some((pattern) => pattern.test(origin))
-    );
-};
+app.use(
+    cors({
+        origin: function (origin, callback) {
 
-const corsOptions = {
-    origin: (origin, callback) => {
-        console.log('Incoming Origin:', origin);
+            console.log("Origin:", origin);
 
-        // allow mobile apps/postman
-        if (!origin) {
-            return callback(null, true);
-        }
+            // Postman/mobile requests
+            if (!origin) {
+                return callback(null, true);
+            }
 
-        if (isAllowedOrigin(origin)) {
-            return callback(null, true);
-        }
+            // Allow exact match
+            if (allowedOrigins.includes(origin)) {
+                return callback(null, true);
+            }
 
-        console.warn(`CORS blocked origin: ${origin}`);
+            // Allow all Vercel preview deployments
+            if (/\.vercel\.app$/.test(origin)) {
+                return callback(null, true);
+            }
 
-        return callback(new Error(`CORS policy violation: ${origin}`));
-    },
+            console.log("CORS blocked origin:", origin);
 
-    credentials: true,
+            return callback(new Error('Not allowed by CORS'));
+        },
 
-    methods: [
-        'GET',
-        'POST',
-        'PUT',
-        'DELETE',
-        'PATCH',
-        'OPTIONS',
-    ],
+        credentials: true,
 
-    allowedHeaders: [
-        'Content-Type',
-        'Authorization',
-        'X-Requested-With',
-        'Accept',
-        'Origin',
-    ],
-};
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+
+        allowedHeaders: [
+            'Content-Type',
+            'Authorization',
+            'Origin',
+            'Accept',
+        ],
+    })
+);
 
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
 
 // ================= HELMET =================
 const backendPublicOrigin =
