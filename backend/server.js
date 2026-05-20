@@ -75,6 +75,7 @@ const envAllowedOrigins = parseCsvEnv(process.env.FRONTEND_URL);
 const allowedOrigins = [...new Set([...defaultAllowedOrigins, ...envAllowedOrigins])];
 const allowedOriginPatterns = [
     /^https:\/\/book-verse.*\.vercel\.app$/i,
+    /^https:\/\/readify.*\.vercel\.app$/i,
 ];
 
 const isAllowedOrigin = (origin = '') =>
