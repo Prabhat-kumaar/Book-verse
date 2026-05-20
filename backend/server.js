@@ -68,6 +68,7 @@ const defaultAllowedOrigins = [
     'http://localhost:5173',
     'http://localhost:4173',
     'http://localhost:3000',
+    'https://readifyai.vercel.app',
     'https://book-verse.vercel.app',
 ];
 const envAllowedOrigins = parseCsvEnv(process.env.FRONTEND_URL);
