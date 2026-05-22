@@ -1,9 +1,0 @@
-mongodb://127.0.0.1:27017/readify : The term 'mongodb://127.0.0.1:27017/readify' is not recognized as the name of a 
-cmdlet, function, script file, or operable program. Check the spelling of the name, or if a path was included, verify 
-that the path is correct and try again.
-At line:1 char:16
-+ $env:MONGO_URI=mongodb://127.0.0.1:27017/readify; node server.js
-+                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : ObjectNotFound: (mongodb://127.0.0.1:27017/readify:String) [], CommandNotFoundException
-    + FullyQualifiedErrorId : CommandNotFoundException
- 

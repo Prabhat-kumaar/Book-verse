@@ -111,25 +111,37 @@ export default function SavedBooksPage() {
   }, [savedBooks, search, sortBy])
 
   const createNewCollection = async () => {
-    const name = nameInput.trim()
-    if (!name) return
-    await createCollection(name)
-    setNameInput('')
+    try {
+      const name = nameInput.trim()
+      if (!name) return
+      await createCollection(name)
+      setNameInput('')
+    } catch (err) {
+      setError(err?.response?.data?.message || err?.message || 'Failed to create collection')
+    }
   }
 
   const renameCollection = async (id) => {
-    const name = editingName.trim()
-    if (!name) return
-    await apiClient.put(`/api/collections/${id}`, { name })
-    setEditingId('')
-    setEditingName('')
-    await refresh()
+    try {
+      const name = editingName.trim()
+      if (!name) return
+      await apiClient.put(`/api/collections/${id}`, { name })
+      setEditingId('')
+      setEditingName('')
+      await refresh()
+    } catch (err) {
+      setError(err?.response?.data?.message || err?.message || 'Failed to rename collection')
+    }
   }
 
   const deleteCollection = async (id) => {
-    await apiClient.delete(`/api/collections/${id}`)
-    await refresh()
-    if (selectedCollectionId === id) setSelectedCollectionId('')
+    try {
+      await apiClient.delete(`/api/collections/${id}`)
+      await refresh()
+      if (selectedCollectionId === id) setSelectedCollectionId('')
+    } catch (err) {
+      setError(err?.response?.data?.message || err?.message || 'Failed to delete collection')
+    }
   }
 
   const onDropCollection = (targetId) => {

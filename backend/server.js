@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
@@ -49,6 +49,7 @@ app.use(
 );
 
 // ================= CORS =================
+
 const allowedOrigins = [
     'http://localhost:5173',
     'http://localhost:4173',
@@ -57,53 +58,33 @@ const allowedOrigins = [
     'https://book-verse.vercel.app',
 ];
 
-app.use(
-    cors({
-        origin: function (origin, callback) {
-
-            console.log('Incoming Origin:', origin);
-
-            // Allow Postman/mobile apps
-            if (!origin) {
-                return callback(null, true);
-            }
-
-            // Allow localhost + vercel
-            if (
-                allowedOrigins.includes(origin) ||
-                /\.vercel\.app$/.test(origin)
-            ) {
-                return callback(null, true);
-            }
-
-            console.log('CORS blocked origin:', origin);
-
-            // IMPORTANT:
-            // Don't block request hard
+app.use(cors({
+    origin: function (origin, callback) {
+        if (allowedOrigins.includes(origin) || /\.vercel\.app$/.test(origin)) {
             return callback(null, true);
-        },
+        }
+        return callback(new Error('Not allowed by CORS'));
+    },
 
-        credentials: true,
+    credentials: true,
 
-        methods: [
-            'GET',
-            'POST',
-            'PUT',
-            'DELETE',
-            'PATCH',
-            'OPTIONS',
-        ],
+    methods: [
+        'GET',
+        'POST',
+        'PUT',
+        'DELETE',
+        'PATCH',
+        'OPTIONS'
+    ],
 
-        allowedHeaders: [
-            'Content-Type',
-            'Authorization',
-            'Origin',
-            'Accept',
-            'X-Requested-With',
-        ],
-    })
-);
-
+    allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'Origin',
+        'Accept',
+        'X-Requested-With'
+    ]
+}));
 // ================= BODY PARSER =================
 app.use(express.json({ limit: '10mb' }));
 
@@ -262,42 +243,8 @@ app.use('*', (req, res) => {
 });
 
 // ================= ERROR HANDLER =================
-app.use((err, req, res, next) => {
-
-    console.error('Unhandled Error:', err);
-
-    if (err.type === 'entity.too.large') {
-        return apiResponse.error(
-            res,
-            'Request too large',
-            413
-        );
-    }
-
-    if (err.name === 'ValidationError') {
-        return apiResponse.error(
-            res,
-            'Validation error',
-            400,
-            isDev ? err.message : null
-        );
-    }
-
-    if (err.name === 'CastError') {
-        return apiResponse.error(
-            res,
-            'Invalid ID format',
-            400
-        );
-    }
-
-    return apiResponse.error(
-        res,
-        'Internal server error',
-        500,
-        isDev ? err.message : null
-    );
-});
+const errorMiddleware = require('./middleware/errorMiddleware');
+app.use(errorMiddleware);
 
 // ================= SERVER =================
 const PORT = process.env.PORT || 5000;

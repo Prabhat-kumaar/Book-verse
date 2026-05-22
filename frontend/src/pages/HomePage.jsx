@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+﻿import { motion } from 'framer-motion'
 import { memo, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useRecommendations from '../hooks/useRecommendations'
@@ -343,7 +343,7 @@ export default function HomePage() {
           ) : continueReadingBooks.length === 0 ? (
             <EmptyState
               className="mt-4"
-              icon="ðŸš€"
+              icon="🚀"
               title="Start your reading journey"
               description="Books you read will appear here automatically."
               actionLabel="Explore Books"
@@ -384,7 +384,7 @@ export default function HomePage() {
                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
                       <div className="h-full rounded-full bg-gradient-to-r from-blue-400 to-violet-500 transition-all duration-500" style={{ width: `${percent}%` }} />
                     </div>
-                    <p className="mt-1 text-[11px] text-slate-300/80">{percent}% completed • Last read {timeAgo(item.lastReadAt)}</p>
+                    <p className="mt-1 text-[11px] text-slate-300/80">{percent}% completed â€¢ Last read {timeAgo(item.lastReadAt)}</p>
                     <a href={link} className="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:border-blue-300/40 hover:bg-white/15">
                       Resume Reading
                     </a>
@@ -485,7 +485,7 @@ export default function HomePage() {
             </div>
           ) : safeRecommendedBooks.length === 0 ? (
             <EmptyState
-              icon="ðŸŽ¯"
+              icon="🎯"
               title="No recommendations yet"
               description="Read a few books to unlock smarter recommendations."
               actionLabel="Start Reading"
@@ -527,7 +527,7 @@ export default function HomePage() {
                 </div>
               ) : section.books.length === 0 ? (
                 <EmptyState
-                  icon="ðŸ“–"
+                  icon="📖"
                   title="No books available"
                   description="New titles will appear here soon."
                   actionLabel="Browse Categories"

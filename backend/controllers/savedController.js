@@ -189,8 +189,10 @@ const getSavedBooksByCollection = async (req, res, next) => {
 
 const getSavedStatus = async (req, res, next) => {
     try {
-        const saved = await SavedBook.find({ user: req.user._id }).select('book collection');
-        res.json(saved.map((item) => normalizeSavedDoc(req, item)));
+        const saved = await SavedBook.find({ user: req.user._id })
+            .select('_id book collection savedAt')
+            .lean();
+        res.json(saved);
     } catch (error) {
         next(error);
     }

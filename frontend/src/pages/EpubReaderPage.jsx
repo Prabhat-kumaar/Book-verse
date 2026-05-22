@@ -411,7 +411,7 @@ export default function EpubReaderPage() {
         if (!isDestroyed) {
           setLoadingState('ready')
         }
-      } catch (_loadErr) {
+      } catch {
         if (!isDestroyed) {
           setLoadingState('error')
           setErrorMessage('Failed to load book. Please try again.')

@@ -109,7 +109,7 @@ export default function SaveBookHeart({ bookId, book = null, className = '' }) {
       setSubmitting(true)
       setError('')
       const toAdd = selectedCollectionIds.filter((id) => !currentCollectionIds.includes(id))
-      const toRemove = matches.filter((entry) => !selectedCollectionIds.includes(entry.collection?._id || entry.collection))
+      const toRemove = matches.filter((entry) => !selectedCollectionIds.includes(normalizeId(entry.collection)))
 
       await Promise.all([
         ...toAdd.map((collectionId) => saveBook(bookId, collectionId, book)),
