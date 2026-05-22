@@ -3,6 +3,11 @@
 
 :root {
   color-scheme: dark;
+  --background: #0b1220;
+  --foreground: #e2e8f0;
+  --primary: #6366f1;
+  --chart-1: #f59e0b;
+  --chart-4: #10b981;
   --footer-bg: #0d1117;
   --footer-surface: rgba(8, 13, 22, 0.96);
   --footer-border: rgba(59, 130, 246, 0.12);
@@ -358,3 +363,42 @@
     }
   }
 }
+
+.glass {
+  background-color: color-mix(in oklab, var(--background) 55%, transparent);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid color-mix(in oklab, var(--foreground) 8%, transparent);
+}
+
+.glass-strong {
+  background-color: color-mix(in oklab, var(--background) 78%, transparent);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid color-mix(in oklab, var(--foreground) 10%, transparent);
+}
+
+.reader-prose {
+  font-family: 'Iowan Old Style', 'Palatino', 'Georgia', 'Charter', serif;
+  font-feature-settings: "kern", "liga", "onum";
+  letter-spacing: -0.003em;
+}
+
+.reader-bg-aurora {
+  background-image:
+    radial-gradient(1200px 600px at 10% -10%, color-mix(in oklab, var(--primary) 14%, transparent), transparent 60%),
+    radial-gradient(900px 500px at 110% 10%, color-mix(in oklab, var(--chart-4) 12%, transparent), transparent 60%),
+    radial-gradient(800px 600px at 50% 120%, color-mix(in oklab, var(--chart-1) 10%, transparent), transparent 60%);
+}
+
+.scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--foreground) 18%, transparent);
+  border-radius: 999px;
+}
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+@keyframes reader-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-reader-fade-up { animation: reader-fade-up 0.4s ease-out both; }

@@ -526,8 +526,19 @@ export default function PdfReaderPage() {
 
   const zoomRatio = zoomScale / Math.max(0.001, renderScale)
 
+  useEffect(() => {
+    const prevBodyOverflow = document.body.style.overflow
+    const prevHtmlOverflow = document.documentElement.style.overflow
+    document.body.style.overflow = 'hidden'
+    document.documentElement.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prevBodyOverflow
+      document.documentElement.style.overflow = prevHtmlOverflow
+    }
+  }, [])
+
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[radial-gradient(circle_at_10%_0%,rgba(56,189,248,0.1),transparent_35%),radial-gradient(circle_at_90%_0%,rgba(168,85,247,0.1),transparent_35%),#020617] text-slate-100">
+    <div className="fixed inset-0 flex h-screen w-screen flex-col overflow-hidden bg-[#030712] text-slate-100">
       <div className={`pointer-events-none fixed left-1/2 top-2 z-30 w-[min(720px,94vw)] -translate-x-1/2 transition-all duration-300 sm:top-3 ${isFullscreen ? 'translate-y-[-18px] opacity-0' : 'translate-y-0 opacity-100'}`}>
         <div className="overflow-hidden rounded-full border border-white/15 bg-slate-900/75 backdrop-blur-xl">
           <div className="h-1.5 rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-500 transition-all duration-300 ease-out" style={{ width: `${progressPercentage}%` }} />
@@ -550,10 +561,10 @@ export default function PdfReaderPage() {
         </div>
       </header>
 
-      {error ? <p className="px-3 pb-2 pt-14 text-xs text-rose-300 sm:px-6 sm:pt-16">{error}</p> : null}
-      {!error && continueFromPage && continueFromPage > 1 ? <p className="px-3 pb-2 pt-14 text-xs text-emerald-300 sm:px-6 sm:pt-16">Continue from page {continueFromPage}</p> : null}
+      {error ? <p className="px-3 pb-1 pt-8 text-xs text-rose-300 sm:px-6 sm:pt-10">{error}</p> : null}
+      {!error && continueFromPage && continueFromPage > 1 ? <p className="px-3 pb-1 pt-8 text-xs text-emerald-300 sm:px-6 sm:pt-10">Continue from page {continueFromPage}</p> : null}
 
-      <main className={`min-h-0 flex-1 px-2 pb-2 pt-10 transition-all duration-500 sm:px-4 sm:pb-4 sm:pt-14 ${isFullscreen ? 'pt-2 sm:pt-3' : ''}`}>
+      <main className={`min-h-0 flex-1 pt-0 transition-all duration-500 ${isFullscreen ? 'pt-0' : ''}`}>
         {loadingProgress ? (
           <div className="animate-[fadeIn_220ms_ease-out]">
             <ReaderSkeleton />
@@ -561,14 +572,14 @@ export default function PdfReaderPage() {
         ) : resolvedPdfUrl ? (
           <div
             ref={readerFrameRef}
-            className={`group relative mx-auto min-h-0 w-full transition-all duration-500 ease-in-out ${isFullscreen ? 'h-screen max-w-none rounded-none bg-slate-950' : 'h-full max-w-4xl rounded-3xl'}`}
+            className="group relative min-h-0 h-full w-full transition-all duration-500 ease-in-out bg-slate-950"
             onMouseMove={revealControls}
           >
             <button type="button" onClick={toggleFullscreen} aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'} className={`absolute right-3 top-3 z-20 rounded-full border border-white/20 bg-slate-900/60 p-1.5 text-slate-100 shadow-lg backdrop-blur-xl transition-all duration-300 hover:scale-105 hover:bg-slate-800/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 sm:right-4 sm:top-4 sm:p-2 ${controlsVisible ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0 pointer-events-none'}`}>
               <MdFullscreen className="h-5 w-5 sm:h-6 sm:w-6" />
             </button>
 
-            <div className={`absolute right-3 top-14 z-30 w-[min(92vw,240px)] rounded-xl border border-white/15 bg-slate-900/60 p-2.5 shadow-xl backdrop-blur-xl transition-all duration-300 sm:right-4 sm:top-16 ${controlsVisible ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0 pointer-events-none'}`}>
+            <div className={`absolute right-3 top-10 z-30 w-[min(92vw,240px)] rounded-xl border border-white/15 bg-slate-900/60 p-2.5 shadow-xl backdrop-blur-xl transition-all duration-300 sm:right-4 sm:top-10 ${controlsVisible ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0 pointer-events-none'}`}>
               <div className="flex items-center gap-2">
                 <button type="button" onClick={() => applyZoom(zoomScale - ZOOM_STEP)} className="h-8 w-8 rounded-md border border-white/20 bg-white/10 text-sm font-semibold text-white hover:bg-white/15">-</button>
                 <button type="button" onClick={() => applyZoom(zoomScale + ZOOM_STEP)} className="h-8 w-8 rounded-md border border-white/20 bg-white/10 text-sm font-semibold text-white hover:bg-white/15">+</button>
@@ -582,7 +593,7 @@ export default function PdfReaderPage() {
               ref={scrollContainerRef}
               onClick={revealControls}
               onTouchStart={revealControls}
-              className={`h-full w-full overflow-x-auto overflow-y-auto border border-white/10 bg-slate-950/65 px-2 py-4 shadow-[0_30px_90px_rgba(2,6,23,0.72)] transition-all duration-500 ease-in-out sm:px-8 sm:py-10 ${isFullscreen ? 'rounded-none border-x-0 border-b-0 pt-12 sm:pt-16 shadow-none' : 'rounded-3xl'}`}
+              className="h-full w-full overflow-x-auto overflow-y-auto bg-slate-950 transition-all duration-500 ease-in-out pt-0"
               style={{ touchAction: 'pan-x pan-y pinch-zoom' }}
             >
               {pdfLoading ? <div className="mb-4 h-3 w-40 animate-pulse rounded bg-white/10" /> : null}
@@ -593,9 +604,9 @@ export default function PdfReaderPage() {
                 const pageNumber = windowRange.start + offset
                 const index = pageNumber - 1
                 return (
-                  <section key={`page-${pageNumber}`} ref={(node) => { pagesRef.current[index] = node }} className="mx-auto mb-6 w-fit max-w-none rounded-2xl border border-white/10 bg-slate-900/80 p-1.5 shadow-[0_18px_50px_rgba(0,0,0,0.45)] sm:p-4" style={{ minHeight: pageHeightsRef.current[index] || DEFAULT_PAGE_HEIGHT }}>
+                  <section key={`page-${pageNumber}`} ref={(node) => { pagesRef.current[index] = node }} className="mb-6 w-fit max-w-none" style={{ minHeight: pageHeightsRef.current[index] || DEFAULT_PAGE_HEIGHT }}>
                     <div style={{ transform: `scale(${zoomRatio})`, transformOrigin: 'center top' }}>
-                      <canvas ref={(node) => { pageCanvasesRef.current[pageNumber] = node }} className="block rounded-lg bg-white" />
+                      <canvas ref={(node) => { pageCanvasesRef.current[pageNumber] = node }} className="block bg-white" />
                     </div>
                   </section>
                 )
@@ -616,4 +627,3 @@ export default function PdfReaderPage() {
     </div>
   )
 }
-
