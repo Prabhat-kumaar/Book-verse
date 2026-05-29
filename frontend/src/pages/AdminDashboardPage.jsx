@@ -41,7 +41,7 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     const fetchAdminStats = async () => {
       try {
-        const response = await apiClient.get('/analytics/admin')
+        const response = await apiClient.get('/api/analytics/admin')
         if (response.data?.success) {
           setData(response.data)
         } else {
@@ -99,7 +99,7 @@ export default function AdminDashboardPage() {
                 <StatCard 
                   title="Total Users" 
                   value={data?.totalUsers ?? 0} 
-                  hint="Live user registrations" 
+                  hint={data ? `Today: +${data.newUsersToday ?? 0} | This Week: +${data.newUsersThisWeek ?? 0}` : "Live registrations"} 
                   icon={<MdPeople className="h-6 w-6" />} 
                 />
                 <StatCard 
@@ -130,7 +130,7 @@ export default function AdminDashboardPage() {
             {/* Most Read Book Card */}
             <motion.article
               whileHover={{ y: -3 }}
-              className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-[#111827]/75 to-[#0b0f19]/80 p-6 shadow-lg backdrop-blur-xl"
+              className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-[#111827]/75 to-[#0b0f19]/80 p-6 shadow-lg backdrop-blur-xl"
             >
               <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition duration-500 group-hover:opacity-100 [background:radial-gradient(circle_at_top_right,rgba(147,51,234,0.06),transparent_50%)]" />
               
@@ -143,39 +143,34 @@ export default function AdminDashboardPage() {
                 
                 {loading ? (
                   <div className="mt-6 space-y-3 animate-pulse">
-                    <div className="h-6 w-3/4 rounded bg-white/10" />
-                    <div className="h-4 w-1/2 rounded bg-white/10" />
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="h-10 rounded bg-white/10" />
+                    ))}
                   </div>
-                ) : data?.mostReadBook ? (
-                  <div className="mt-6 flex gap-4 items-center">
-                    <div className="flex h-24 w-18 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500/30 to-purple-500/30 border border-indigo-400/20 shadow-lg text-center p-2">
-                      <p className="line-clamp-2 text-[9px] font-bold text-indigo-200 uppercase">{data.mostReadBook.title}</p>
-                    </div>
-                    <div>
-                      <h4 className="text-xl font-bold text-white line-clamp-1 group-hover:text-indigo-200 transition-colors leading-snug">{data.mostReadBook.title}</h4>
-                      <p className="text-sm text-slate-400 mt-0.5">by {data.mostReadBook.author}</p>
-                      
-                      <div className="mt-3 flex items-center gap-2 rounded-full border border-indigo-500/10 bg-indigo-500/5 px-3 py-1 w-max">
-                        <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                ) : data?.popularBooks && data.popularBooks.length > 0 ? (
+                  <div className="mt-5 space-y-3">
+                    {data.popularBooks.map((book, idx) => (
+                      <div key={book.id} className="flex items-center justify-between border-b border-white/5 pb-2 last:border-0 last:pb-0">
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-indigo-500/10 text-xs font-bold text-indigo-300">
+                            #{idx + 1}
+                          </span>
+                          <div className="min-w-0">
+                            <h4 className="truncate text-sm font-bold text-white max-w-[180px] sm:max-w-[240px]" title={book.title}>{book.title}</h4>
+                            <p className="truncate text-[11px] text-slate-400">{book.author}</p>
+                          </div>
+                        </div>
+                        <span className="rounded-full bg-indigo-500/10 px-2.5 py-0.5 text-xs font-semibold text-indigo-300">
+                          🔥 {book.openCount} opens
                         </span>
-                        <p className="text-xs font-semibold text-indigo-300">{data.mostReadBook.openCount} opens in reader</p>
                       </div>
-                    </div>
+                    ))}
                   </div>
                 ) : (
                   <div className="mt-8 text-center text-slate-500 text-sm">
                     No reading history recorded yet.
                   </div>
                 )}
-              </div>
-
-              <div className="mt-6 border-t border-white/5 pt-4">
-                <div className="flex items-center justify-between text-xs text-slate-400">
-                  <span>EPUB Conversion Efficiency</span>
-                  <span className="font-semibold text-indigo-400">100% (Lossless)</span>
-                </div>
               </div>
             </motion.article>
 
@@ -193,7 +188,7 @@ export default function AdminDashboardPage() {
               <div className="mt-5 overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="border-b border-white/10 text-slate-400 font-semibold uppercase tracking-wider">
+                    <tr className="border-b border-white/10 text-slate-400 font-semibold uppercase tracking-wider font-semibold">
                       <th className="pb-3">Title</th>
                       <th className="pb-3">Author</th>
                       <th className="pb-3 text-right">Category</th>
@@ -230,6 +225,139 @@ export default function AdminDashboardPage() {
                   </tbody>
                 </table>
               </div>
+            </motion.article>
+          </section>
+
+          {/* Bottom Custom Sections */}
+          <section className="mt-8 grid gap-6 xl:grid-cols-2">
+            
+            {/* Recent Registrations Card */}
+            <motion.article
+              whileHover={{ y: -3 }}
+              className="rounded-2xl border border-white/10 bg-gradient-to-b from-[#111827]/75 to-[#0b0f19]/80 p-6 shadow-lg backdrop-blur-xl"
+            >
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <MdPeople className="h-5 w-5 text-indigo-400" />
+                Recent User Registrations
+              </h3>
+              <p className="mt-1 text-xs text-slate-400">Latest 5 readers who joined Readify AI</p>
+
+              <div className="mt-5 overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-white/10 text-slate-400 font-semibold uppercase tracking-wider font-semibold">
+                      <th className="pb-3">Username</th>
+                      <th className="pb-3">Email</th>
+                      <th className="pb-3">Role</th>
+                      <th className="pb-3 text-right">Joined At</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      [...Array(3)].map((_, i) => (
+                        <tr key={i} className="animate-pulse">
+                          <td className="py-3"><div className="h-4 w-24 rounded bg-white/10" /></td>
+                          <td className="py-3"><div className="h-4 w-28 rounded bg-white/10" /></td>
+                          <td className="py-3"><div className="h-4 w-12 rounded bg-white/10" /></td>
+                          <td className="py-3 text-right"><div className="h-4 w-16 ml-auto rounded bg-white/10" /></td>
+                        </tr>
+                      ))
+                    ) : data?.recentRegistrations && data.recentRegistrations.length > 0 ? (
+                      data.recentRegistrations.map((user) => (
+                        <tr key={user.id} className="border-b border-white/5 hover:bg-white/[0.01] transition-colors">
+                          <td className="py-3 font-semibold text-white truncate max-w-[120px]">{user.username}</td>
+                          <td className="py-3 text-slate-300 truncate max-w-[140px]">{user.email}</td>
+                          <td className="py-3">
+                            <span className={`inline-block rounded px-2 py-0.5 font-semibold text-[10px] ${
+                              user.role === 'admin' 
+                                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/10' 
+                                : 'bg-blue-500/20 text-blue-300 border border-blue-500/10'
+                            }`}>
+                              {user.role}
+                            </span>
+                          </td>
+                          <td className="py-3 text-right text-slate-400">
+                            {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="4" className="py-8 text-center text-slate-500">
+                          No users registered yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </motion.article>
+
+            {/* AI Genre Book Suggestions Card */}
+            <motion.article
+              whileHover={{ y: -3 }}
+              className="rounded-2xl border border-white/10 bg-gradient-to-b from-[#111827]/75 to-[#0b0f19]/80 p-6 shadow-lg backdrop-blur-xl"
+            >
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <span>🤖</span>
+                AI Genre Suggestions
+              </h3>
+              <p className="mt-1 text-xs text-slate-400">Recommendations based on what genres users read most</p>
+
+              {loading ? (
+                <div className="mt-6 space-y-4 animate-pulse">
+                  <div className="h-6 w-1/2 rounded bg-white/10" />
+                  <div className="h-20 rounded bg-white/10" />
+                </div>
+              ) : data?.aiSuggestions ? (
+                <div className="mt-5">
+                  {/* Top genres badge list */}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <span className="text-xs text-slate-400 self-center mr-1">Top Genres:</span>
+                    {data.aiSuggestions.topGenres && data.aiSuggestions.topGenres.length > 0 ? (
+                      data.aiSuggestions.topGenres.map((g) => (
+                        <span key={g.category} className="rounded-full bg-violet-500/10 px-2.5 py-1 text-xs font-semibold text-violet-300 border border-violet-500/10 shadow-[0_0_15px_rgba(139,92,246,0.1)]">
+                          {g.category} ({g.count} reads)
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-slate-500 italic">No reading activity recorded yet. Defaulting to presets.</span>
+                    )}
+                  </div>
+
+                  {/* Recommended book suggestions */}
+                  <div className="space-y-3">
+                    {data.aiSuggestions.books && data.aiSuggestions.books.length > 0 ? (
+                      data.aiSuggestions.books.map((book) => (
+                        <div key={book.id} className="flex gap-3 items-center border-b border-white/5 pb-2 last:border-0 last:pb-0 hover:bg-white/[0.01] transition-colors p-1 rounded-lg">
+                          <div className="h-12 w-9 flex-shrink-0 overflow-hidden rounded bg-slate-800">
+                            {book.thumbnail ? (
+                              <img src={book.thumbnail} alt={book.title} className="h-full w-full object-cover animate-[fadeIn_200ms_ease]" />
+                            ) : (
+                              <div className="grid h-full place-items-center text-[8px] text-slate-500 text-center font-bold">{book.title}</div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h4 className="truncate text-xs font-bold text-white leading-tight">{book.title}</h4>
+                            <p className="truncate text-[10px] text-slate-400 mt-0.5">by {book.author}</p>
+                          </div>
+                          <span className="rounded bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-300 border border-violet-500/10 shrink-0">
+                            {book.category}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-6 text-slate-500 text-xs">
+                        No books available in recommended genres.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-8 text-center text-slate-500 text-sm">
+                  No recommendation profile generated.
+                </div>
+              )}
             </motion.article>
           </section>
         </main>
