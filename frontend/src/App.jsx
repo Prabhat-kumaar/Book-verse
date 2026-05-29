@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { Navigate, Outlet, Route, Routes, useNavigate } from 'react-router-dom'
 import { Suspense, lazy, useEffect, useState } from 'react'
 import { SavedBooksProvider } from './context/SavedBooksContext'
 import apiClient from './lib/apiClient'
@@ -119,11 +119,14 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignUpPage />} />
             <Route path="/admin/login" element={<Navigate to="/login" replace />} />
-            <Route path="/admin/dashboard" element={<RequireAdmin><AdminDashboardPage /></RequireAdmin>} />
-            <Route path="/admin/add-book" element={<RequireAdmin><AdminAddBookPage /></RequireAdmin>} />
-            <Route path="/admin/manage-books" element={<RequireAdmin><AdminManageBooksPage /></RequireAdmin>} />
-            <Route path="/admin/analytics" element={<RequireAdmin><AdminAnalyticsPage /></RequireAdmin>} />
-            <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="/admin" element={<RequireAdmin><Outlet /></RequireAdmin>}>
+              <Route path="dashboard" element={<AdminDashboardPage />} />
+              <Route path="add-book" element={<AdminAddBookPage />} />
+              <Route path="manage-books" element={<AdminManageBooksPage />} />
+              <Route path="analytics" element={<AdminAnalyticsPage />} />
+              <Route index element={<Navigate to="/admin/dashboard" replace />} />
+              <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
+            </Route>
             <Route path="/me" element={<RequireAuth><MainLayout><ProfileDashboardPage /></MainLayout></RequireAuth>} />
             <Route path="/saved-books" element={<RequireAuth><MainLayout><SavedBooksPage /></MainLayout></RequireAuth>} />
             <Route path="*" element={<MainLayout><HomePage /></MainLayout>} />

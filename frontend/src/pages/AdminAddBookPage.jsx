@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 import apiClient from '../lib/apiClient'
 import AdminSidebar from '../components/AdminSidebar'
+import CategoryCombobox from '../components/CategoryCombobox'
 
 const categories = ['Programming', 'AI', 'Business', 'Self-Help', 'Design', 'Productivity']
 const difficulties = ['Beginner', 'Intermediate', 'Advanced']
@@ -246,17 +247,11 @@ export default function AdminAddBookPage() {
               </Field>
 
               <Field label="Category" error={errors.category}>
-                <select
+                <CategoryCombobox
                   value={form.category}
-                  onChange={(e) => onChange('category', e.target.value)}
-                  className={inputClass}
-                >
-                  {categories.map((category) => (
-                    <option key={category} value={category} className="bg-slate-900">
-                      {category}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => onChange('category', val)}
+                  placeholder="e.g. Programming, Finance, Fiction"
+                />
               </Field>
 
               <Field label="Difficulty" error={errors.difficulty}>

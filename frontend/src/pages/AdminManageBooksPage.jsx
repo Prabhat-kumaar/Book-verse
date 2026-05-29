@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 import apiClient from '../lib/apiClient'
 import AdminSidebar from '../components/AdminSidebar'
+import CategoryCombobox from '../components/CategoryCombobox'
 import { applyThumbnailFallback, getBookThumbnailUrl, normalizeMediaUrl } from '../lib/mediaUrls'
 
 const inputClass =
@@ -301,11 +302,10 @@ export default function AdminManageBooksPage() {
                 placeholder="Author"
                 className={inputClass}
               />
-              <input
+              <CategoryCombobox
                 value={editForm.category}
-                onChange={(e) => setEditForm((prev) => ({ ...prev, category: e.target.value }))}
+                onChange={(val) => setEditForm((prev) => ({ ...prev, category: val }))}
                 placeholder="Category"
-                className={inputClass}
               />
               <input
                 value={editForm.fileUrl}
