@@ -212,6 +212,31 @@ const updateReadingAnalytics = async ({
         booksCompleted: (analytics.booksCompleted || 0) + (becameCompleted ? 1 : 0),
         lastSessionAt: isNewSession ? now : analytics.lastSessionAt || null,
     };
+
+    // Validate daily statistics state before applying update to prevent impossible/seeded data
+    const dailyRecord = await ReadingAnalyticsDay.findOne({ user: user._id, date: todayStart });
+    const newPagesRead = (dailyRecord?.pagesRead || 0) + pageDelta;
+    const newReadingSeconds = (dailyRecord?.readingSeconds || 0) + safeReadingSeconds;
+    const newSessions = (dailyRecord?.sessions || 0) + (isNewSession ? 1 : 0);
+
+    // Rule 1: If pagesRead > 100 AND readingSeconds === 0, reject the update
+    if (newPagesRead > 100 && newReadingSeconds === 0) {
+        throw new Error('Impossible data: Cannot read more than 100 pages in 0 seconds.');
+    }
+
+    // Rule 2: If sessions > 0 AND readingSeconds === 0, reject the update
+    if (newSessions > 0 && newReadingSeconds === 0) {
+        throw new Error('Impossible data: Cannot log active sessions with 0 reading seconds.');
+    }
+
+    // Rule 5: Minimum readingSeconds per page rule (at least 2 seconds per page)
+    if (newPagesRead > 0) {
+        const secondsPerPage = newReadingSeconds / newPagesRead;
+        if (secondsPerPage < 2) {
+            throw new Error('Impossible data: Human reading speed limit violated (minimum 2 seconds per page).');
+        }
+    }
+
     await user.save();
 
     await ReadingAnalyticsDay.findOneAndUpdate(

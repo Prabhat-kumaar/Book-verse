@@ -3,6 +3,7 @@ const Book = require('../models/Book');
 const Progress = require('../models/Progress');
 const SiteStats = require('../models/SiteStats');
 const ReadingAnalyticsDay = require('../models/ReadingAnalyticsDay');
+const SiteVisit = require('../models/SiteVisit');
 
 const atDayStart = (dateLike) => {
     const d = new Date(dateLike);
@@ -102,11 +103,21 @@ const getOverallAnalytics = async (req, res, next) => {
 
 const recordVisit = async (req, res, next) => {
     try {
+        // Increment global visits
         const stats = await SiteStats.findOneAndUpdate(
             { key: 'global' },
             { $inc: { visits: 1 } },
             { upsert: true, new: true, setDefaultsOnInsert: true }
         );
+
+        // Increment daily visits
+        const today = atDayStart(new Date());
+        await SiteVisit.findOneAndUpdate(
+            { date: today },
+            { $inc: { count: 1 } },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+
         res.json({ success: true, visits: stats.visits });
     } catch (error) {
         next(error);
@@ -128,11 +139,65 @@ const getAdminAnalytics = async (req, res, next) => {
             lastReadAt: { $gte: todayStart }
         });
 
+        // New Users Today & This Week
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        oneWeekAgo.setHours(0, 0, 0, 0);
+
+        const newUsersToday = await User.countDocuments({
+            createdAt: { $gte: todayStart }
+        });
+
+        const newUsersThisWeek = await User.countDocuments({
+            createdAt: { $gte: oneWeekAgo }
+        });
+
         // Most Read Book based on openCount
         const mostReadBook = await Book.findOne().sort({ openCount: -1 });
 
+        // Top 5 Popular Books by openCount
+        const popularBooks = await Book.find().sort({ openCount: -1 }).limit(5);
+
         // Recent Uploads (last 5 books)
         const recentUploads = await Book.find().sort({ createdAt: -1 }).limit(5);
+
+        // Recent 5 Registrations
+        const recentRegistrations = await User.find()
+            .sort({ createdAt: -1 })
+            .limit(5)
+            .select('username email role createdAt');
+
+        // AI Genre Suggestions based on aggregated progress reading categories (genres)
+        const topGenres = await Progress.aggregate([
+            {
+                $lookup: {
+                    from: 'books',
+                    localField: 'book',
+                    foreignField: '_id',
+                    as: 'bookInfo'
+                }
+            },
+            { $unwind: '$bookInfo' },
+            {
+                $group: {
+                    _id: '$bookInfo.category',
+                    count: { $sum: 1 },
+                    totalTime: { $sum: '$readingTime' }
+                }
+            },
+            { $sort: { count: -1, totalTime: -1 } },
+            { $limit: 3 }
+        ]);
+
+        const categoriesToSuggest = topGenres.length > 0
+            ? topGenres.map(g => g._id)
+            : ['Programming', 'AI', 'Business']; // Fallbacks if no reading activity yet
+
+        const suggestedBooks = await Book.find({
+            category: { $in: categoriesToSuggest }
+        })
+        .sort({ openCount: -1, createdAt: -1 })
+        .limit(5);
 
         res.json({
             success: true,
@@ -140,18 +205,219 @@ const getAdminAnalytics = async (req, res, next) => {
             totalBooks,
             websiteVisits,
             activeReadersTodayCount: activeReadersToday.length,
+            newUsersToday,
+            newUsersThisWeek,
             mostReadBook: mostReadBook ? {
                 title: mostReadBook.title,
                 author: mostReadBook.author,
                 openCount: mostReadBook.openCount || 0
             } : null,
+            popularBooks: popularBooks.map(b => ({
+                id: b._id,
+                title: b.title,
+                author: b.author,
+                openCount: b.openCount || 0
+            })),
             recentUploads: recentUploads.map(b => ({
                 id: b._id,
                 title: b.title,
                 author: b.author,
                 category: b.category,
                 createdAt: b.createdAt
-            }))
+            })),
+            recentRegistrations: recentRegistrations.map(u => ({
+                id: u._id,
+                username: u.username,
+                email: u.email || 'N/A',
+                role: u.role,
+                createdAt: u.createdAt
+            })),
+            aiSuggestions: {
+                topGenres: topGenres.map(g => ({ category: g._id, count: g.count })),
+                books: suggestedBooks.map(b => ({
+                    id: b._id,
+                    title: b.title,
+                    author: b.author,
+                    category: b.category,
+                    thumbnail: b.thumbnail,
+                    openCount: b.openCount || 0
+                }))
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const getAdminDetails = async (req, res, next) => {
+    try {
+
+        // 1. Monthly Reads (total pages read this calendar month)
+        const startOfMonth = atDayStart(new Date());
+        startOfMonth.setDate(1);
+
+        const startOfLastMonth = new Date(startOfMonth);
+        startOfLastMonth.setMonth(startOfLastMonth.getMonth() - 1);
+        const endOfLastMonth = new Date(startOfMonth);
+        endOfLastMonth.setMilliseconds(-1);
+
+        const [monthlyPagesResult, lastMonthPagesResult] = await Promise.all([
+            ReadingAnalyticsDay.aggregate([
+                { $match: { date: { $gte: startOfMonth } } },
+                { $group: { _id: null, totalPages: { $sum: '$pagesRead' } } }
+            ]),
+            ReadingAnalyticsDay.aggregate([
+                { $match: { date: { $gte: startOfLastMonth, $lte: endOfLastMonth } } },
+                { $group: { _id: null, totalPages: { $sum: '$pagesRead' } } }
+            ])
+        ]);
+
+        const monthlyPages = monthlyPagesResult[0]?.totalPages || 0;
+        const lastMonthPages = lastMonthPagesResult[0]?.totalPages || 0;
+        let monthlyReadsDiff = '0% vs last month';
+        if (lastMonthPages > 0) {
+            const diff = (((monthlyPages - lastMonthPages) / lastMonthPages) * 100).toFixed(1);
+            monthlyReadsDiff = `${diff >= 0 ? '+' : ''}${diff}% vs last month`;
+        } else if (monthlyPages > 0) {
+            monthlyReadsDiff = `+100.0% vs last month`;
+        }
+
+        // 2. Completion Rate (percentage of completed books across all users)
+        const totalProgress = await Progress.countDocuments();
+        const completedProgress = await Progress.countDocuments({ completed: true });
+        const completionRate = totalProgress > 0 ? Math.round((completedProgress / totalProgress) * 100) : 0;
+        const completionHint = totalProgress > 0 ? `${completedProgress} of ${totalProgress} books` : 'No reading sessions';
+
+        // 3. Avg Session (average reading session time in minutes)
+        const sessionStats = await ReadingAnalyticsDay.aggregate([
+            { $match: { sessions: { $gt: 0 } } },
+            {
+                $group: {
+                    _id: null,
+                    totalSeconds: { $sum: '$readingSeconds' },
+                    totalSessionsCount: { $sum: '$sessions' }
+                }
+            }
+        ]);
+        const totalSeconds = sessionStats[0]?.totalSeconds || 0;
+        const totalSessions = sessionStats[0]?.totalSessionsCount || 1;
+        const avgSessionMinutes = Math.round((totalSeconds / totalSessions) / 60);
+        const avgSessionHint = totalSeconds > 0 ? `Based on ${totalSessions} sessions` : 'No sessions recorded';
+
+        // 4. Returning Readers (percentage of active readers with > 1 total session)
+        const totalUniqueUsers = await Progress.distinct('userId');
+        const userSessionCounts = await ReadingAnalyticsDay.aggregate([
+            {
+                $group: {
+                    _id: '$user',
+                    totalSessions: { $sum: '$sessions' }
+                }
+            },
+            { $match: { totalSessions: { $gt: 1 } } }
+        ]);
+        const returningUsersCount = userSessionCounts.length;
+        const returningPercentage = totalUniqueUsers.length > 0
+            ? Math.round((returningUsersCount / totalUniqueUsers.length) * 100)
+            : 0;
+        const returningHint = totalUniqueUsers.length > 0
+            ? `${returningUsersCount} of ${totalUniqueUsers.length} total readers`
+            : 'No active readers';
+
+        // 5. Visits Chart (Day, Month, Year toggles)
+        // Day Series (Last 30 Days)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        thirtyDaysAgo.setHours(0, 0, 0, 0);
+
+        const dayData = await SiteVisit.find({
+            date: { $gte: thirtyDaysAgo }
+        }).sort({ date: 1 });
+
+        const dayMap = new Map(dayData.map(v => [v.date.toISOString().slice(0, 10), v.count]));
+        const daySeries = [];
+        for (let i = 29; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            d.setHours(0, 0, 0, 0);
+            const key = d.toISOString().slice(0, 10);
+            daySeries.push({
+                label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                visits: dayMap.get(key) || 0
+            });
+        }
+
+        // Month Series (Last 12 Months)
+        const twelveMonthsAgo = new Date();
+        twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+        twelveMonthsAgo.setDate(1);
+        twelveMonthsAgo.setHours(0, 0, 0, 0);
+
+        const monthData = await SiteVisit.aggregate([
+            { $match: { date: { $gte: twelveMonthsAgo } } },
+            {
+                $group: {
+                    _id: {
+                        year: { $year: '$date' },
+                        month: { $month: '$date' }
+                    },
+                    visits: { $sum: '$count' }
+                }
+            },
+            { $sort: { '_id.year': 1, '_id.month': 1 } }
+        ]);
+
+        const monthMap = new Map(monthData.map(m => [`${m._id.year}-${String(m._id.month).padStart(2, '0')}`, m.visits]));
+        const monthSeries = [];
+        for (let i = 11; i >= 0; i--) {
+            const d = new Date();
+            d.setMonth(d.getMonth() - i);
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            monthSeries.push({
+                label: d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+                visits: monthMap.get(key) || 0
+            });
+        }
+
+        // Year Series (Last 5 Years)
+        const fiveYearsAgo = new Date();
+        fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
+        fiveYearsAgo.setHours(0, 0, 0, 0);
+
+        const yearData = await SiteVisit.aggregate([
+            { $match: { date: { $gte: fiveYearsAgo } } },
+            {
+                $group: {
+                    _id: { year: { $year: '$date' } },
+                    visits: { $sum: '$count' }
+                }
+            },
+            { $sort: { '_id.year': 1 } }
+        ]);
+
+        const yearMap = new Map(yearData.map(y => [y._id.year, y.visits]));
+        const yearSeries = [];
+        const currentYear = new Date().getFullYear();
+        for (let i = 4; i >= 0; i--) {
+            const y = currentYear - i;
+            yearSeries.push({
+                label: String(y),
+                visits: yearMap.get(y) || 0
+            });
+        }
+
+        res.json({
+            success: true,
+            overview: {
+                monthlyReads: { value: monthlyPages.toLocaleString(), hint: monthlyReadsDiff },
+                completionRate: { value: `${completionRate}%`, hint: completionHint },
+                avgSession: { value: `${avgSessionMinutes}m`, hint: avgSessionHint },
+                returningReaders: { value: `${returningPercentage}%`, hint: returningHint }
+            },
+            charts: {
+                day: daySeries,
+                month: monthSeries,
+                year: yearSeries
+            }
         });
     } catch (error) {
         next(error);
@@ -164,4 +430,5 @@ module.exports = {
     getOverallAnalytics,
     recordVisit,
     getAdminAnalytics,
+    getAdminDetails,
 };
