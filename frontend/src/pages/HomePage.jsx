@@ -205,42 +205,60 @@ export default function HomePage() {
       initial={{ opacity: 0, y: 28 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.85, ease: 'easeOut' }}
-      className="relative overflow-hidden py-4 sm:py-10"
+      className="relative overflow-hidden py-4 sm:py-10 animate-[fadeIn_300ms_ease-out]"
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.05),transparent_42%),radial-gradient(circle_at_80%_10%,rgba(132,145,255,0.04),transparent_33%)]" />
 
-      <div className="relative space-y-4 px-2.5 md:hidden">
-        <section className="relative overflow-hidden rounded-3xl hero">
-          {loading ? <HeroSkeleton /> : null}
-          <div className="relative h-[48vw] min-h-[230px] max-h-[340px] w-full overflow-hidden rounded-3xl bg-slate-950 flex items-center justify-center">
+      {/* Shared Premium Hero featured book section */}
+      <div className="px-2.5 sm:px-0 mb-6">
+        <section className="relative overflow-hidden rounded-3xl hero border border-white/10 bg-gradient-to-br from-[#1e1b4b] via-[#311042] to-[#450a26] shadow-[0_16px_45px_rgba(0,0,0,0.4)] md:h-[280px] lg:h-[300px] flex flex-col md:flex-row items-stretch">
+          {/* Left side: book cover (40% width, object-cover) */}
+          <div className="relative w-full md:w-[40%] h-[220px] md:h-auto overflow-hidden shrink-0">
             {featuredBook?.thumbnail ? (
-              <img loading="lazy" src={getBookThumbnailUrl(featuredBook)} onError={applyThumbnailFallback} alt={featuredBook.title} className="h-full w-full object-contain bg-slate-950/40 opacity-90" />
+              <img 
+                loading="lazy" 
+                src={getBookThumbnailUrl(featuredBook)} 
+                onError={applyThumbnailFallback} 
+                alt={featuredBook.title} 
+                className="h-full w-full object-cover object-center" 
+              />
             ) : (
-              <div className="grid h-full w-full place-items-center bg-gradient-to-br from-indigo-600/60 to-violet-700/60 px-6 text-center text-2xl font-black text-white">
+              <div className="grid h-full w-full place-items-center bg-gradient-to-br from-indigo-600 to-violet-700 px-6 text-center text-xl font-black text-white">
                 {featuredBook?.title || 'Featured Book'}
               </div>
             )}
-            <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black via-black/85 via-black/30 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 p-4 pb-5">
-              <h2 className="line-clamp-2 text-xl font-extrabold tracking-tight leading-tight text-white">{featuredBook?.title || 'Featured Book'}</h2>
-              <p className="mt-0.5 line-clamp-1 text-[11px] text-slate-300 font-medium">{featuredBook?.author || 'Readify AI Pick'}</p>
-              <div className="mt-2.5 flex gap-2.5">
-                <a
-                  href={featuredBook ? buildReaderHash(featuredBook) : '#'}
-                  className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 px-4 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-white border-none shadow-[0_4px_10px_rgba(219,39,119,0.3)] transition-all duration-300 active:scale-95 flex items-center justify-center"
-                >
-                  Read Now
-                </a>
-                <button
-                  onClick={() => navigate('/saved-books')}
-                  className="border border-white/20 bg-white/10 hover:bg-white/20 rounded-full px-4 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-white transition-all duration-300 active:scale-95 flex items-center justify-center"
-                >
-                  Saved Books
-                </button>
-              </div>
+            <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-transparent to-black/40 pointer-events-none" />
+          </div>
+
+          {/* Right side: title, author, buttons (60% width) */}
+          <div className="relative flex-1 p-5 md:p-8 flex flex-col justify-center bg-slate-950/40 backdrop-blur-sm">
+            <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-pink-400">Featured Pick</span>
+            <h2 className="mt-1.5 line-clamp-2 text-xl md:text-2xl font-black text-white leading-tight tracking-tight">
+              {featuredBook?.title || 'Featured Book'}
+            </h2>
+            <p className="mt-1 line-clamp-1 text-xs md:text-sm text-slate-300 font-medium">
+              by {featuredBook?.author || 'Readify AI Pick'}
+            </p>
+            
+            <div className="mt-5 flex flex-wrap gap-3">
+              <a
+                href={featuredBook ? buildReaderHash(featuredBook) : '#'}
+                className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 px-5 py-2.5 text-xs font-extrabold uppercase tracking-wider text-white border-none shadow-[0_4px_14px_rgba(219,39,119,0.3)] transition-all duration-300 active:scale-95 flex items-center justify-center"
+              >
+                Read Now
+              </a>
+              <button
+                onClick={() => navigate('/saved-books')}
+                className="border border-white/20 bg-white/10 hover:bg-white/20 rounded-full px-5 py-2.5 text-xs font-extrabold uppercase tracking-wider text-white transition-all duration-300 active:scale-95 flex items-center justify-center"
+              >
+                Saved Books
+              </button>
             </div>
           </div>
         </section>
+      </div>
+
+      <div className="relative space-y-4 px-2.5 md:hidden">
 
         <section id="continue-reading">
           <div className="mb-1.5 mt-2 flex items-center justify-between px-0.5">

@@ -13,6 +13,11 @@ const siteVisitSchema = new mongoose.Schema(
             default: 0,
             min: 0,
         },
+        uniqueCount: {
+            type: Number,
+            default: 0,
+            min: 0,
+        },
     },
     {
         timestamps: true,

@@ -473,23 +473,43 @@ export default function PdfReaderPage() {
 
   return (
     <div className="fixed inset-0 flex h-screen w-screen flex-col overflow-hidden bg-[#030712] text-slate-100">
-      <div className={`pointer-events-none fixed left-1/2 top-2 z-30 w-[min(720px,94vw)] -translate-x-1/2 transition-all duration-300 sm:top-3 ${isFullscreen ? 'translate-y-[-18px] opacity-0' : 'translate-y-0 opacity-100'}`}>
-        <div className="overflow-hidden rounded-full border border-white/15 bg-slate-900/75 backdrop-blur-xl">
-          <div className="h-1.5 rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-500 transition-all duration-300 ease-out" style={{ width: `${progressPercentage}%` }} />
+      {/* Top Reading Progress Bar (Medium/Substack style) */}
+      <div className="fixed left-0 right-0 top-0 z-[60] h-[3px] w-full">
+        <div
+          className="h-full bg-gradient-to-r from-purple-500 via-indigo-500 to-pink-500 transition-all duration-300"
+          style={{ width: `${progressPercentage}%` }}
+        />
+      </div>
+
+      {/* Sleek bottom center page indicator */}
+      <div className="fixed bottom-6 left-1/2 z-30 -translate-x-1/2 pointer-events-none">
+        <div className="rounded-full border border-white/15 bg-slate-950/85 px-4 py-2 shadow-2xl backdrop-blur-xl">
+          <p className="text-[11px] tracking-widest uppercase font-bold text-slate-300">
+            Page {page} of {Math.max(1, totalPages)} <span className="mx-2 text-indigo-400">•</span> {Math.round(progressPercentage)}% complete
+          </p>
         </div>
-        <p className="mt-1 text-center text-xs font-medium text-slate-300">{progressPercentage}% - Page {page} of {Math.max(1, totalPages)}</p>
       </div>
 
       <header className={`fixed left-0 right-0 top-0 z-20 border-b border-white/10 bg-slate-950/75 px-3 py-2.5 backdrop-blur-xl transition-transform duration-300 sm:px-6 sm:py-3 ${headerHidden || isFullscreen ? '-translate-y-full' : 'translate-y-0'}`}>
-        <div className="min-w-0">
+        <div className="min-w-0 w-full">
           <div className="flex items-center justify-between gap-2 sm:gap-3">
             <div className="min-w-0">
-              <p className="truncate text-xs font-semibold text-white sm:text-sm">{params.title}</p>
-              <p className="truncate text-[11px] text-slate-300 sm:text-xs">{params.author}</p>
+              <h1 className="truncate text-sm md:text-base font-extrabold uppercase tracking-[0.06em] text-white">
+                {params.title}
+                <span className="ml-2 inline-flex items-center rounded-full bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 text-[10px] font-bold text-indigo-400">
+                  {progressPercentage}% complete
+                </span>
+              </h1>
+              <p className="truncate text-[11px] text-slate-400 font-medium">{params.author}</p>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
-              <span className="rounded-full border border-white/15 bg-white/5 px-2 py-1 text-[11px] font-medium text-slate-200 sm:px-3 sm:text-xs">Page {page} of {Math.max(1, totalPages)}</span>
-              <button type="button" onClick={() => (window.location.hash = '')} className="rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-slate-200 transition hover:bg-white/10 sm:px-3 sm:text-xs">Exit</button>
+              <button
+                type="button"
+                onClick={() => (window.location.hash = '')}
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full border border-white/15 bg-white/5 px-4 text-xs font-semibold text-slate-200 transition hover:bg-white/10"
+              >
+                Exit
+              </button>
             </div>
           </div>
         </div>

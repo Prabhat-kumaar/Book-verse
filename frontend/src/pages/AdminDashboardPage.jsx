@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { MdPeople, MdLibraryBooks, MdVisibility, MdGroup, MdBook, MdAccessTime } from 'react-icons/md'
+import { MdPeople, MdLibraryBooks, MdVisibility, MdGroup, MdBook, MdAccessTime, MdTrendingDown } from 'react-icons/md'
 import AdminSidebar from '../components/AdminSidebar'
 import apiClient from '../lib/apiClient'
 
@@ -89,9 +89,9 @@ export default function AdminDashboardPage() {
           )}
 
           {/* Stat Grid */}
-          <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
             {loading ? (
-              [...Array(4)].map((_, i) => (
+              [...Array(6)].map((_, i) => (
                 <div key={i} className="h-32 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]" />
               ))
             ) : (
@@ -113,6 +113,18 @@ export default function AdminDashboardPage() {
                   value={data?.websiteVisits ?? 0} 
                   hint="Cumulative pageviews" 
                   icon={<MdVisibility className="h-6 w-6" />} 
+                />
+                <StatCard 
+                  title="Unique Visitors" 
+                  value={data?.uniqueVisitors ?? 0} 
+                  hint="Distinct client IP hits" 
+                  icon={<MdPeople className="h-6 w-6" />} 
+                />
+                <StatCard 
+                  title="Bounce Rate" 
+                  value={data?.bounceRate !== undefined ? `${data.bounceRate}%` : '0%'} 
+                  hint="Single-page sessions" 
+                  icon={<MdTrendingDown className="h-6 w-6" />} 
                 />
                 <StatCard 
                   title="Active Readers Today" 

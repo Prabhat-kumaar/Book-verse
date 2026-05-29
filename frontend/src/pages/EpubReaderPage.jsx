@@ -76,19 +76,52 @@ function flattenToc(items = [], depth = 0) {
   }, [])
 }
 
-function buildThemeStyles({ dark }) {
+function buildThemeStyles(theme) {
+  let bgColor = '#faf8f4'
+  let textColor = '#111827'
+  
+  if (theme === 'dark') {
+    bgColor = '#0f0f0f'
+    textColor = '#e8e8e8'
+  } else if (theme === 'sepia') {
+    bgColor = '#f4ecd8'
+    textColor = '#5c4a1e'
+  }
+
   return {
     body: {
-      margin: '0',
-      padding: '24px 32px',
-      color: dark ? '#f1f5f9' : '#111827',
-      background: dark ? '#0b1220' : '#ffffff',
-      'line-height': '1.7',
+      margin: '0 !important',
+      padding: '24px 20px !important',
+      color: textColor,
+      background: bgColor,
+      'line-height': '1.8 !important',
+      'font-size': '18px !important',
       '-webkit-font-smoothing': 'antialiased',
       'box-sizing': 'border-box',
-      'max-width': '100%',
+      'max-width': '100% !important',
+      width: '100% !important',
     },
-    p: { margin: '0 0 1em 0' },
+    p: { 
+      'margin-bottom': '1.5em',
+      'line-height': '1.8',
+    },
+    ul: {
+      'max-width': '600px',
+      margin: '0 auto 1.5em auto',
+      padding: '0 20px',
+      'list-style-type': 'none',
+    },
+    ol: {
+      'max-width': '600px',
+      margin: '0 auto 1.5em auto',
+      padding: '0 20px',
+      'list-style-type': 'none',
+    },
+    li: {
+      margin: '0.8em 0',
+      padding: '0',
+      'line-height': '1.8',
+    },
     'p:first-of-type::first-letter': {
       float: 'left',
       'font-size': '3.4em',
@@ -98,7 +131,17 @@ function buildThemeStyles({ dark }) {
       'font-family': 'Iowan Old Style, Palatino, Georgia, Charter, serif',
     },
     img: { 'max-width': '100%', height: 'auto' },
-    a: { color: dark ? '#93c5fd' : '#1d4ed8' },
+    a: { 
+      color: theme === 'dark' ? '#93c5fd' : '#1d4ed8',
+      'text-decoration': 'none',
+      transition: 'color 0.2s ease, opacity 0.2s ease',
+      'font-weight': '500',
+    },
+    'a:hover': {
+      color: theme === 'dark' ? '#c084fc' : '#6366f1',
+      'text-decoration': 'underline',
+      opacity: '0.95',
+    },
   }
 }
 
@@ -117,7 +160,17 @@ export default function EpubReaderPage() {
   const [params, setParams] = useState(parseReaderParams)
   const [loadingState, setLoadingState] = useState('idle')
   const [errorMessage, setErrorMessage] = useState('')
-  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('epubTheme') === 'dark')
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem('epubTheme')
+    if (saved === 'dark' || saved === 'light' || saved === 'sepia') return saved
+    return 'light'
+  })
+  const isDarkMode = theme === 'dark'
+  const isSepiaMode = theme === 'sepia'
+  const setIsDarkMode = (val) => {
+    const nextVal = typeof val === 'function' ? val(theme === 'dark') : val
+    setTheme(nextVal ? 'dark' : 'light')
+  }
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [fontSize, setFontSize] = useState(() => parseInt(localStorage.getItem('reader-font-size') || '100', 10))
@@ -260,17 +313,28 @@ export default function EpubReaderPage() {
   }, [bookId])
 
   useEffect(() => {
-    localStorage.setItem('epubTheme', isDarkMode ? 'dark' : 'light')
+    localStorage.setItem('epubTheme', theme)
     if (!renditionRef.current) return
+    
+    let bgColor = '#faf8f4'
+    let textColor = '#111827'
+    if (theme === 'dark') {
+      bgColor = '#0f0f0f'
+      textColor = '#e8e8e8'
+    } else if (theme === 'sepia') {
+      bgColor = '#f4ecd8'
+      textColor = '#5c4a1e'
+    }
+
     renditionRef.current.themes.default({
       body: {
-        background: isDarkMode ? '#1a1a2e !important' : '#ffffff !important',
-        color: isDarkMode ? '#e2e8f0 !important' : '#1a1a2e !important',
+        background: `${bgColor} !important`,
+        color: `${textColor} !important`,
       },
     })
-    renditionRef.current.themes.register('app-theme', buildThemeStyles({ dark: isDarkMode }))
+    renditionRef.current.themes.register('app-theme', buildThemeStyles(theme))
     renditionRef.current.themes.select('app-theme')
-  }, [isDarkMode])
+  }, [theme])
 
   useEffect(() => {
     if (!renditionRef.current) return
@@ -340,7 +404,7 @@ export default function EpubReaderPage() {
         if (isDestroyed) return
         renditionRef.current = rendition
 
-        rendition.themes.register('app-theme', buildThemeStyles({ dark: isDarkMode }))
+        rendition.themes.register('app-theme', buildThemeStyles(theme))
         rendition.themes.select('app-theme')
         rendition.themes.override('*', {
           'max-width': '100% !important',
@@ -348,32 +412,38 @@ export default function EpubReaderPage() {
           'overflow-anchor': 'none !important',
         })
         rendition.themes.override('body', {
-          margin: '0 auto',
-          padding: '24px 32px',
-          'max-width': '100%',
-          'box-sizing': 'border-box',
+          margin: '0 !important',
+          padding: '24px 20px !important',
+          'max-width': '100% !important',
+          width: '100% !important',
+          'box-sizing': 'border-box !important',
           'overflow-anchor': 'none !important',
+        })
+        rendition.themes.override('div', {
+          'max-width': '100% !important',
+          width: '100% !important',
         })
 
         const savedFontSize = parseInt(localStorage.getItem('reader-font-size') || '100', 10) || 100
         rendition.themes.fontSize(`${savedFontSize}%`)
         setFontSize(savedFontSize)
 
-        if (isDarkMode) {
-          rendition.themes.default({
-            body: {
-              background: '#1a1a2e !important',
-              color: '#e2e8f0 !important',
-            },
-          })
-        } else {
-          rendition.themes.default({
-            body: {
-              background: '#ffffff !important',
-              color: '#1a1a2e !important',
-            },
-          })
+        let initialBg = '#faf8f4'
+        let initialText = '#111827'
+        if (theme === 'dark') {
+          initialBg = '#0f0f0f'
+          initialText = '#e8e8e8'
+        } else if (theme === 'sepia') {
+          initialBg = '#f4ecd8'
+          initialText = '#5c4a1e'
         }
+
+        rendition.themes.default({
+          body: {
+            background: `${initialBg} !important`,
+            color: `${initialText} !important`,
+          },
+        })
 
         await book.loaded.navigation
         if (isDestroyed) return
@@ -695,16 +765,18 @@ export default function EpubReaderPage() {
   return (
     <section
       className={`reader-prose fixed inset-0 h-screen w-screen transition-colors duration-300
-        ${isDarkMode
-          ? 'dark bg-[#030712] text-slate-100'
-          : 'bg-[#f8f6f1] text-slate-900'
+        ${theme === 'dark'
+          ? 'dark bg-[#0f0f0f] text-[#e8e8e8]'
+          : theme === 'sepia'
+            ? 'bg-[#f4ecd8] text-[#5c4a1e]'
+            : 'bg-[#faf8f4] text-slate-900'
         }`}
     >
       <div ref={frameRef} className={`relative h-screen w-screen overflow-hidden ${isFullscreen ? 'fullscreen' : ''}`}>
-        {/* Top Reading Progress Bar */}
-        <div className="fixed left-0 right-0 top-0 z-50 h-1.5 w-full bg-slate-800/20">
+        {/* Top Reading Progress Bar (Medium/Substack style) */}
+        <div className="fixed left-0 right-0 top-0 z-[60] h-[3px] w-full">
           <div
-            className="h-full bg-gradient-to-r from-blue-400 via-indigo-500 to-violet-600 transition-all duration-300 shadow-[0_0_10px_rgba(99,102,241,0.5)]"
+            className="h-full bg-gradient-to-r from-purple-500 via-indigo-500 to-pink-500 transition-all duration-300"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
@@ -712,7 +784,7 @@ export default function EpubReaderPage() {
         <header
           className={`glass-strong fixed inset-x-0 top-0 z-40 h-14 transition-transform duration-300
             ${showChrome ? 'translate-y-0' : '-translate-y-full'}
-            ${isDarkMode ? 'border-white/10' : 'border-black/[8%]'}`}
+            ${theme === 'dark' ? 'border-white/10' : theme === 'sepia' ? 'border-[#5c4a1e]/15' : 'border-black/[8%]'}`}
         >
           <div className="flex h-full w-full items-center gap-3 px-6">
             <button
@@ -724,13 +796,13 @@ export default function EpubReaderPage() {
               <MdMenu className="text-xl" />
             </button>
             <div className="min-w-0 flex-1 text-center">
-              <p className="truncate text-[13px] font-semibold uppercase tracking-[0.14em] opacity-90">
+              <h1 className="truncate text-sm md:text-base font-extrabold uppercase tracking-[0.06em] opacity-95">
                 {params.title}
-                <span className="ml-2 inline-flex items-center rounded-full bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 text-[10px] font-bold text-indigo-300">
+                <span className="ml-2 inline-flex items-center rounded-full bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 text-[10px] font-bold text-indigo-400">
                   {progressPercent}% complete
                 </span>
-              </p>
-              <p className="truncate text-[11px] opacity-60">
+              </h1>
+              <p className="truncate text-[11px] md:text-xs font-semibold tracking-wider opacity-50">
                 {currentChapterLabel || 'Reading View'}
               </p>
             </div>
@@ -922,10 +994,8 @@ export default function EpubReaderPage() {
                 </button>
               ))}
             </div>
-          </aside>
-
-          <main className="h-full w-full overflow-hidden">
-            <div className="flex h-full w-full flex-col pt-14">
+          </aside>          <main className="h-full w-full overflow-hidden">
+            <div className="flex h-full w-full flex-col pt-14 pb-24 md:pb-28">
 
               {loadingState === 'loading' && (
                 <div className="grid h-44 place-items-center">
@@ -949,84 +1019,138 @@ export default function EpubReaderPage() {
                 </div>
               )}
 
-              <div
-                id="viewer"
-                ref={viewerRef}
-                className="h-full w-full flex-1 overflow-hidden leading-relaxed"
-                style={{ visibility: loadingState === 'ready' ? 'visible' : 'hidden' }}
-                onTouchStart={handleTouchStart}
-                onTouchEnd={handleTouchEnd}
-              />
-
-              <div className={`h-1 overflow-hidden ${isDarkMode ? 'bg-white/10' : 'bg-black/10'}`}>
+              <div className="flex-1 w-full mx-auto overflow-hidden h-full flex flex-col max-w-[96%] px-4 sm:px-8 md:px-12 lg:px-16">
                 <div
-                  className="h-full rounded-full bg-primary/70 transition-all duration-500"
-                  style={{ width: `${progressPercent}%` }}
+                  id="viewer"
+                  ref={viewerRef}
+                  className="h-full w-full flex-1 leading-relaxed"
+                  style={{ visibility: loadingState === 'ready' ? 'visible' : 'hidden' }}
+                  onTouchStart={handleTouchStart}
+                  onTouchEnd={handleTouchEnd}
                 />
               </div>
-              <p className={`mt-1 text-center text-[11px] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                Page {currentPage} of {totalPages} · {progressPercent}% complete
-              </p>
+
+              {loadingState === 'ready' && (
+                <div className="flex flex-col items-center justify-center py-4 px-6 mt-2">
+                  <p className={`text-center text-[11px] tracking-widest uppercase font-semibold opacity-60
+                    ${theme === 'dark' ? 'text-slate-500' : theme === 'sepia' ? 'text-[#5c4a1e]/70' : 'text-slate-500'}`}>
+                    Page {currentPage} of {totalPages} <span className="mx-2">•</span> {Math.round(progressPercent)}% complete
+                  </p>
+                </div>
+              )}
             </div>
           </main>
         </div>
 
         <div
-          className={`fixed inset-x-0 bottom-6 z-40 flex flex-col items-center gap-2 px-3
-            transition-transform duration-300 ${showChrome ? 'translate-y-0' : 'translate-y-28'}`}
+          className={`fixed inset-x-0 z-50 flex flex-col items-center gap-2 px-3 transition-transform duration-300
+            ${showChrome ? 'translate-y-0' : 'translate-y-28 md:translate-y-full'}
+            bottom-6
+            md:bottom-0 md:border-t md:py-4 md:px-6 md:shadow-[0_-4px_16px_rgba(0,0,0,0.1)]
+            ${theme === 'dark'
+              ? 'md:bg-[#121212]/95 md:border-white/10'
+              : theme === 'sepia'
+                ? 'md:bg-[#eddcb4]/95 md:border-[#5c4a1e]/15'
+                : 'md:bg-[#faf8f4]/95 md:border-black/[8%]'
+            }`}
         >
-          <div className={`glass-strong flex items-center gap-1 rounded-full p-1.5 shadow-2xl
-            ${isDarkMode ? 'text-slate-100' : 'text-slate-800'}`}>
-            <button type="button" onClick={goPrevChapter}
-              className="grid h-10 w-10 place-items-center rounded-full hover:bg-white/10 transition"
-              aria-label="Previous chapter">
-              <MdChevronLeft className="text-xl" />
+          <div
+            className={`flex items-center justify-between w-full max-w-[680px] transition-all px-2
+              rounded-full p-1.5 shadow-2xl border backdrop-blur-xl
+              md:rounded-none md:p-0 md:shadow-none md:border-none md:bg-transparent
+              ${theme === 'dark'
+                ? 'bg-[#121212]/95 border-white/10 text-slate-100'
+                : theme === 'sepia'
+                  ? 'bg-[#eddcb4]/95 border-[#5c4a1e]/15 text-[#5c4a1e]'
+                  : 'bg-[#faf8f4]/95 border-black/[8%] text-slate-800'
+              }`}
+          >
+            {/* Prev Chapter */}
+            <button
+              type="button"
+              onClick={goPrevChapter}
+              className="flex flex-col items-center justify-center min-h-[48px] min-w-[48px] rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition"
+              aria-label="Previous chapter"
+            >
+              <MdChevronLeft className="text-2xl md:text-xl" />
+              <span className="hidden md:inline text-[10px] mt-0.5 uppercase tracking-wider font-semibold opacity-60">PREV</span>
             </button>
-            <button type="button" onClick={decreaseFontSize}
-              className="h-10 rounded-full px-3.5 text-sm font-medium hover:bg-white/10 transition">
-              A-
-            </button>
-            <button type="button" onClick={increaseFontSize}
-              className="h-10 rounded-full px-3.5 text-sm font-semibold hover:bg-white/10 transition">
-              A+
-            </button>
-            <button type="button" onClick={bookmarkCurrentLocation}
-              className="grid h-10 w-10 place-items-center rounded-full hover:bg-white/10 transition"
-              aria-label="Bookmark">
-              <MdBookmarkBorder className="text-lg" />
-            </button>
-            <button type="button" onClick={() => setIsDarkMode((v) => !v)}
-              className="hidden h-10 items-center gap-1.5 rounded-full px-3.5 text-sm hover:bg-white/10 transition md:inline-flex">
-              {isDarkMode ? <MdLightMode className="text-base" /> : <MdDarkMode className="text-base" />}
-              {isDarkMode ? 'Light' : 'Dark'}
-            </button>
-            <button type="button" onClick={toggleFullscreen}
-              className="hidden h-10 items-center gap-1.5 rounded-full px-3.5 text-sm hover:bg-white/10 transition md:inline-flex">
-              {isFullscreen ? <MdFullscreenExit className="text-base" /> : <MdFullscreen className="text-base" />}
-              {isFullscreen ? 'Exit' : 'Full'}
-            </button>
-            <button type="button" onClick={goNextChapter}
-              className="grid h-10 w-10 place-items-center rounded-full hover:bg-white/10 transition"
-              aria-label="Next chapter">
-              <MdChevronRight className="text-xl" />
-            </button>
-          </div>
-          <div className={`text-center text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'} hidden md:block`}>
-            {Math.round(progressPercent)}% · Chapter {activeChapterNumber}
-          </div>
 
-          <div className="flex gap-2 md:hidden">
-            <button type="button" onClick={() => setIsDarkMode((v) => !v)}
-              className="glass-strong h-8 rounded-full px-4 text-xs font-medium transition hover:bg-white/10">
-              {isDarkMode ? 'Light' : 'Dark'}
+            {/* Decrease Font Size */}
+            <button
+              type="button"
+              onClick={decreaseFontSize}
+              className="flex flex-col items-center justify-center min-h-[48px] min-w-[48px] px-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition"
+              aria-label="Decrease font size"
+            >
+              <span className="text-base font-semibold leading-none">A-</span>
+              <span className="hidden md:inline text-[10px] mt-1.5 uppercase tracking-wider font-semibold opacity-60">FONT-</span>
             </button>
-            <button type="button" onClick={() => { window.location.hash = '' }}
-              className="glass-strong h-8 rounded-full px-4 text-xs font-medium transition hover:bg-white/10">
-              Exit
+
+            {/* Increase Font Size */}
+            <button
+              type="button"
+              onClick={increaseFontSize}
+              className="flex flex-col items-center justify-center min-h-[48px] min-w-[48px] px-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition"
+              aria-label="Increase font size"
+            >
+              <span className="text-lg font-bold leading-none">A+</span>
+              <span className="hidden md:inline text-[10px] mt-1 uppercase tracking-wider font-semibold opacity-60">FONT+</span>
+            </button>
+
+            {/* Bookmark Current Location */}
+            <button
+              type="button"
+              onClick={bookmarkCurrentLocation}
+              className="flex flex-col items-center justify-center min-h-[48px] min-w-[48px] rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition"
+              aria-label="Bookmark"
+            >
+              <MdBookmarkBorder className="text-2xl md:text-xl" />
+              <span className="hidden md:inline text-[10px] mt-0.5 uppercase tracking-wider font-semibold opacity-60">SAVE</span>
+            </button>
+
+            {/* Old theme toggle (Dark/Light) */}
+            <button
+              type="button"
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className="flex flex-col items-center justify-center min-h-[48px] min-w-[48px] px-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition"
+              aria-label="Toggle theme"
+            >
+              {isDarkMode ? (
+                <MdLightMode className="text-2xl md:text-xl text-amber-500" />
+              ) : (
+                <MdDarkMode className="text-2xl md:text-xl text-indigo-400" />
+              )}
+              <span className="hidden md:inline text-[10px] mt-0.5 uppercase tracking-wider font-semibold opacity-60">
+                {isDarkMode ? 'LIGHT' : 'DARK'}
+              </span>
+            </button>
+
+            {/* Fullscreen Toggle */}
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="flex flex-col items-center justify-center min-h-[48px] min-w-[48px] rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition"
+              aria-label="Toggle fullscreen"
+            >
+              {isFullscreen ? <MdFullscreenExit className="text-2xl md:text-xl" /> : <MdFullscreen className="text-2xl md:text-xl" />}
+              <span className="hidden md:inline text-[10px] mt-0.5 uppercase tracking-wider font-semibold opacity-60">
+                {isFullscreen ? 'EXIT' : 'FULL'}
+              </span>
+            </button>
+
+            {/* Next Chapter */}
+            <button
+              type="button"
+              onClick={goNextChapter}
+              className="flex flex-col items-center justify-center min-h-[48px] min-w-[48px] rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition"
+              aria-label="Next chapter"
+            >
+              <MdChevronRight className="text-2xl md:text-xl" />
+              <span className="hidden md:inline text-[10px] mt-0.5 uppercase tracking-wider font-semibold opacity-60">NEXT</span>
             </button>
           </div>
         </div>
-
       </div>
     </section>
   )

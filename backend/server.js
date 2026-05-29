@@ -120,17 +120,10 @@ app.use(
 // ================= RATE LIMIT =================
 const generalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 100,
+    max: 2000,
     standardHeaders: true,
     legacyHeaders: false,
-
-    handler: (_req, res) => {
-        return apiResponse.error(
-            res,
-            'Too many requests',
-            429
-        );
-    },
+    handler: (_req, res) => apiResponse.error(res, 'Too many requests', 429),
 });
 
 const authLimiter = rateLimit({
@@ -138,18 +131,10 @@ const authLimiter = rateLimit({
     max: 10,
     standardHeaders: true,
     legacyHeaders: false,
-
-    handler: (_req, res) => {
-        return apiResponse.error(
-            res,
-            'Too many auth attempts',
-            429
-        );
-    },
+    handler: (_req, res) => apiResponse.error(res, 'Too many auth attempts', 429),
 });
 
 app.use('/api', generalLimiter);
-
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 
@@ -193,7 +178,6 @@ app.use(
 // ================= FILE ACCESS =================
 app.get('/uploads/:filename', (req, res) => {
     try {
-
         const raw = decodeURIComponent(
             req.params.filename || ''
         );
@@ -220,7 +204,6 @@ app.get('/uploads/:filename', (req, res) => {
         return res.sendFile(absolutePath);
 
     } catch (error) {
-
         return apiResponse.error(
             res,
             'Failed to process file',

@@ -1,4 +1,4 @@
-import { Navigate, Outlet, Route, Routes, useNavigate } from 'react-router-dom'
+import { Navigate, Outlet, Route, Routes, useNavigate, useLocation } from 'react-router-dom'
 import { Suspense, lazy, useEffect, useState } from 'react'
 import { SavedBooksProvider } from './context/SavedBooksContext'
 import apiClient from './lib/apiClient'
@@ -74,16 +74,28 @@ function App() {
     }
   }, [])
 
+  const location = useLocation()
+
   useEffect(() => {
+    // Generate or fetch session ID from sessionStorage
+    let sessionId = sessionStorage.getItem('readify_session_id')
+    if (!sessionId) {
+      sessionId = 'sess_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36)
+      sessionStorage.setItem('readify_session_id', sessionId)
+    }
+
     const recordVisit = async () => {
       try {
-        await apiClient.post('/analytics/visit')
+        await apiClient.post('/analytics/visit', {
+          path: location.pathname,
+          sessionId
+        })
       } catch (err) {
         if (isDev) console.error('Failed to record page visit:', err)
       }
     }
     recordVisit()
-  }, [])
+  }, [location.pathname])
 
   useEffect(() => {
     const hashToPath = {

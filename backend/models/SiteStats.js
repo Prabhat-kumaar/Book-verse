@@ -12,6 +12,10 @@ const siteStatsSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
+        uniqueVisitors: {
+            type: Number,
+            default: 0,
+        },
     },
     {
         timestamps: true,

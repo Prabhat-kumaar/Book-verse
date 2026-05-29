@@ -1,9 +1,46 @@
+const crypto = require('crypto');
+const geoip = require('geoip-lite');
 const User = require('../models/User');
 const Book = require('../models/Book');
 const Progress = require('../models/Progress');
 const SiteStats = require('../models/SiteStats');
 const ReadingAnalyticsDay = require('../models/ReadingAnalyticsDay');
 const SiteVisit = require('../models/SiteVisit');
+const VisitorIP = require('../models/VisitorIP');
+const SiteVisitLog = require('../models/SiteVisitLog');
+
+const getClientIp = (req) => {
+    let ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+    if (ip.includes(',')) {
+        ip = ip.split(',')[0].trim();
+    }
+    return ip.trim();
+};
+
+const isLocalhost = (ip) => {
+    return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip.startsWith('127.');
+};
+
+const isAdminIp = (ip) => {
+    const adminIpsRaw = process.env.ADMIN_IPS || '';
+    const adminIps = adminIpsRaw.split(',').map(item => item.trim()).filter(Boolean);
+    return adminIps.includes(ip);
+};
+
+const hashIp = (ip) => {
+    return crypto.createHash('sha256').update(ip).digest('hex');
+};
+
+const getDeviceType = (userAgent = '') => {
+    const ua = userAgent.toLowerCase();
+    if (ua.includes('tablet') || ua.includes('ipad') || (ua.includes('android') && !ua.includes('mobile'))) {
+        return 'Tablet';
+    }
+    if (ua.includes('mobile') || ua.includes('iphone') || ua.includes('ipod') || ua.includes('android') || ua.includes('webos') || ua.includes('blackberry')) {
+        return 'Mobile';
+    }
+    return 'Desktop';
+};
 
 const atDayStart = (dateLike) => {
     const d = new Date(dateLike);
@@ -103,22 +140,70 @@ const getOverallAnalytics = async (req, res, next) => {
 
 const recordVisit = async (req, res, next) => {
     try {
-        // Increment global visits
+        const ip = getClientIp(req);
+
+        if (isLocalhost(ip) || isAdminIp(ip)) {
+            const stats = await SiteStats.findOne({ key: 'global' });
+            const visits = stats ? stats.visits : 0;
+            const uniqueVisitors = stats ? stats.uniqueVisitors : 0;
+            return res.json({ success: true, visits, uniqueVisitors, skipped: true });
+        }
+
+        const hashedIp = hashIp(ip);
+        const geo = geoip.lookup(ip);
+        const country = geo ? (geo.country || 'Unknown') : 'Unknown';
+        const deviceType = getDeviceType(req.headers['user-agent']);
+        
+        const { path = '/', sessionId = 'sess_unknown' } = req.body;
+        const hour = new Date().getHours();
+
+        const today = atDayStart(new Date());
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
+
+        // Check if all-time unique (New Visitor)
+        const isAllTimeUnique = !(await SiteVisitLog.exists({ hashedIp }));
+
+        // Check if daily unique
+        const isDailyUnique = !(await SiteVisitLog.exists({
+            hashedIp,
+            createdAt: { $gte: today, $lt: tomorrow }
+        }));
+
+        // Log the visit to SiteVisitLog
+        await SiteVisitLog.create({
+            hashedIp,
+            path,
+            country,
+            deviceType,
+            sessionId,
+            hour,
+            isNewVisitor: isAllTimeUnique
+        });
+
+        // Increment global stats
+        const statsUpdate = { $inc: { visits: 1 } };
+        if (isAllTimeUnique) {
+            statsUpdate.$inc.uniqueVisitors = 1;
+        }
         const stats = await SiteStats.findOneAndUpdate(
             { key: 'global' },
-            { $inc: { visits: 1 } },
+            statsUpdate,
             { upsert: true, new: true, setDefaultsOnInsert: true }
         );
 
-        // Increment daily visits
-        const today = atDayStart(new Date());
+        // Increment daily stats
+        const visitUpdate = { $inc: { count: 1 } };
+        if (isDailyUnique) {
+            visitUpdate.$inc.uniqueCount = 1;
+        }
         await SiteVisit.findOneAndUpdate(
             { date: today },
-            { $inc: { count: 1 } },
+            visitUpdate,
             { upsert: true, new: true, setDefaultsOnInsert: true }
         );
 
-        res.json({ success: true, visits: stats.visits });
+        res.json({ success: true, visits: stats.visits, uniqueVisitors: stats.uniqueVisitors });
     } catch (error) {
         next(error);
     }
@@ -131,6 +216,15 @@ const getAdminAnalytics = async (req, res, next) => {
 
         const stats = await SiteStats.findOne({ key: 'global' });
         const websiteVisits = stats ? stats.visits : 0;
+        const uniqueVisitors = stats ? stats.uniqueVisitors : 0;
+
+        // Calculate bounce rate
+        const sessionStats = await SiteVisitLog.aggregate([
+            { $group: { _id: '$sessionId', count: { $sum: 1 } } }
+        ]);
+        const totalSessions = sessionStats.length;
+        const bouncedSessions = sessionStats.filter(s => s.count === 1).length;
+        const bounceRate = totalSessions > 0 ? Math.round((bouncedSessions / totalSessions) * 100) : 0;
 
         // Active Readers Today: Users who read books within the last 24h
         const todayStart = new Date();
@@ -204,6 +298,8 @@ const getAdminAnalytics = async (req, res, next) => {
             totalUsers,
             totalBooks,
             websiteVisits,
+            uniqueVisitors,
+            bounceRate,
             activeReadersTodayCount: activeReadersToday.length,
             newUsersToday,
             newUsersThisWeek,
@@ -251,6 +347,9 @@ const getAdminAnalytics = async (req, res, next) => {
 
 const getAdminDetails = async (req, res, next) => {
     try {
+        const stats = await SiteStats.findOne({ key: 'global' });
+        const websiteVisits = stats ? stats.visits : 0;
+        const uniqueVisitors = stats ? stats.uniqueVisitors : 0;
 
         // 1. Monthly Reads (total pages read this calendar month)
         const startOfMonth = atDayStart(new Date());
@@ -333,23 +432,25 @@ const getAdminDetails = async (req, res, next) => {
             date: { $gte: thirtyDaysAgo }
         }).sort({ date: 1 });
 
-        const dayMap = new Map(dayData.map(v => [v.date.toISOString().slice(0, 10), v.count]));
+        const dayMap = new Map(dayData.map(v => [v.date.toISOString().slice(0, 10), { visits: v.count, unique: v.uniqueCount || 0 }]));
         const daySeries = [];
         for (let i = 29; i >= 0; i--) {
             const d = new Date();
             d.setDate(d.getDate() - i);
             d.setHours(0, 0, 0, 0);
             const key = d.toISOString().slice(0, 10);
+            const data = dayMap.get(key) || { visits: 0, unique: 0 };
             daySeries.push({
                 label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-                visits: dayMap.get(key) || 0
+                visits: data.visits,
+                unique: data.unique
             });
         }
 
         // Month Series (Last 12 Months)
         const twelveMonthsAgo = new Date();
-        twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
         twelveMonthsAgo.setDate(1);
+        twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
         twelveMonthsAgo.setHours(0, 0, 0, 0);
 
         const monthData = await SiteVisit.aggregate([
@@ -360,21 +461,25 @@ const getAdminDetails = async (req, res, next) => {
                         year: { $year: '$date' },
                         month: { $month: '$date' }
                     },
-                    visits: { $sum: '$count' }
+                    visits: { $sum: '$count' },
+                    unique: { $sum: { $ifNull: ['$uniqueCount', 0] } }
                 }
             },
             { $sort: { '_id.year': 1, '_id.month': 1 } }
         ]);
 
-        const monthMap = new Map(monthData.map(m => [`${m._id.year}-${String(m._id.month).padStart(2, '0')}`, m.visits]));
+        const monthMap = new Map(monthData.map(m => [`${m._id.year}-${String(m._id.month).padStart(2, '0')}`, { visits: m.visits, unique: m.unique }]));
         const monthSeries = [];
         for (let i = 11; i >= 0; i--) {
             const d = new Date();
+            d.setDate(1);
             d.setMonth(d.getMonth() - i);
             const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            const data = monthMap.get(key) || { visits: 0, unique: 0 };
             monthSeries.push({
                 label: d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-                visits: monthMap.get(key) || 0
+                visits: data.visits,
+                unique: data.unique
             });
         }
 
@@ -388,25 +493,98 @@ const getAdminDetails = async (req, res, next) => {
             {
                 $group: {
                     _id: { year: { $year: '$date' } },
-                    visits: { $sum: '$count' }
+                    visits: { $sum: '$count' },
+                    unique: { $sum: { $ifNull: ['$uniqueCount', 0] } }
                 }
             },
             { $sort: { '_id.year': 1 } }
         ]);
 
-        const yearMap = new Map(yearData.map(y => [y._id.year, y.visits]));
+        const yearMap = new Map(yearData.map(y => [y._id.year, { visits: y.visits, unique: y.unique }]));
         const yearSeries = [];
         const currentYear = new Date().getFullYear();
         for (let i = 4; i >= 0; i--) {
             const y = currentYear - i;
+            const data = yearMap.get(y) || { visits: 0, unique: 0 };
             yearSeries.push({
                 label: String(y),
-                visits: yearMap.get(y) || 0
+                visits: data.visits,
+                unique: data.unique
             });
         }
 
+        // 6. Geographic Origins (Top 5 countries)
+        const geoStats = await SiteVisitLog.aggregate([
+            { $group: { _id: '$country', count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+            { $limit: 5 }
+        ]);
+        const geographicData = geoStats.map(g => ({
+            country: g._id || 'Unknown',
+            count: g.count
+        }));
+
+        // 7. Device Breakdown
+        const deviceStats = await SiteVisitLog.aggregate([
+            { $group: { _id: '$deviceType', count: { $sum: 1 } } }
+        ]);
+        const deviceBreakdown = {
+            Desktop: 0,
+            Mobile: 0,
+            Tablet: 0,
+            Unknown: 0
+        };
+        deviceStats.forEach(d => {
+            const key = d._id || 'Unknown';
+            if (deviceBreakdown[key] !== undefined) {
+                deviceBreakdown[key] = d.count;
+            } else {
+                deviceBreakdown.Unknown += d.count;
+            }
+        });
+
+        // 8. Popular Pages (Top 5 routes)
+        const pageStats = await SiteVisitLog.aggregate([
+            { $group: { _id: '$path', count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+            { $limit: 5 }
+        ]);
+        const popularPages = pageStats.map(p => ({
+            path: p._id || '/',
+            count: p.count
+        }));
+
+        // 9. Peak Hours (visits by hour 0-23)
+        const hourStats = await SiteVisitLog.aggregate([
+            { $group: { _id: '$hour', count: { $sum: 1 } } },
+            { $sort: { _id: 1 } }
+        ]);
+        const peakHours = Array.from({ length: 24 }, (_, h) => ({ hour: h, count: 0 }));
+        hourStats.forEach(h => {
+            if (h._id >= 0 && h._id < 24) {
+                peakHours[h._id].count = h.count;
+            }
+        });
+
+        // 10. Bounce Rate and New vs Returning
+        // Get visits grouped by session to identify bounces
+        const visitSessionStats = await SiteVisitLog.aggregate([
+            { $group: { _id: '$sessionId', count: { $sum: 1 } } }
+        ]);
+        const totalVisitSessions = visitSessionStats.length;
+        const bouncedSessions = visitSessionStats.filter(s => s.count === 1).length;
+        const bounceRateVal = totalVisitSessions > 0 ? Math.round((bouncedSessions / totalVisitSessions) * 100) : 0;
+
+        // New vs Returning Unique Visitors
+        const newVisitors = await SiteVisitLog.distinct('hashedIp', { isNewVisitor: true });
+        const allVisitors = await SiteVisitLog.distinct('hashedIp');
+        const newCount = newVisitors.length;
+        const returningCount = Math.max(0, allVisitors.length - newCount);
+
         res.json({
             success: true,
+            websiteVisits,
+            uniqueVisitors,
             overview: {
                 monthlyReads: { value: monthlyPages.toLocaleString(), hint: monthlyReadsDiff },
                 completionRate: { value: `${completionRate}%`, hint: completionHint },
@@ -417,6 +595,17 @@ const getAdminDetails = async (req, res, next) => {
                 day: daySeries,
                 month: monthSeries,
                 year: yearSeries
+            },
+            advanced: {
+                geographicData,
+                deviceBreakdown,
+                popularPages,
+                peakHours,
+                bounceRate: bounceRateVal,
+                newvsReturning: {
+                    newCount,
+                    returningCount
+                }
             }
         });
     } catch (error) {
