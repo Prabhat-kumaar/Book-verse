@@ -3,6 +3,8 @@ import apiClient from '../lib/apiClient'
 import { API_URL, buildApiUrl } from '../lib/apiConfig'
 import { getBookThumbnailUrl, normalizeMediaUrl } from '../lib/mediaUrls'
 
+const isDev = import.meta.env.DEV
+
 export default function useBooks() {
   const [books, setBooks] = useState([])
   const [loading, setLoading] = useState(true)
@@ -15,9 +17,11 @@ export default function useBooks() {
       try {
         setLoading(true)
         setError('')
-        const requestUrl = buildApiUrl('/api/books')
-        console.info('[useBooks] API URL:', API_URL)
-        console.info('[useBooks] Final request:', requestUrl)
+        if (isDev) {
+          const requestUrl = buildApiUrl('/api/books')
+          console.info('[useBooks] API URL:', API_URL)
+          console.info('[useBooks] Final request:', requestUrl)
+        }
 
         const response = await apiClient.get('/api/books', { signal: controller.signal })
         const payload = response?.data
@@ -44,7 +48,7 @@ export default function useBooks() {
             fetchError.message ||
             'Unable to fetch books right now.'
           setError(message)
-          console.error('[useBooks] Failed to fetch books:', message)
+          if (isDev) console.error('[useBooks] Failed to fetch books:', message)
         }
       } finally {
         setLoading(false)

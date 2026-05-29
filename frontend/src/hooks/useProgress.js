@@ -1,110 +1,228 @@
 import { useEffect, useMemo, useState } from 'react'
-import apiClient from '../lib/apiClient'
+import { fetchAllProgress } from '../lib/progressApi'
 import { getProgressBookId, normalizeProgressItem } from '../lib/readingProgress'
-import { getBookThumbnailUrl, normalizeMediaUrl } from '../lib/mediaUrls'
-const normalizeProgressBook = (item) => {
-  if (!item?.book) return item
-  return {
-    ...item,
-    book: {
-      ...item.book,
-      thumbnail: getBookThumbnailUrl(item.book),
-      fileUrl: normalizeMediaUrl(item.book.fileUrl || item.book.pdf || ''),
-      pdf: normalizeMediaUrl(item.book.pdf || ''),
-    },
+
+const REFRESH_INTERVAL_MS = 60000
+const REFRESH_TTL_MS = 15000
+
+const sharedStore = {
+  userId: '',
+  items: [],
+  loading: false,
+  error: '',
+  inFlight: null,
+  lastFetchedAt: 0,
+}
+
+const listeners = new Set()
+let intervalId = null
+let listenersBound = false
+let onProgressUpdatedHandler = null
+let onVisibilityChangeHandler = null
+
+function notify() {
+  const snapshot = {
+    userId: sharedStore.userId,
+    items: sharedStore.items,
+    loading: sharedStore.loading,
+    error: sharedStore.error,
+  }
+  listeners.forEach((listener) => listener(snapshot))
+}
+
+function setSharedState(next) {
+  Object.assign(sharedStore, next)
+  notify()
+}
+
+function sortByLastRead(items = []) {
+  return [...items].sort((a, b) => {
+    const aTime = new Date(a.lastReadAt || 0).getTime()
+    const bTime = new Date(b.lastReadAt || 0).getTime()
+    return bTime - aTime
+  })
+}
+
+function mergeProgressItem(item) {
+  if (!item) return
+  const normalized = normalizeProgressItem(item)
+  const targetBookId = getProgressBookId(normalized)
+  if (!targetBookId) return
+
+  const nextItems = [...sharedStore.items]
+  const idx = nextItems.findIndex((entry) => getProgressBookId(entry) === targetBookId)
+  if (idx >= 0) {
+    nextItems[idx] = normalizeProgressItem({
+      ...nextItems[idx],
+      ...normalized,
+      bookId: targetBookId,
+      lastReadAt: normalized.lastReadAt || new Date().toISOString(),
+    })
+  } else {
+    nextItems.push(normalized)
+  }
+  setSharedState({
+    items: sortByLastRead(nextItems),
+    error: '',
+  })
+}
+
+async function refreshSharedProgress(userId, { silent = false, force = false } = {}) {
+  if (!userId) {
+    setSharedState({
+      userId: '',
+      items: [],
+      loading: false,
+      error: '',
+      inFlight: null,
+      lastFetchedAt: 0,
+    })
+    return []
+  }
+
+  if (sharedStore.userId && sharedStore.userId !== userId) {
+    setSharedState({
+      userId,
+      items: [],
+      loading: false,
+      error: '',
+      inFlight: null,
+      lastFetchedAt: 0,
+    })
+  } else if (!sharedStore.userId) {
+    sharedStore.userId = userId
+  }
+
+  if (!force && sharedStore.inFlight) return sharedStore.inFlight
+  if (!force && sharedStore.lastFetchedAt && Date.now() - sharedStore.lastFetchedAt < REFRESH_TTL_MS) {
+    return sharedStore.items
+  }
+
+  if (!silent) setSharedState({ loading: true, error: '' })
+
+  const request = fetchAllProgress()
+    .then((items) => {
+      const sortedItems = sortByLastRead(items.map((item) => normalizeProgressItem(item)))
+      setSharedState({
+        userId,
+        items: sortedItems,
+        loading: false,
+        error: '',
+        inFlight: null,
+        lastFetchedAt: Date.now(),
+      })
+      return sortedItems
+    })
+    .catch((error) => {
+      setSharedState({
+        loading: false,
+        inFlight: null,
+        error: error?.response?.data?.message || error?.message || 'Unable to fetch reading progress.',
+      })
+      throw error
+    })
+
+  sharedStore.inFlight = request
+  return request
+}
+
+function startGlobalListeners() {
+  if (listenersBound) return
+  listenersBound = true
+
+  onProgressUpdatedHandler = (event) => {
+    const incoming = event?.detail?.item ? normalizeProgressItem(event.detail.item) : null
+    if (incoming) {
+      mergeProgressItem(incoming)
+      return
+    }
+    if (!sharedStore.userId) return
+    refreshSharedProgress(sharedStore.userId, { silent: true, force: true }).catch(() => {})
+  }
+
+  onVisibilityChangeHandler = () => {
+    if (document.visibilityState !== 'visible') return
+    if (!sharedStore.userId) return
+    refreshSharedProgress(sharedStore.userId, { silent: true, force: true }).catch(() => {})
+  }
+
+  window.addEventListener('progressUpdated', onProgressUpdatedHandler)
+  window.addEventListener('focus', onVisibilityChangeHandler)
+  document.addEventListener('visibilitychange', onVisibilityChangeHandler)
+
+  intervalId = window.setInterval(() => {
+    if (!sharedStore.userId) return
+    refreshSharedProgress(sharedStore.userId, { silent: true, force: true }).catch(() => {})
+  }, REFRESH_INTERVAL_MS)
+}
+
+function stopGlobalListeners() {
+  if (!listenersBound) return
+  listenersBound = false
+  if (intervalId) {
+    window.clearInterval(intervalId)
+    intervalId = null
+  }
+  if (onProgressUpdatedHandler) {
+    window.removeEventListener('progressUpdated', onProgressUpdatedHandler)
+    onProgressUpdatedHandler = null
+  }
+  if (onVisibilityChangeHandler) {
+    window.removeEventListener('focus', onVisibilityChangeHandler)
+    document.removeEventListener('visibilitychange', onVisibilityChangeHandler)
+    onVisibilityChangeHandler = null
   }
 }
 
-function normalizeItem(item) {
-  return normalizeProgressItem(normalizeProgressBook(item))
+function subscribe(listener) {
+  listeners.add(listener)
+  startGlobalListeners()
+  listener({
+    userId: sharedStore.userId,
+    items: sharedStore.items,
+    loading: sharedStore.loading,
+    error: sharedStore.error,
+  })
+  return () => {
+    listeners.delete(listener)
+    if (listeners.size === 0) stopGlobalListeners()
+  }
 }
 
 export default function useProgress(userId) {
-  const [progressItems, setProgressItems] = useState([])
-  const [loading, setLoading] = useState(Boolean(userId))
-  const [error, setError] = useState('')
+  const [state, setState] = useState(() => ({
+    progressItems: sharedStore.userId === userId ? sharedStore.items : [],
+    loading: Boolean(userId && (!sharedStore.lastFetchedAt || sharedStore.userId !== userId)),
+    error: sharedStore.error,
+  }))
+
+  useEffect(() => subscribe((snapshot) => {
+    setState({
+      progressItems: snapshot.items,
+      loading: snapshot.loading,
+      error: snapshot.error,
+    })
+  }), [])
 
   useEffect(() => {
     if (!userId) {
-      setProgressItems([])
-      setLoading(false)
+      setState({ progressItems: [], loading: false, error: '' })
+      refreshSharedProgress('', { force: true }).catch(() => {})
       return
     }
-
-    const fetchProgress = async ({ silent = false } = {}) => {
-      try {
-        if (!silent) {
-          setLoading(true)
-          setError('')
-        }
-        const response = await apiClient.get(`/api/progress?userId=${encodeURIComponent(userId)}`)
-        const payload = response.data
-        const items = (Array.isArray(payload) ? payload : []).map(normalizeItem)
-        setProgressItems(items)
-      } catch (fetchError) {
-        if (!silent) {
-          setError(fetchError?.response?.data?.message || fetchError.message || 'Unable to fetch reading progress.')
-        }
-      } finally {
-        if (!silent) {
-          setLoading(false)
-        }
-      }
-    }
-
-    fetchProgress()
-    const onProgressUpdated = (event) => {
-      const detail = event?.detail || {}
-      const changedBookId = detail.bookId || detail.item?.bookId || detail.item?.book?._id
-      const incoming = detail.item ? normalizeItem(detail.item) : null
-      if (changedBookId || incoming) {
-        setProgressItems((prev) => {
-          const next = [...prev]
-          const targetId = changedBookId || incoming?.bookId
-          const index = next.findIndex((entry) => getProgressBookId(entry) === targetId)
-          const mergedCandidate = normalizeItem({
-            ...(index >= 0 ? next[index] : {}),
-            ...detail,
-            ...(incoming || {}),
-            bookId: targetId,
-            lastReadAt: detail.lastReadAt || incoming?.lastReadAt || new Date().toISOString(),
-          })
-          if (index >= 0) {
-            next[index] = mergedCandidate
-          } else if (incoming || targetId) {
-            next.push(mergedCandidate)
-          }
-          return next
-        })
-      }
-      // Skip immediate refetch when local payload is already provided.
-      if (!incoming) {
-        fetchProgress({ silent: true })
-      }
-    }
-    const onFocus = () => {
-      if (document.visibilityState === 'visible') fetchProgress({ silent: true })
-    }
-    window.addEventListener('progressUpdated', onProgressUpdated)
-    window.addEventListener('focus', onFocus)
-    document.addEventListener('visibilitychange', onFocus)
-    const intervalId = window.setInterval(() => fetchProgress({ silent: true }), 60000)
-    return () => {
-      window.clearInterval(intervalId)
-      window.removeEventListener('progressUpdated', onProgressUpdated)
-      window.removeEventListener('focus', onFocus)
-      document.removeEventListener('visibilitychange', onFocus)
-    }
+    refreshSharedProgress(userId, { force: false }).catch(() => {})
   }, [userId])
 
   const latestProgress = useMemo(() => {
-    if (!progressItems.length) return null
-    return [...progressItems].sort((a, b) => {
-      const aTime = new Date(a.lastReadAt || 0).getTime()
-      const bTime = new Date(b.lastReadAt || 0).getTime()
-      return bTime - aTime
-    })[0]
-  }, [progressItems])
+    if (!state.progressItems.length) return null
+    return state.progressItems[0]
+  }, [state.progressItems])
 
-  return { progressItems, latestProgress, loading, error }
+  return {
+    progressItems: state.progressItems,
+    latestProgress,
+    loading: state.loading,
+    error: state.error,
+    refresh: () => refreshSharedProgress(userId, { force: true }),
+  }
 }

@@ -8,8 +8,8 @@ export function computeProgress(input = {}) {
   const safeTotalPages = Math.max(1, Math.floor(Number(input.totalPages) || 1))
   const safeCurrentPage = clampNumber(Math.floor(Number(input.currentPage) || 1), 1, safeTotalPages)
   const pageBasedPercent = (safeCurrentPage / safeTotalPages) * 100
-  const rawPercent = Number.isFinite(Number(input.progressPercentage))
-    ? Number(input.progressPercentage)
+  const rawPercent = Number.isFinite(Number(input.progressPercentage ?? input.percentage))
+    ? Number(input.progressPercentage ?? input.percentage)
     : pageBasedPercent
   const safeProgress = clampNumber(Math.round(rawPercent), 0, 100)
   return {
@@ -20,18 +20,43 @@ export function computeProgress(input = {}) {
 }
 
 export function getProgressBookId(item) {
-  return item?.book?._id || item?.book || ''
+  return item?.bookId || item?.book?._id || item?.book || ''
 }
 
 export function getEpubProgressStorageKey({ bookId, fileUrl }) {
   return `epubProgress:${bookId || fileUrl || ''}`
 }
 
+export function getLegacyEpubProgressStorageKeys({ bookId, fileUrl }) {
+  return [
+    getEpubProgressStorageKey({ bookId, fileUrl }),
+    `progress-${bookId || ''}`,
+  ]
+}
+
 export function getEpubSavedCfi({ bookId, fileUrl }) {
   try {
-    return localStorage.getItem(getEpubProgressStorageKey({ bookId, fileUrl })) || ''
+    const keys = getLegacyEpubProgressStorageKeys({ bookId, fileUrl })
+    for (const key of keys) {
+      if (!key) continue
+      const value = localStorage.getItem(key)
+      if (value) return value
+    }
+    return ''
   } catch {
     return ''
+  }
+}
+
+export function setEpubSavedCfi({ bookId, fileUrl, cfi }) {
+  const safeCfi = typeof cfi === 'string' ? cfi.trim() : ''
+  if (!safeCfi) return
+  const key = getEpubProgressStorageKey({ bookId, fileUrl })
+  if (!key) return
+  try {
+    localStorage.setItem(key, safeCfi)
+  } catch {
+    // no-op
   }
 }
 
@@ -39,17 +64,28 @@ export function normalizeProgressItem(item) {
   const progress = computeProgress({
     currentPage: item?.currentPage ?? item?.page,
     totalPages: item?.totalPages,
-    progressPercentage: item?.progressPercentage,
+    progressPercentage: item?.progressPercentage ?? item?.percentage,
   })
   const bookId = getProgressBookId(item)
   const fileUrl = item?.book?.fileUrl || item?.book?.pdf || ''
-  const resumeCfi = item?.locationCfi || item?.cfi || getEpubSavedCfi({ bookId, fileUrl })
+  const resumeCfi = item?.locationCfi || item?.epubCfi || item?.cfi || getEpubSavedCfi({ bookId, fileUrl })
+  const completed = typeof item?.completed === 'boolean' ? item.completed : progress.progressPercentage >= 95
   return {
     ...item,
     ...progress,
     page: progress.currentPage,
     bookId,
     resumeCfi,
+    locationCfi: resumeCfi,
+    epubCfi: resumeCfi,
+    cfi: resumeCfi,
+    percentage: progress.progressPercentage,
+    progressPercentage: progress.progressPercentage,
+    percent: progress.progressPercentage,
+    readingTime: Math.max(0, Number(item?.readingTime) || 0),
+    completed,
+    fileType: item?.fileType || item?.book?.fileType || 'pdf',
+    lastReadAt: item?.lastReadAt || item?.updatedAt || item?.createdAt || null,
   }
 }
 

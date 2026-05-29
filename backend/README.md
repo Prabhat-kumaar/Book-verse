@@ -1,71 +1,94 @@
-# Book Reading System Backend
+# Book-verse Backend
 
-Express + MongoDB backend for the Book Reading System.
-
-## Features
-
-- Admin can add books with `title`, `author`, `category`, `pdf`, and `thumbnail`
-- API to get all books
-- API to get books by category
-- API to track user reading progress
-- JWT authentication for admin operations
+Express + MongoDB API for Book-verse.
 
 ## Setup
 
-1. Install dependencies
+1. Install dependencies:
 
 ```bash
-cd backend
 npm install
 ```
 
-2. Create a `.env` file based on `.env.example`
+2. Create `backend/.env` from `backend/.env.example`.
 
-3. Start the server
+3. Set required environment variables:
+
+```bash
+PORT=5000
+NODE_ENV=development
+MONGODB_URI=mongodb+srv://<username>:<password>@<cluster-url>/<database-name>
+JWT_SECRET=<long-random-secret>
+BACKEND_URL=http://localhost:5000
+FRONTEND_URL=http://localhost:5173
+FRONTEND_URLS=http://localhost:5173,http://localhost:5174,http://localhost:4173
+CORS_ORIGINS=http://localhost:5173,http://localhost:5174,http://localhost:4173
+```
+
+Use `FRONTEND_URLS` or `CORS_ORIGINS` for every deployed frontend origin that should be allowed to send credentialed requests. Do not use wildcard Vercel domains in production.
+
+4. Start the API:
 
 ```bash
 npm run dev
 ```
 
-## API Endpoints
+## Admin Setup
 
-### Authentication
+Create or reset an admin account with:
 
-- `POST /api/auth/register` - Register admin user
-- `POST /api/auth/login` - Login and get JWT token
+```bash
+npm run reset:admin -- admin@example.com strong-password
+```
 
-### Books (Protected for admin: add, update, delete)
+Normal user registration is handled by `POST /api/auth/register`. Admin creation through `/api/admin/register` requires an authenticated admin token.
 
-- `POST /api/books` - Add new book (admin only)
-- `GET /api/books` - Fetch all books
-- `GET /api/books?category=Fantasy` - Fetch books by category
-- `GET /api/books/category/:category` - Fetch books by category
-- `PUT /api/books/:id` - Update book (admin only)
-- `DELETE /api/books/:id` - Delete book (admin only)
+## Health Check
 
-### Reading Progress
+`GET /health` returns service uptime and MongoDB connection state.
 
-- `POST /api/progress` - Track/update user reading progress
-- `GET /api/progress?userId=USER_ID` - Get progress for a user
+- `200`: API is running and MongoDB is connected.
+- `503`: API is running but MongoDB is not connected yet.
 
-## Authentication
+Example response:
 
-Admin operations require JWT token in header: `Authorization: Bearer <token>`
+```json
+{
+  "success": true,
+  "service": "Readify API",
+  "database": {
+    "status": "connected",
+    "readyState": 1
+  }
+}
+```
 
-## MVC Structure
+## Core API
 
-- `models/` - Mongoose schemas
-- `controllers/` - Request handlers
-- `routes/` - Express routing
-- `middleware/` - Auth middleware
-- `config/` - Database connection
+- `POST /api/auth/register` - register a user.
+- `POST /api/auth/login` - login and receive a JWT token.
+- `GET /api/auth/me` - get the current authenticated user.
+- `GET /api/books` - list books.
+- `GET /api/books/:id` - get one book and increment open count.
+- `POST /api/books` - admin-only book upload.
+- `PUT /api/books/:id` - admin-only book update.
+- `DELETE /api/books/:id` - admin-only book delete.
+- `POST /api/progress` - save reading progress.
+- `GET /api/progress` - list progress for the authenticated user.
+- `POST /api/analytics/visit` - record one frontend page visit.
+- `GET /api/analytics/admin` - admin-only analytics overview.
 
-## Notes
+Book uploads support `title`, `author`, `category`, `description`, `tags`, `language`, `difficulty`, `thumbnail`, and `file/fileUrl`.
 
-- Uses MongoDB for persistence.
-- `MONGO_URI` must be configured in your environment before starting the server.
+## Deployment Notes
 
-## Notes
+- Set `NODE_ENV=production`.
+- Set `JWT_SECRET` to a high-entropy secret, not the example value.
+- Set `MONGODB_URI` or `MONGO_URI` to your production database.
+- Set `BACKEND_URL` to the public backend origin so uploaded media URLs resolve correctly.
+- Set `FRONTEND_URLS` or `CORS_ORIGINS` to explicit frontend origins only.
+- Configure the hosting health check to call `/health`.
 
-- Uses MongoDB for persistence.
-- `MONGO_URI` must be configured in your environment before starting the server.
+## Dependency Notes
+
+No backend package was identified as safe to remove from `package.json`. If `npm ls` shows extraneous packages locally, clean `node_modules` and reinstall with `npm install`.

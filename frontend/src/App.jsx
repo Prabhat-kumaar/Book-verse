@@ -1,7 +1,10 @@
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { Suspense, lazy, useEffect, useState } from 'react'
 import { SavedBooksProvider } from './context/SavedBooksContext'
+import apiClient from './lib/apiClient'
 import { BookCardSkeleton, HeroSkeleton, NavbarSkeleton } from './components/Skeletons'
+
+const isDev = import.meta.env.DEV
 
 const MainLayout = lazy(() => import('./layout/MainLayout'))
 const HomePage = lazy(() => import('./pages/HomePage'))
@@ -72,6 +75,17 @@ function App() {
   }, [])
 
   useEffect(() => {
+    const recordVisit = async () => {
+      try {
+        await apiClient.post('/analytics/visit')
+      } catch (err) {
+        if (isDev) console.error('Failed to record page visit:', err)
+      }
+    }
+    recordVisit()
+  }, [])
+
+  useEffect(() => {
     const hashToPath = {
       '#admin': '/admin/dashboard',
       '#admin/login': '/login',
@@ -91,9 +105,11 @@ function App() {
     <SavedBooksProvider>
       <Suspense fallback={<RouteFallback />}>
         {isReaderRoute ? (
-          <MainLayout hideChrome fullBleed>
-            <UnifiedReaderPage />
-          </MainLayout>
+          <RequireAuth>
+            <MainLayout hideChrome fullBleed>
+              <UnifiedReaderPage />
+            </MainLayout>
+          </RequireAuth>
         ) : (
           <Routes>
             <Route path="/" element={<MainLayout><HomePage /></MainLayout>} />

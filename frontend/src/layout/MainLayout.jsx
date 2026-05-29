@@ -1,15 +1,16 @@
 import { Link, useLocation } from 'react-router-dom'
+import { MdHome, MdLibraryBooks, MdStar, MdExplore, MdPerson } from 'react-icons/md'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 
 export default function MainLayout({ children, hideChrome = false, fullBleed = false }) {
   const location = useLocation()
   const mobileNavItems = [
-    { label: 'Home', href: '/', icon: '🏠' },
-    { label: 'Categories', href: '/categories', icon: '📚' },
-    { label: 'Recommended', href: '/recommended', icon: '✨' },
-    { label: 'Explore', href: '/books', icon: '🧭' },
-    { label: 'Account', href: '/me', icon: '👤' },
+    { label: 'Home', href: '/', icon: <MdHome className="h-5.5 w-5.5" /> },
+    { label: 'Categories', href: '/categories', icon: <MdLibraryBooks className="h-5.5 w-5.5" /> },
+    { label: 'Recommended', href: '/recommended', icon: <MdStar className="h-5.5 w-5.5" /> },
+    { label: 'Explore', href: '/books', icon: <MdExplore className="h-5.5 w-5.5" /> },
+    { label: 'Account', href: '/me', icon: <MdPerson className="h-5.5 w-5.5" /> },
   ]
 
   return (
@@ -35,11 +36,13 @@ export default function MainLayout({ children, hideChrome = false, fullBleed = f
               <li key={item.label}>
                 <Link
                   to={item.href}
-                  className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-lg py-2 text-[11px] font-medium transition ${
-                    active ? 'text-indigo-300' : 'text-slate-300'
+                  className={`flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-lg py-2 text-[10px] font-semibold transition ${
+                    active ? 'text-indigo-300' : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  <span className={`text-base ${active ? 'drop-shadow-[0_0_10px_rgba(129,140,248,0.75)]' : ''}`}>{item.icon}</span>
+                  <span className={`transition-all duration-200 ${active ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_rgba(129,140,248,0.6)]' : 'text-slate-400'}`}>
+                    {item.icon}
+                  </span>
                   <span>{item.label}</span>
                 </Link>
               </li>

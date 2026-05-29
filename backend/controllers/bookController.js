@@ -304,6 +304,20 @@ const updateBook = async (req, res, next) => {
     }
 };
 
+const getRecommendations = async (req, res, next) => {
+    try {
+        const books = await Book.find().limit(8);
+        const formattedBooks = books.map(book => ({
+            ...book._doc,
+            fileUrl: book.fileUrl ? formatUrl(req, book.fileUrl) : null,
+            thumbnail: book.thumbnail ? formatUrl(req, book.thumbnail) : null
+        }));
+        res.json({ success: true, data: formattedBooks });
+    } catch (error) {
+        next(error);
+    }
+};
+
 const deleteBook = async (req, res, next) => {
     try {
         const bookId = req.params.id;
@@ -313,6 +327,11 @@ const deleteBook = async (req, res, next) => {
         }
 
         await Book.findByIdAndDelete(bookId);
+        
+        // Auto-cleanup orphaned progress records for the deleted book
+        const Progress = require('../models/Progress');
+        await Progress.deleteMany({ book: bookId });
+
         return res.status(200).json({ success: true, message: "Book deleted" });
     } catch (error) {
         next(error);
@@ -326,4 +345,5 @@ module.exports = {
     getBookById,
     updateBook,
     deleteBook,
+    getRecommendations,
 };

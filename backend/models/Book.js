@@ -17,6 +17,29 @@ const bookSchema = new mongoose.Schema(
             required: true,
             trim: true,
         },
+        description: {
+            type: String,
+            default: '',
+            trim: true,
+        },
+        tags: {
+            type: [String],
+            default: [],
+            set: (tags) => Array.isArray(tags)
+                ? tags.map((tag) => String(tag).trim()).filter(Boolean)
+                : [],
+        },
+        language: {
+            type: String,
+            default: '',
+            trim: true,
+        },
+        difficulty: {
+            type: String,
+            enum: ['', 'Beginner', 'Intermediate', 'Advanced'],
+            default: '',
+            trim: true,
+        },
         fileUrl: {
             type: String,
             required: true,
@@ -38,6 +61,10 @@ const bookSchema = new mongoose.Schema(
             required: true,
             trim: true,
         },
+        openCount: {
+            type: Number,
+            default: 0,
+        },
     },
     {
         timestamps: true,
@@ -46,6 +73,6 @@ const bookSchema = new mongoose.Schema(
 
 bookSchema.index({ createdAt: -1 });
 bookSchema.index({ category: 1 });
-bookSchema.index({ title: 'text', author: 'text' });
+bookSchema.index({ title: 'text', author: 'text', description: 'text', tags: 'text' });
 
 module.exports = mongoose.model('Book', bookSchema, 'books');

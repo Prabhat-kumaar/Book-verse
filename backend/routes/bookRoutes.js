@@ -7,6 +7,7 @@ const {
     getBookById,
     updateBook,
     deleteBook,
+    getRecommendations,
 } = require('../controllers/bookController');
 const { protect, admin } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
@@ -25,6 +26,7 @@ router.post(
     addBook
 );
 router.get('/', getAllBooks);
+router.get('/recommendations', getRecommendations);
 router.get('/category/:category', getBooksByCategory);
 router.get('/:id', getBookById);
 router.put('/:id', uploadLimiter, protect, admin, updateBook);

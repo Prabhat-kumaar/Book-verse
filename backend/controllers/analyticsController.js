@@ -1,4 +1,7 @@
 const User = require('../models/User');
+const Book = require('../models/Book');
+const Progress = require('../models/Progress');
+const SiteStats = require('../models/SiteStats');
 const ReadingAnalyticsDay = require('../models/ReadingAnalyticsDay');
 
 const atDayStart = (dateLike) => {
@@ -97,8 +100,68 @@ const getOverallAnalytics = async (req, res, next) => {
     }
 };
 
+const recordVisit = async (req, res, next) => {
+    try {
+        const stats = await SiteStats.findOneAndUpdate(
+            { key: 'global' },
+            { $inc: { visits: 1 } },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+        res.json({ success: true, visits: stats.visits });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const getAdminAnalytics = async (req, res, next) => {
+    try {
+        const totalUsers = await User.countDocuments();
+        const totalBooks = await Book.countDocuments();
+
+        const stats = await SiteStats.findOne({ key: 'global' });
+        const websiteVisits = stats ? stats.visits : 0;
+
+        // Active Readers Today: Users who read books within the last 24h
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const activeReadersToday = await Progress.distinct('userId', {
+            lastReadAt: { $gte: todayStart }
+        });
+
+        // Most Read Book based on openCount
+        const mostReadBook = await Book.findOne().sort({ openCount: -1 });
+
+        // Recent Uploads (last 5 books)
+        const recentUploads = await Book.find().sort({ createdAt: -1 }).limit(5);
+
+        res.json({
+            success: true,
+            totalUsers,
+            totalBooks,
+            websiteVisits,
+            activeReadersTodayCount: activeReadersToday.length,
+            mostReadBook: mostReadBook ? {
+                title: mostReadBook.title,
+                author: mostReadBook.author,
+                openCount: mostReadBook.openCount || 0
+            } : null,
+            recentUploads: recentUploads.map(b => ({
+                id: b._id,
+                title: b.title,
+                author: b.author,
+                category: b.category,
+                createdAt: b.createdAt
+            }))
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     getDailyAnalytics,
     getWeeklyAnalytics,
     getOverallAnalytics,
+    recordVisit,
+    getAdminAnalytics,
 };

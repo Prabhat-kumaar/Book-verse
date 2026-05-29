@@ -8,8 +8,7 @@ const errorMiddleware = (err, req, res, next) => {
         return apiResponse.error(res, err.message, err.statusCode, err.stack);
     }
 
-    // Log unexpected errors for the developer
-    console.error("ERROR ??", err);
+    console.error('Unhandled API error:', err);
 
     return apiResponse.error(res, "Something went very wrong!", 500, err.message);
 };

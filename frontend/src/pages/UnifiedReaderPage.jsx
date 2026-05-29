@@ -1,6 +1,7 @@
-import { useMemo } from 'react'
-import PdfReaderPage from './PdfReaderPage'
-import EpubReaderPage from './EpubReaderPage'
+import { Suspense, lazy, useMemo } from 'react'
+
+const PdfReaderPage = lazy(() => import('./PdfReaderPage'))
+const EpubReaderPage = lazy(() => import('./EpubReaderPage'))
 
 function getReaderTypeFromHash(hash) {
   const queryString = hash.includes('?') ? hash.split('?')[1] : ''
@@ -15,8 +16,15 @@ export default function UnifiedReaderPage() {
   const readerType = useMemo(() => getReaderTypeFromHash(window.location.hash || ''), [])
   return (
     <div className="min-h-screen w-full animate-reader-fade-up">
-      {readerType === 'epub' ? <EpubReaderPage /> : <PdfReaderPage />}
+      <Suspense
+        fallback={(
+          <div className="grid min-h-screen place-items-center bg-slate-950 text-sm text-slate-300">
+            Loading reader...
+          </div>
+        )}
+      >
+        {readerType === 'epub' ? <EpubReaderPage /> : <PdfReaderPage />}
+      </Suspense>
     </div>
   )
 }
-

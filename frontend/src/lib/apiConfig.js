@@ -27,7 +27,7 @@ const browserFallbackOrigin = (() => {
   if (!isBrowser) return ''
   const { protocol, hostname, port } = window.location
   if (!isLocalHost(hostname)) return ''
-  if (import.meta.env.DEV && port === '5173') {
+  if (import.meta.env.DEV && port !== '5000') {
     return `${protocol}//${hostname}:5000`
   }
   return `${protocol}//${hostname}${port ? `:${port}` : ''}`

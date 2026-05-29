@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ePub from 'epubjs'
 import {
   MdBookmarkBorder,
@@ -12,13 +12,22 @@ import {
   MdMenu,
   MdSearch,
 } from 'react-icons/md'
-import apiClient from '../lib/apiClient'
 import { API_ORIGIN } from '../lib/apiConfig'
+import { getEpubSavedCfi, setEpubSavedCfi } from '../lib/readingProgress'
+import useReadingProgress from '../hooks/useReadingProgress'
 import './epubReader.css'
 
 const API = API_ORIGIN
-const EPUB_PROGRESS_SYNC_MS = 2000
 const SWIPE_MIN_DISTANCE = 80
+const EPUB_AUTO_SAVE_INTERVAL_MS = 8000
+const EPUB_SAVE_COOLDOWN_MS = 2500
+const isDev = import.meta.env.DEV
+const debugLog = (...args) => {
+  if (isDev) console.debug(...args)
+}
+const debugError = (...args) => {
+  if (isDev) console.error(...args)
+}
 
 function parseReaderParams() {
   const hash = window.location.hash || ''
@@ -42,10 +51,6 @@ function toAbsoluteUrl(value) {
   return raw
 }
 
-function getProgressKey({ bookId }) {
-  return `progress-${bookId || ''}`
-}
-
 function getLocationsKey(bookId, fileUrl) {
   const urlHash = (fileUrl || '')
     .split('')
@@ -54,37 +59,8 @@ function getLocationsKey(bookId, fileUrl) {
   return `epub-locations-${bookId || 'unknown'}-${urlHash}`
 }
 
-function loadCachedLocations(locKey, book) {
-  try {
-    const raw = localStorage.getItem(locKey)
-    if (!raw) return false
-
-    const cached = JSON.parse(raw)
-    const ONE_WEEK = 7 * 24 * 60 * 60 * 1000
-    if (!cached?.data || cached?.version !== '1' || (Date.now() - Number(cached.savedAt || 0)) > ONE_WEEK) {
-      localStorage.removeItem(locKey)
-      return false
-    }
-
-    book.locations.load(cached.data)
-    return true
-  } catch {
-    return false
-  }
-}
-
 function getActiveHref(locationHref = '') {
   return locationHref.split('#')[0].split('/').pop() || ''
-}
-
-function normalizeHref(href = '') {
-  return href.split('#')[0].split('?')[0].toLowerCase()
-}
-
-function getLocationsCount(book) {
-  const raw = book?.locations?.length
-  const value = typeof raw === 'function' ? raw.call(book.locations) : raw
-  return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0
 }
 
 function flattenToc(items = [], depth = 0) {
@@ -148,9 +124,7 @@ export default function EpubReaderPage() {
   const [tocItems, setTocItems] = useState([])
   const [activeFilename, setActiveFilename] = useState('')
   const [currentChapterLabel, setCurrentChapterLabel] = useState('')
-  const [progressPercent, setProgressPercent] = useState(0)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
+
   const [currentCfi, setCurrentCfi] = useState('')
   const [currentSpineIndex, setCurrentSpineIndex] = useState(0)
   const [showChrome, setShowChrome] = useState(true)
@@ -163,7 +137,6 @@ export default function EpubReaderPage() {
   const searchInputRef = useRef(null)
   const bookRef = useRef(null)
   const renditionRef = useRef(null)
-  const lastSavedCfi = useRef(null)
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
   const locationTimerRef = useRef(null)
@@ -171,6 +144,10 @@ export default function EpubReaderPage() {
   const spineIndexRef = useRef(0)
   const progressMetaRef = useRef({ percentage: 0, currentPage: 1, totalPages: 1, chapterTitle: '', chapterIndex: 0 })
   const lastScrollYRef = useRef(0)
+  const currentCfiRef = useRef('')
+  const currentChapterRef = useRef('')
+  const bookIdRef = useRef('')
+  const locationsReadyRef = useRef(false)
 
   const getAuthUser = () => {
     try {
@@ -184,8 +161,27 @@ export default function EpubReaderPage() {
   const resolvedFileUrl = useMemo(() => toAbsoluteUrl(params.fileUrl), [params.fileUrl])
   const fileUrl = resolvedFileUrl
   const bookId = params?.bookId || ''
-  const progressKey = useMemo(() => getProgressKey({ bookId }), [bookId])
   const locationsKey = useMemo(() => getLocationsKey(bookId, fileUrl), [bookId, fileUrl])
+
+  const authUser = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('authUser')
+      return raw ? JSON.parse(raw) : null
+    } catch {
+      return null
+    }
+  }, [])
+  const userId = authUser?._id || ''
+
+  const {
+    currentPage,
+    totalPages,
+    progressPercentage: progressPercent,
+    locationCfi: savedLocationCfi,
+    loading: progressLoading,
+    updateProgress,
+    triggerSave,
+  } = useReadingProgress(bookId, userId, 'epub')
 
   const updateSpineIndex = (idx) => {
     spineIndexRef.current = idx
@@ -214,7 +210,7 @@ export default function EpubReaderPage() {
       await renditionRef.current.display(items[nextIdx].href)
       updateSpineIndex(nextIdx)
     } catch (e) {
-      console.error('Next chapter error:', e)
+      debugError('Next chapter error:', e)
     }
   }
 
@@ -226,7 +222,7 @@ export default function EpubReaderPage() {
       await renditionRef.current.display(items[prevIdx].href)
       updateSpineIndex(prevIdx)
     } catch (e) {
-      console.error('Prev chapter error:', e)
+      debugError('Prev chapter error:', e)
     }
   }
 
@@ -256,6 +252,14 @@ export default function EpubReaderPage() {
   }, [activeFilename])
 
   useEffect(() => {
+    currentChapterRef.current = currentChapterLabel
+  }, [currentChapterLabel])
+
+  useEffect(() => {
+    bookIdRef.current = bookId
+  }, [bookId])
+
+  useEffect(() => {
     localStorage.setItem('epubTheme', isDarkMode ? 'dark' : 'light')
     if (!renditionRef.current) return
     renditionRef.current.themes.default({
@@ -283,11 +287,28 @@ export default function EpubReaderPage() {
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
   }, [])
 
+  const initialProgressLoadedRef = useRef(false)
+  const initialCfiRef = useRef('')
+
   useEffect(() => {
+    initialProgressLoadedRef.current = false
+    locationsReadyRef.current = false
+    initialCfiRef.current = ''
+  }, [bookId])
+
+  useEffect(() => {
+    if (!progressLoading && savedLocationCfi && !initialCfiRef.current) {
+      initialCfiRef.current = savedLocationCfi
+    }
+  }, [progressLoading, savedLocationCfi])
+
+  useEffect(() => {
+    if (progressLoading) return undefined
+    if (initialProgressLoadedRef.current) return undefined
     if (!viewerRef.current || !fileUrl || !bookId) return undefined
 
+    initialProgressLoadedRef.current = true
     let isDestroyed = false
-    const abortController = new AbortController()
 
     const initReader = async () => {
       try {
@@ -312,7 +333,7 @@ export default function EpubReaderPage() {
           flow: 'scrolled',
           width: '100%',
           height: '100%',
-          allowScriptedContent: false,
+          allowScriptedContent: true,
           allowPopups: false,
           spread: 'none',
         })
@@ -362,85 +383,106 @@ export default function EpubReaderPage() {
         if (isDestroyed) return
         spineItemsRef.current = book.spine?.spineItems || []
 
-        let savedCfi = params.cfi || ''
-        const authUser = getAuthUser()
-        if (!savedCfi && authUser?._id) {
-          try {
-            const response = await apiClient.get(
-              `/api/progress?userId=${encodeURIComponent(authUser._id)}`,
-              { signal: abortController.signal },
-            )
-            const match = (response?.data || []).find((item) => (item?.book?._id || item?.book) === bookId)
-            savedCfi = match?.locationCfi || ''
-          } catch (err) {
-            if (abortController.signal.aborted || err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') return
-            console.debug('Progress lookup skipped:', err?.message || err)
-          }
-        }
-        if (!savedCfi) savedCfi = localStorage.getItem(progressKey) || ''
-        await rendition.display(savedCfi || undefined)
-
-        const cacheHit = loadCachedLocations(locationsKey, book)
-        if (cacheHit) {
-          setTotalPages(Math.max(1, getLocationsCount(book) || 1))
-        } else {
-          setTotalPages(1)
-          book.locations.generate(1024).then(() => {
-            if (!isDestroyed) {
-              try {
-                localStorage.setItem(locationsKey, JSON.stringify({
-                  data: book.locations.save(),
-                  savedAt: Date.now(),
-                  version: '1',
-                }))
-              } catch (e) {
-                console.warn('Could not cache locations:', e)
-              }
-              setTotalPages(Math.max(1, getLocationsCount(book) || 1))
-            }
-          })
-        }
+        await book.ready
 
         const onLocationChanged = (loc) => {
+          if (!locationsReadyRef.current) {
+            debugLog('[Progress] Skipping locationChanged: locations are not ready')
+            return
+          }
           if (locationTimerRef.current) window.clearTimeout(locationTimerRef.current)
           locationTimerRef.current = window.setTimeout(() => {
-            if (!loc?.start?.href) return
-            const activeFile = getActiveHref(loc.start.href)
+            const currentLocationObj = rendition.currentLocation()
+            const currentCfiVal = currentLocationObj?.start?.cfi || loc?.start?.cfi || ''
+            if (!currentCfiVal) return
+
+            const totalLocs = book.locations.total || 0
+            if (totalLocs <= 1) {
+              debugLog('[Progress] Skipping: totalLocations is too small:', totalLocs)
+              return
+            }
+
+            const locationHref = loc?.start?.href || ''
+            const activeFile = getActiveHref(locationHref)
             setActiveFilename(activeFile)
             const match = toc.find((item) => getActiveHref(item?.href || '') === activeFile)
-            if (match) setCurrentChapterLabel(match.label || '')
+            if (match) {
+              setCurrentChapterLabel(match.label || '')
+              currentChapterRef.current = match.label || ''
+            }
 
             const idx = spineItemsRef.current.findIndex((item) => (
-              loc.start.href.includes(item?.href || '') || (item?.href || '').includes(loc.start.href)
+              locationHref.includes(item?.href || '') || (item?.href || '').includes(locationHref)
             ))
             if (idx >= 0) updateSpineIndex(idx)
 
-            const cfi = loc.start.cfi || ''
-            if (!cfi) return
-            setCurrentCfi((prev) => (prev === cfi ? prev : cfi))
-            localStorage.setItem(progressKey, cfi)
+            setCurrentCfi(currentCfiVal)
+            currentCfiRef.current = currentCfiVal
+            setEpubSavedCfi({ bookId, fileUrl, cfi: currentCfiVal })
 
-            const pct = book.locations.percentageFromCfi ? book.locations.percentageFromCfi(cfi) : 0
-            const percent = Math.max(0, Math.min(100, Math.round((pct || 0) * 100)))
-            const total = Math.max(1, getLocationsCount(book) || 1)
-            const pageNumber = Math.max(1, Math.min(total, (loc?.start?.location || 0) + 1))
-            setProgressPercent(percent)
-            setCurrentPage(pageNumber)
-            setTotalPages(total)
-            progressMetaRef.current = {
-              percentage: percent,
-              currentPage: pageNumber,
-              totalPages: total,
-              chapterTitle: match?.label || progressMetaRef.current.chapterTitle,
-              chapterIndex: idx >= 0 ? idx : progressMetaRef.current.chapterIndex,
+            let currentLocation = book.locations.locationFromCfi(currentCfiVal)
+            if (currentLocation === undefined || currentLocation === -1) {
+              const rawPercent = Number(book.locations.percentageFromCfi(currentCfiVal))
+              const percent = Number.isFinite(rawPercent) ? rawPercent : 0
+              currentLocation = Math.round(percent * totalLocs)
             }
+            if (currentLocation === undefined || currentLocation === -1) {
+              currentLocation = 0
+            }
+
+            const pageNumber = Math.max(1, Math.min(totalLocs, currentLocation + 1))
+            
+            console.log('[Progress] EPUB Location updated:', {
+              pageNumber,
+              totalLocs,
+              cfi: currentCfiVal,
+            })
+
+            // Sync with progress hook
+            updateProgress({
+              currentPage: pageNumber,
+              totalPages: totalLocs,
+              locationCfi: currentCfiVal,
+            })
           }, 300)
         }
 
         rendition.on('locationChanged', onLocationChanged)
+
+        const savedCfi = initialCfiRef.current || params.cfi || getEpubSavedCfi({ bookId, fileUrl }) || ''
+
+        if (savedCfi) {
+          debugLog('[Progress] Displaying CFI:', savedCfi)
+          setEpubSavedCfi({ bookId, fileUrl, cfi: savedCfi })
+          await rendition.display(savedCfi)
+        } else {
+          debugLog('[Progress] Displaying CFI: beginning')
+          await rendition.display()
+        }
+
         if (!isDestroyed) {
           setLoadingState('ready')
         }
+
+        // Generate locations asynchronously in the background so it is completely non-blocking
+        (async () => {
+          try {
+            debugLog('[Locations] Generating locations in background...')
+            await book.locations.generate(1024)
+            if (!isDestroyed) {
+              locationsReadyRef.current = true
+              debugLog('[Locations] Background generation complete. Total:', book.locations.total)
+              
+              // Trigger a manual page calculation now that locations are ready
+              const currentLocObj = rendition.currentLocation()
+              if (currentLocObj) {
+                onLocationChanged(currentLocObj)
+              }
+            }
+          } catch (e) {
+            debugLog('[Locations] Background generation error:', e)
+          }
+        })()
       } catch {
         if (!isDestroyed) {
           setLoadingState('error')
@@ -453,7 +495,6 @@ export default function EpubReaderPage() {
 
     return () => {
       isDestroyed = true
-      abortController.abort()
       if (locationTimerRef.current) window.clearTimeout(locationTimerRef.current)
       if (renditionRef.current?.destroy) renditionRef.current.destroy()
       if (bookRef.current) {
@@ -462,36 +503,8 @@ export default function EpubReaderPage() {
         renditionRef.current = null
       }
     }
-  }, [fileUrl, bookId])
+  }, [bookId, fileUrl, progressLoading, updateProgress])
 
-  const saveProgress = async ({ cfi, percentage, chapter }) => {
-    const authUser = getAuthUser()
-    if (!authUser?._id || !bookId || !cfi) return
-    const meta = progressMetaRef.current
-    await apiClient.post('/api/progress', {
-      userId: authUser._id,
-      bookId,
-      currentPage: meta.currentPage,
-      totalPages: meta.totalPages,
-      progressPercentage: typeof percentage === 'number' ? percentage : meta.percentage,
-      locationCfi: cfi,
-      chapterTitle: chapter || meta.chapterTitle || '',
-      chapterIndex: Math.max(0, meta.chapterIndex || 0),
-    })
-  }
-
-  useEffect(() => {
-    if (!currentCfi || currentCfi === lastSavedCfi.current) return
-    const timer = window.setTimeout(async () => {
-      try {
-        await saveProgress({ cfi: currentCfi, percentage: progressMetaRef.current.percentage, chapter: currentChapterLabel || progressMetaRef.current.chapterTitle })
-        lastSavedCfi.current = currentCfi
-      } catch (err) {
-        console.error('Progress save failed:', err)
-      }
-    }, EPUB_PROGRESS_SYNC_MS)
-    return () => window.clearTimeout(timer)
-  }, [currentCfi])
 
   useEffect(() => {
     const onKeyDown = (e) => {
@@ -616,46 +629,19 @@ export default function EpubReaderPage() {
 
   const handleChapterClick = async (item, index) => {
     const rendition = renditionRef.current
-    const book = bookRef.current
-    if (!rendition || !book || !item?.href) return
-
-    const resolveDisplayTarget = () => {
-      const raw = item.href || ''
-      const rawNorm = normalizeHref(raw)
-      const spineItems = spineItemsRef.current || []
-      const exact = spineItems.find((s) => normalizeHref(s?.href || '') === rawNorm)
-      if (exact?.href) return exact.href
-      const byTail = spineItems.find((s) => normalizeHref(s?.href || '').endsWith(getActiveHref(rawNorm)))
-      if (byTail?.href) return byTail.href
-      return raw
-    }
+    if (!rendition || !item?.href) return
 
     try {
-      const target = resolveDisplayTarget()
-      const section = book.spine?.get?.(target) || book.spine?.get?.(item.href)
-      const finalTarget = section?.href || target
-      await rendition.display(finalTarget)
-      const matchedIdx = spineItemsRef.current.findIndex((s) => normalizeHref(s?.href || '') === normalizeHref(finalTarget))
-      if (matchedIdx >= 0) updateSpineIndex(matchedIdx)
-      else if (typeof index === 'number') updateSpineIndex(index)
-    } catch (e) {
-      try {
-        const fallbackHref = normalizeHref(item.href || '')
-        if (fallbackHref) {
-          const fallbackSection = book.spine?.get?.(fallbackHref)
-          const finalFallback = fallbackSection?.href || fallbackHref
-          await rendition.display(finalFallback)
-          const matchedIdx = spineItemsRef.current.findIndex((s) => normalizeHref(s?.href || '') === normalizeHref(finalFallback))
-          if (matchedIdx >= 0) updateSpineIndex(matchedIdx)
-          else if (typeof index === 'number') updateSpineIndex(index)
-        }
-      } catch (fallbackErr) {
-        console.error('Chapter navigation failed:', item.href, e, fallbackErr)
+      await rendition.display(item.href)
+      if (typeof index === 'number') {
+        updateSpineIndex(index)
       }
+    } catch (e) {
+      debugError('Chapter navigation failed:', item.href, e)
     }
     setActiveFilename(getActiveHref(item.href || ''))
     setCurrentChapterLabel(item.label || '')
-    if (window.innerWidth < 768) setSidebarOpen(false)
+    setSidebarOpen(false)
   }
 
   const isTocItemActive = (item) => {
@@ -675,11 +661,12 @@ export default function EpubReaderPage() {
 
   const bookmarkCurrentLocation = async () => {
     if (!currentCfi) return
+    const authUser = getAuthUser()
+    if (!authUser?._id || !bookId) return
     try {
-      await saveProgress({ cfi: currentCfi, percentage: progressMetaRef.current.percentage, chapter: currentChapterLabel || progressMetaRef.current.chapterTitle })
-      lastSavedCfi.current = currentCfi
+      await triggerSave(true)
     } catch (err) {
-      console.error('Bookmark save failed:', err)
+      debugError('Bookmark save failed:', err)
     }
   }
 
@@ -703,6 +690,14 @@ export default function EpubReaderPage() {
         }`}
     >
       <div ref={frameRef} className={`relative h-screen w-screen overflow-hidden ${isFullscreen ? 'fullscreen' : ''}`}>
+        {/* Top Reading Progress Bar */}
+        <div className="fixed left-0 right-0 top-0 z-50 h-1.5 w-full bg-slate-800/20">
+          <div
+            className="h-full bg-gradient-to-r from-blue-400 via-indigo-500 to-violet-600 transition-all duration-300 shadow-[0_0_10px_rgba(99,102,241,0.5)]"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+
         <header
           className={`glass-strong fixed inset-x-0 top-0 z-40 h-14 transition-transform duration-300
             ${showChrome ? 'translate-y-0' : '-translate-y-full'}
@@ -720,6 +715,9 @@ export default function EpubReaderPage() {
             <div className="min-w-0 flex-1 text-center">
               <p className="truncate text-[13px] font-semibold uppercase tracking-[0.14em] opacity-90">
                 {params.title}
+                <span className="ml-2 inline-flex items-center rounded-full bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 text-[10px] font-bold text-indigo-300">
+                  {progressPercent}% complete
+                </span>
               </p>
               <p className="truncate text-[11px] opacity-60">
                 {currentChapterLabel || 'Reading View'}

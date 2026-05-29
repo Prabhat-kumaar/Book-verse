@@ -3,6 +3,7 @@ import apiClient from '../lib/apiClient'
 import { API_URL, buildApiUrl } from '../lib/apiConfig'
 
 const SAVED_CACHE_KEY = 'savedBooksState:v1'
+const isDev = import.meta.env.DEV
 
 function readSavedCache() {
   try {
@@ -98,9 +99,11 @@ export default function useSavedBooks() {
     try {
       setLoading(true)
       setError('')
-      console.info('[useSavedBooks] API_URL:', API_URL)
-      console.info('[useSavedBooks] Request URL:', buildApiUrl('/api/collections'))
-      console.info('[useSavedBooks] Request URL:', buildApiUrl('/api/saved-books/status'))
+      if (isDev) {
+        console.info('[useSavedBooks] API_URL:', API_URL)
+        console.info('[useSavedBooks] Request URL:', buildApiUrl('/api/collections'))
+        console.info('[useSavedBooks] Request URL:', buildApiUrl('/api/saved-books/status'))
+      }
       const [collectionsRes, statusRes] = await Promise.all([
         apiClient.get('/api/collections'),
         apiClient.get('/api/saved-books/status'),
@@ -110,7 +113,7 @@ export default function useSavedBooks() {
     } catch (err) {
       const message = err?.response?.data?.message || err?.message || 'Failed to load saved books'
       setError(message)
-      console.error('[useSavedBooks] Failed to load saved books:', message)
+      if (isDev) console.error('[useSavedBooks] Failed to load saved books:', message)
     } finally {
       setLoading(false)
       setHydrated(true)

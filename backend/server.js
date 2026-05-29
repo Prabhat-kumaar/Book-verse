@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
@@ -50,17 +50,39 @@ app.use(
 
 // ================= CORS =================
 
-const allowedOrigins = [
-    'http://localhost:5173',
-    'http://localhost:4173',
-    'http://localhost:3000',
-    'https://readifyai.vercel.app',
-    'https://book-verse.vercel.app',
-];
+const parseOriginList = (...values) => values
+    .flatMap((value) => String(value || '').split(','))
+    .map((origin) => origin.trim().replace(/\/+$/, ''))
+    .filter(Boolean);
+
+const allowedOrigins = new Set([
+    ...parseOriginList(
+        process.env.FRONTEND_URL,
+        process.env.FRONTEND_URLS,
+        process.env.CORS_ORIGINS
+    ),
+    ...(isDev
+        ? [
+            'http://localhost:3000',
+            'http://localhost:4173',
+            'http://localhost:5173',
+            'http://localhost:5174',
+            'http://localhost:5175',
+            'http://127.0.0.1:3000',
+            'http://127.0.0.1:4173',
+            'http://127.0.0.1:5173',
+            'http://127.0.0.1:5174',
+            'http://127.0.0.1:5175',
+        ]
+        : []),
+]);
+
+const normalizeOrigin = (origin = '') => origin.trim().replace(/\/+$/, '');
 
 app.use(cors({
     origin: function (origin, callback) {
-        if (allowedOrigins.includes(origin) || /\.vercel\.app$/.test(origin)) {
+        const normalizedOrigin = normalizeOrigin(origin || '');
+        if (!origin || allowedOrigins.has(normalizedOrigin)) {
             return callback(null, true);
         }
         return callback(new Error('Not allowed by CORS'));
@@ -215,6 +237,32 @@ app.get('/', (_req, res) => {
     });
 });
 
+const dbStateLabels = {
+    0: 'disconnected',
+    1: 'connected',
+    2: 'connecting',
+    3: 'disconnecting',
+};
+
+app.get('/health', (_req, res) => {
+    const dbState = mongoose.connection.readyState;
+    const dbStatus = dbStateLabels[dbState] || 'unknown';
+    const healthy = dbStatus === 'connected';
+
+    return res.status(healthy ? 200 : 503).json({
+        success: healthy,
+        service: 'Readify API',
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString(),
+        database: {
+            status: dbStatus,
+            readyState: dbState,
+            name: mongoose.connection.name || null,
+            host: mongoose.connection.host || null,
+        },
+    });
+});
+
 // ================= API ROUTES =================
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
@@ -249,37 +297,37 @@ app.use(errorMiddleware);
 // ================= SERVER =================
 const PORT = process.env.PORT || 5000;
 
-const startServer = async () => {
+const startServer = () => {
+    const server = http.createServer(app);
 
-    try {
-
-        await connectDB();
-
-        http.createServer(app).listen(
-            PORT,
-            '0.0.0.0',
-            () => {
-
-                console.log(`
+    server.listen(
+        PORT,
+        '0.0.0.0',
+        () => {
+            console.log(`
 ========================================
  Readify API Server Running
  Environment : ${process.env.NODE_ENV}
  Port        : ${PORT}
- MongoDB     : Connected
+ MongoDB     : ${dbStateLabels[mongoose.connection.readyState] || 'unknown'}
 ========================================
-                `);
-            }
-        );
+            `);
+        }
+    );
 
-    } catch (error) {
+    connectDB().catch((error) => {
+        console.error('MongoDB connection failed:', error.message);
+    });
 
-        console.error(
-            'MongoDB connection failed:',
-            error.message
-        );
+    const shutdown = () => {
+        server.close(async () => {
+            await mongoose.connection.close(false);
+            process.exit(0);
+        });
+    };
 
-        process.exit(1);
-    }
+    process.on('SIGTERM', shutdown);
+    process.on('SIGINT', shutdown);
 };
 
 startServer();

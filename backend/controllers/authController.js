@@ -1,4 +1,4 @@
-﻿const User = require('../models/User');
+const User = require('../models/User');
 const Admin = require('../models/Admin');
 const jwt = require('jsonwebtoken');
 const validate = require('../utils/validate');
@@ -17,6 +17,7 @@ const serializeAuthResponse = (user) => ({
         username: user.username,
         email: user.email || '',
         role: user.role,
+        createdAt: user.createdAt,
     },
     role: user.role,
 });
@@ -118,7 +119,26 @@ const login = async (req, res, next) => {
     }
 };
 
+const getMe = async (req, res, next) => {
+    try {
+        const user = await User.findById(req.user._id).select('-password');
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        res.json({
+            _id: user._id,
+            username: user.username,
+            email: user.email || '',
+            role: user.role,
+            createdAt: user.createdAt,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     register,
     login,
+    getMe,
 };

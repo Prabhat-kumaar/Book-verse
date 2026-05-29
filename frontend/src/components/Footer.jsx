@@ -1,24 +1,8 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 export default function Footer() {
-  const [email, setEmail] = useState('')
-  const [statusMessage, setStatusMessage] = useState('')
-
-  const handleSubscribe = (event) => {
-    event.preventDefault()
-    const trimmed = email.trim()
-    if (!trimmed) {
-      setStatusMessage('Enter your email to stay updated.')
-      return
-    }
-    setEmail('')
-    setStatusMessage('Thanks! You’re on the list.')
-    window.setTimeout(() => setStatusMessage(''), 3200)
-  }
-
   return (
-    <footer className="readify-footer">
+    <footer className="readify-footer py-8 text-slate-200">
       <div className="footer-shell">
         <div className="footer-grid">
           <div className="footer-column footer-brand">
@@ -49,9 +33,9 @@ export default function Footer() {
             <p className="footer-section-title">Explore</p>
             <nav className="footer-links">
               <Link to="/" className="footer-link">Home</Link>
-              <Link to="/books" className="footer-link">Books</Link>
               <Link to="/categories" className="footer-link">Categories</Link>
               <Link to="/recommended" className="footer-link">Recommended</Link>
+              <Link to="/books" className="footer-link">Explore Books</Link>
             </nav>
           </div>
 
@@ -63,28 +47,10 @@ export default function Footer() {
               <Link to="/saved-books" className="footer-link">Saved books</Link>
             </nav>
           </div>
-
-          <div className="footer-column footer-newsletter">
-            <p className="footer-section-title">Stay Updated</p>
-            <p className="footer-newsletter-copy">Get reading insights and early access to new features.</p>
-            <form className="footer-form" onSubmit={handleSubscribe}>
-              <label htmlFor="footer-newsletter-email" className="sr-only">Email address</label>
-              <input
-                id="footer-newsletter-email"
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="Your email address"
-                className="footer-input"
-              />
-              <button type="submit" className="footer-button">Subscribe</button>
-            </form>
-            {statusMessage ? <p className="footer-status">{statusMessage}</p> : null}
-          </div>
         </div>
 
         <div className="footer-bottom">
-          <p>© 2026 Readify AI. All rights reserved.</p>
+          <p>© 2025 Readify AI. All rights reserved. | A Prabhat Production</p>
           <p className="footer-credit">⚡ Developed by <strong>Prabhat Production</strong></p>
         </div>
       </div>

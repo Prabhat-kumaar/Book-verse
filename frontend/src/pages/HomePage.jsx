@@ -1,4 +1,4 @@
-﻿import { motion } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { memo, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useRecommendations from '../hooks/useRecommendations'
@@ -32,7 +32,7 @@ const BookCard = memo(function BookCard({ book, index }) {
     <motion.article
       whileHover={{ scale: 1.04, y: -6 }}
       transition={{ type: 'spring', stiffness: 240, damping: 18 }}
-      className="group relative w-[64vw] min-w-[64vw] max-w-[64vw] shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.05] p-2.5 backdrop-blur-lg transition-all duration-500 hover:z-10 hover:border-blue-300/40 hover:shadow-[0_0_0_1px_rgba(137,162,255,0.45),0_20px_45px_rgba(78,102,255,0.35)] sm:w-[46vw] sm:min-w-[46vw] sm:max-w-[46vw] sm:p-3 lg:w-[198px] lg:min-w-[198px] lg:max-w-[198px]"
+      className="book-card"
     >
       <SaveBookHeart bookId={book._id} book={book} />
       <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition duration-500 group-hover:opacity-100 [background:linear-gradient(145deg,rgba(84,132,255,0.2),rgba(146,92,255,0.18))]" />
@@ -59,20 +59,26 @@ const BookCard = memo(function BookCard({ book, index }) {
         <h4 className="line-clamp-1 text-sm font-semibold text-white">{book.title}</h4>
         <p className="line-clamp-1 text-xs text-slate-300/90">{book.author}</p>
 
-        <div className="mt-3">
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-blue-400 to-violet-500"
-              style={{ width: `${book.progress}%` }}
-            />
-          </div>
-          <p className="mt-1 text-[11px] text-slate-300/80">
-            {book.progress > 0 ? `${book.progress}% completed` : 'New to your shelf'}
-          </p>
-          {book.progress > 0 ? (
+        {book.progress > 0 ? (
+          <div className="mt-3">
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-blue-400 to-violet-500"
+                style={{ width: `${book.progress}%` }}
+              />
+            </div>
+            <p className="mt-1 text-[11px] text-slate-300/80">
+              {book.progress}% completed
+            </p>
             <p className="mt-1 text-[11px] text-blue-100/90">Page {book.currentPage} of {book.totalPages}</p>
-          ) : null}
-        </div>
+          </div>
+        ) : (
+          <div className="mt-3">
+            <p className="mt-1 text-[11px] text-slate-300/80">
+              New to your shelf
+            </p>
+          </div>
+        )}
 
         <a
           href={readerLink}
@@ -147,7 +153,7 @@ export default function HomePage() {
   const safeRecommendedBooks = recommendedBooks.length > 0 ? recommendedBooks : booksWithProgress.slice(0, 8)
 
   const continueReadingBooks = useMemo(() => [...progressItems]
-    .filter((item) => item.book)
+    .filter((item) => item.book && Number(item.progressPercentage || item.percentage || 0) > 0 && Number(item.progressPercentage || item.percentage || 0) < 100)
     .sort((a, b) => new Date(b.lastReadAt || 0).getTime() - new Date(a.lastReadAt || 0).getTime()), [progressItems])
   const featuredBook = safeRecommendedBooks[0] || booksWithProgress[0]
   const topTenBooks = useMemo(() => {
@@ -181,32 +187,10 @@ export default function HomePage() {
       transition={{ duration: 0.85, ease: 'easeOut' }}
       className="relative overflow-hidden py-4 sm:py-10"
     >
-      <motion.div
-        animate={{ y: [0, -14, 0], x: [0, 8, 0] }}
-        transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
-        className="pointer-events-none absolute -left-16 top-10 h-64 w-64 rounded-full bg-blue-500/30 blur-[90px]"
-      />
-      <motion.div
-        animate={{ y: [0, 16, 0], x: [0, -10, 0] }}
-        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-        className="pointer-events-none absolute -right-16 top-0 h-72 w-72 rounded-full bg-violet-500/25 blur-[110px]"
-      />
-      <motion.div
-        animate={{ y: [0, -10, 0] }}
-        transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
-        className="pointer-events-none absolute bottom-0 left-1/3 h-52 w-52 rounded-full bg-indigo-400/20 blur-[100px]"
-      />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.15),transparent_42%),radial-gradient(circle_at_80%_10%,rgba(132,145,255,0.14),transparent_33%)]" />
-      <motion.div
-        animate={{ y: [0, -10, 0] }}
-        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-        className="pointer-events-none absolute left-7 top-7 hidden rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-blue-100/90 lg:block"
-      >
-        Live AI Insights
-      </motion.div>
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.05),transparent_42%),radial-gradient(circle_at_80%_10%,rgba(132,145,255,0.04),transparent_33%)]" />
 
       <div className="relative space-y-7 md:hidden">
-        <section className="relative overflow-hidden rounded-2xl">
+        <section className="relative overflow-hidden rounded-2xl hero">
           {loading ? <HeroSkeleton /> : null}
           <div className="relative h-[58vw] min-h-[280px] max-h-[420px] w-full overflow-hidden rounded-2xl bg-slate-900">
             {featuredBook?.thumbnail ? (
@@ -223,11 +207,11 @@ export default function HomePage() {
               <div className="mt-3 flex gap-2.5">
                 <a
                   href={featuredBook ? buildReaderHash(featuredBook) : '#'}
-                  className="inline-flex flex-1 items-center justify-center rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold text-white"
+                  className="btn btn-primary"
                 >
                   Read Now
                 </a>
-                <button onClick={() => navigate('/saved-books')} className="inline-flex flex-1 items-center justify-center rounded-lg border border-white/40 bg-black/30 px-4 py-2 text-sm font-semibold text-white">
+                <button onClick={() => navigate('/saved-books')} className="btn">
                   Saved Books
                 </button>
               </div>
@@ -240,37 +224,57 @@ export default function HomePage() {
             <h3 className="text-[18px] font-bold text-white">Continue Reading</h3>
             <button onClick={() => navigate('/books')} className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-300">VIEW ALL</button>
           </div>
-          <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pr-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {continueReadingBooks.slice(0, 10).map((item) => {
-              const book = item.book || {}
-              const computed = computeProgress(item)
-              const currentPage = computed.currentPage
-
-              const percent = computed.progressPercentage
-              return (
-                <article key={item._id} className="min-w-[66vw] max-w-[66vw] shrink-0 snap-start">
-                  <a href={buildReaderHash(book, { page: currentPage, cfi: item.resumeCfi || '' })} className="group relative block h-[200px] overflow-hidden rounded-xl bg-slate-900">
-                    {book.thumbnail ? (
-                      <img loading="lazy" src={getBookThumbnailUrl(book)} onError={applyThumbnailFallback} alt={book.title} className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="grid h-full w-full place-items-center bg-gradient-to-br from-blue-500/45 to-violet-600/45 p-3 text-center text-sm font-semibold text-white">
-                        {book.title || 'Book'}
-                      </div>
-                    )}
-                    <span className="absolute right-2 top-2 rounded-full bg-black/70 px-2 py-1 text-xs text-white">?</span>
-                    <div className="absolute inset-x-0 bottom-0 h-1.5 bg-white/20">
-                      <div className="h-full bg-indigo-400" style={{ width: `${percent}%` }} />
+          {progressLoading ? (
+            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pr-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {[...Array(3)].map((_, idx) => (
+                <ProgressCardSkeleton key={`mobile-continue-skeleton-${idx}`} />
+              ))}
+            </div>
+          ) : progressError ? (
+            <p className="px-4 text-xs text-rose-200">{progressError}</p>
+          ) : continueReadingBooks.length === 0 ? (
+            <EmptyState
+              className="mx-4"
+              icon="📘"
+              title="No books in progress"
+              description="Start reading any book and it will appear here."
+              actionLabel="Explore Books"
+              onAction={() => navigate('/books')}
+              compact
+            />
+          ) : (
+            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pr-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {continueReadingBooks.slice(0, 10).map((item) => {
+                const book = item.book || {}
+                const computed = computeProgress(item)
+                const currentPage = computed.currentPage
+                const percent = computed.progressPercentage
+                return (
+                  <article key={item._id} className="min-w-[66vw] max-w-[66vw] shrink-0 snap-start rounded-xl border border-white/10 bg-white/[0.04] p-2.5">
+                    <a href={buildReaderHash(book, { page: currentPage, cfi: item.resumeCfi || '' })} className="group relative block h-[170px] overflow-hidden rounded-lg bg-slate-900">
+                      {book.thumbnail ? (
+                        <img loading="lazy" src={getBookThumbnailUrl(book)} onError={applyThumbnailFallback} alt={book.title} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="grid h-full w-full place-items-center bg-gradient-to-br from-blue-500/45 to-violet-600/45 p-3 text-center text-sm font-semibold text-white">
+                          {book.title || 'Book'}
+                        </div>
+                      )}
+                      <span className="absolute right-2 top-2 rounded-full bg-black/70 px-2 py-1 text-[11px] font-semibold text-white">{percent}%</span>
+                    </a>
+                    <p className="mt-2 line-clamp-1 text-xs font-semibold text-white">{book.title}</p>
+                    <p className="mt-0.5 text-[11px] text-slate-300">Page {currentPage} of {computed.totalPages}</p>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+                      <div className="h-full bg-indigo-400 transition-all duration-500" style={{ width: `${percent}%` }} />
                     </div>
-                  </a>
-                  <p className="mt-2 line-clamp-1 text-xs text-white">{book.title}</p>
-                  <div className="mt-1 flex items-center gap-3 text-xs text-slate-300">
-                    <button>Info</button>
-                    <button>Remove</button>
-                  </div>
-                </article>
-              )
-            })}
-          </div>
+                    <p className="mt-1 text-[11px] text-slate-300/80">Last opened {timeAgo(item.lastReadAt)}</p>
+                    <a href={buildReaderHash(book, { page: currentPage, cfi: item.resumeCfi || '' })} className="mt-2.5 inline-flex w-full items-center justify-center rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:bg-white/15">
+                      Resume Reading
+                    </a>
+                  </article>
+                )
+              })}
+            </div>
+          )}
         </section>
 
         <section>
@@ -298,12 +302,6 @@ export default function HomePage() {
               </article>
             ))}
           </div>
-        </section>
-
-        <section className="mx-4 rounded-2xl border border-indigo-400/25 bg-gradient-to-r from-[#251047] to-[#1a1238] p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-200">Premium Reading Stack</p>
-          <h4 className="mt-2 text-xl font-bold text-white">Designed for deep focus and faster learning.</h4>
-          <button onClick={() => navigate('/recommended')} className="mt-4 rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold text-white">See Recommendations</button>
         </section>
 
         {bookSections.map((section) => (
@@ -395,70 +393,6 @@ export default function HomePage() {
           )}
         </motion.section>
 
-        <motion.div
-          animate={{ y: [0, -8, 0], x: [0, 8, 0] }}
-          transition={{ duration: 7.2, repeat: Infinity, ease: 'easeInOut' }}
-          className="pointer-events-none absolute left-20 top-28 hidden rounded-xl border border-cyan-200/30 bg-cyan-300/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-100 xl:block"
-        >
-          12 New Summaries
-        </motion.div>
-        <motion.div
-          animate={{ y: [0, 12, 0] }}
-          transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
-          className="pointer-events-none absolute right-8 top-10 hidden w-40 rounded-2xl border border-white/15 bg-slate-900/45 p-3 backdrop-blur-xl xl:block"
-        >
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-300/85">Reading Velocity</p>
-          <p className="mt-2 text-3xl font-extrabold text-white">+34%</p>
-          <p className="mt-1 text-xs text-slate-300">Weekly improvement in completion rate.</p>
-        </motion.div>
-
-        {loading ? <HeroSkeleton /> : null}
-        <div className="relative mx-auto max-w-4xl text-center">
-          <p className="inline-flex rounded-full border border-blue-300/35 bg-blue-400/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.3em] text-blue-100">
-            Next-Gen Reading Platform
-          </p>
-
-          <h1 className="mt-6 text-[clamp(1.85rem,8vw,2rem)] font-black leading-[1.02] text-white sm:mt-7 sm:text-6xl lg:text-7xl">
-            Read Smarter with{' '}
-            <span className="bg-gradient-to-r from-blue-300 via-indigo-300 to-violet-300 bg-clip-text text-transparent">
-              AI
-            </span>
-          </h1>
-
-          <p className="mx-auto mt-4 max-w-2xl text-sm text-slate-200/85 sm:mt-6 sm:text-lg lg:text-xl">
-            Discover your next favorite book with intelligent recommendations, personalized reading journeys, and insights that adapt to your taste in real time.
-          </p>
-
-          <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:mt-10 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
-            <motion.button
-              whileHover={{ y: -4, scale: 1.03 }}
-              whileTap={{ scale: 0.98 }}
-              animate={{ y: [0, -2, 0] }}
-              transition={{
-                y: { duration: 2.2, repeat: Infinity, ease: 'easeInOut' },
-                default: { type: 'spring', stiffness: 300, damping: 18 },
-              }}
-              onClick={handleStartReading}
-              className="w-full rounded-xl bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-600 px-7 py-3.5 text-sm font-semibold text-white shadow-[0_0_0_1px_rgba(255,255,255,0.15),0_18px_50px_rgba(73,98,255,0.55)] transition duration-300 hover:shadow-[0_0_0_1px_rgba(255,255,255,0.25),0_0_32px_rgba(92,98,255,0.55),0_24px_65px_rgba(88,96,255,0.72)] sm:w-auto"
-            >
-              Start Reading
-            </motion.button>
-            <motion.button
-              whileHover={{ y: -4, scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              animate={{ y: [0, -1.5, 0] }}
-              transition={{
-                y: { duration: 2.8, repeat: Infinity, ease: 'easeInOut', delay: 0.3 },
-                default: { type: 'spring', stiffness: 280, damping: 18 },
-              }}
-              onClick={handleExploreBooks}
-              className="w-full rounded-xl border border-white/20 bg-white/10 px-7 py-3.5 text-sm font-semibold text-slate-100 transition duration-300 hover:border-blue-300/45 hover:bg-white/15 hover:shadow-[0_0_26px_rgba(126,110,255,0.35)] sm:w-auto"
-            >
-              Explore Books
-            </motion.button>
-          </div>
-        </div>
-
         <motion.section
           initial={{ opacity: 0, y: 14 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -546,32 +480,6 @@ export default function HomePage() {
             </section>
           ))}
         </div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-80px' }}
-          transition={{ duration: 0.45 }}
-          className="relative mt-10 overflow-hidden rounded-2xl border border-white/15 bg-gradient-to-r from-blue-500/15 via-indigo-500/10 to-violet-500/15 p-5 shadow-[0_18px_60px_rgba(77,96,255,0.22)] sm:mt-12 sm:p-6"
-        >
-          <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-violet-400/30 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-20 left-1/3 h-52 w-52 rounded-full bg-blue-400/25 blur-3xl" />
-          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-100/90">Premium Reading Stack</p>
-              <h4 className="mt-2 text-[clamp(1.35rem,6vw,1.75rem)] font-bold text-white sm:text-3xl">Designed for deep focus and faster learning.</h4>
-              <p className="mt-2 max-w-2xl text-sm text-slate-200/85 sm:text-base">Context-aware recommendations, progress memory, and a minimal reading cockpit built for serious readers.</p>
-            </div>
-            <motion.button
-              whileHover={{ y: -3, scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => navigate('/recommended')}
-              className="rounded-xl border border-white/20 bg-white/15 px-5 py-3 text-sm font-semibold text-white backdrop-blur-md transition hover:border-blue-300/40 hover:bg-white/20"
-            >
-              See Recommendations
-            </motion.button>
-          </div>
-        </motion.div>
       </div>
     </motion.section>
   )

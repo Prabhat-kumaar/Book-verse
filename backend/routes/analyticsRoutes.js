@@ -3,13 +3,17 @@ const {
     getDailyAnalytics,
     getWeeklyAnalytics,
     getOverallAnalytics,
+    recordVisit,
+    getAdminAnalytics,
 } = require('../controllers/analyticsController');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, admin } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
 router.get('/daily', protect, getDailyAnalytics);
 router.get('/weekly', protect, getWeeklyAnalytics);
 router.get('/overall', protect, getOverallAnalytics);
+router.post('/visit', recordVisit);
+router.get('/admin', protect, admin, getAdminAnalytics);
 
 module.exports = router;

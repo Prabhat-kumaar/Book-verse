@@ -142,6 +142,15 @@ export default function AdminAddBookPage() {
       formData.append('title', form.title.trim())
       formData.append('author', form.author.trim())
       formData.append('category', form.category.trim())
+      formData.append('description', form.description.trim())
+      formData.append('tags', JSON.stringify(
+        form.tags
+          .split(',')
+          .map((tag) => tag.trim())
+          .filter(Boolean),
+      ))
+      formData.append('language', form.language.trim())
+      formData.append('difficulty', form.difficulty.trim())
 
       if (form.thumbnailUrl.trim()) {
         formData.append('thumbnail', form.thumbnailUrl.trim())
