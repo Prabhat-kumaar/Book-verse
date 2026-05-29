@@ -345,12 +345,14 @@ export default function EpubReaderPage() {
         rendition.themes.override('*', {
           'max-width': '100% !important',
           'overflow-x': 'hidden !important',
+          'overflow-anchor': 'none !important',
         })
         rendition.themes.override('body', {
           margin: '0 auto',
           padding: '24px 32px',
           'max-width': '100%',
           'box-sizing': 'border-box',
+          'overflow-anchor': 'none !important',
         })
 
         const savedFontSize = parseInt(localStorage.getItem('reader-font-size') || '100', 10) || 100
@@ -635,6 +637,15 @@ export default function EpubReaderPage() {
       await rendition.display(item.href)
       if (typeof index === 'number') {
         updateSpineIndex(index)
+      }
+      
+      // If navigating to a section without a specific hash anchor, force container scroll to 0 to prevent dynamic loading jumps
+      if (!item.href.includes('#')) {
+        const container = rendition.manager?.container
+        if (container) {
+          container.scrollTop = 0
+          container.scrollLeft = 0
+        }
       }
     } catch (e) {
       debugError('Chapter navigation failed:', item.href, e)

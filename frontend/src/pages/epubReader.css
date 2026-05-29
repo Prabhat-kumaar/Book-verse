@@ -120,6 +120,13 @@
 .epub-viewer > div { width: 100% !important; }
 .epub-viewer iframe { width: 100% !important; border: none !important; min-height: calc(100vh - 160px); }
 
+/* Prevent browser scroll anchoring shifts and jumps in continuous manager */
+#viewer,
+.epub-viewer,
+.epub-container {
+  overflow-anchor: none !important;
+}
+
 .reader-nav {
   position: fixed;
   bottom: 0;
