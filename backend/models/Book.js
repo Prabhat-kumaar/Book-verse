@@ -73,6 +73,6 @@ const bookSchema = new mongoose.Schema(
 
 bookSchema.index({ createdAt: -1 });
 bookSchema.index({ category: 1 });
-bookSchema.index({ title: 'text', author: 'text', description: 'text', tags: 'text' });
+bookSchema.index({ title: 'text', author: 'text', description: 'text', tags: 'text' }, { language_override: 'none' });
 
 module.exports = mongoose.model('Book', bookSchema, 'books');

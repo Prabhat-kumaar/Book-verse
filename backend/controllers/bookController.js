@@ -148,7 +148,39 @@ const addBook = async (req, res, next) => {
             return res.status(400).json({ success: false, message: requiredCheck.message });
         }
 
-        const book = await Book.create({ title, author, category, fileUrl, fileType, pdf, thumbnail });
+        const description = validate.sanitize(req.body.description, 2000);
+        const language = validate.sanitize(req.body.language, 100);
+        const difficulty = validate.sanitize(req.body.difficulty, 50);
+
+        let tags = [];
+        if (req.body.tags) {
+            try {
+                const parsed = JSON.parse(req.body.tags);
+                if (Array.isArray(parsed)) {
+                    tags = parsed;
+                } else if (typeof req.body.tags === 'string') {
+                    tags = req.body.tags.split(',').map((t) => t.trim()).filter(Boolean);
+                }
+            } catch {
+                if (typeof req.body.tags === 'string') {
+                    tags = req.body.tags.split(',').map((t) => t.trim()).filter(Boolean);
+                }
+            }
+        }
+
+        const book = await Book.create({
+            title,
+            author,
+            category,
+            description,
+            tags,
+            language,
+            difficulty,
+            fileUrl,
+            fileType,
+            pdf,
+            thumbnail
+        });
         const formattedBook = {
             ...book._doc,
             fileUrl: book.fileUrl ? formatUrl(req, book.fileUrl) : null,
@@ -264,7 +296,7 @@ const getBookById = async (req, res, next) => {
 const updateBook = async (req, res, next) => {
     try {
         const bookId = req.params.id;
-        const { title, author, category, fileUrl: rawFileUrl, fileType: rawFileType, pdf, thumbnail } = req.body;
+        const { title, author, category, fileUrl: rawFileUrl, fileType: rawFileType, pdf, thumbnail, description, tags, language, difficulty } = req.body;
 
         if (!validate.objectId(bookId)) {
             return res.status(400).json({ success: false, message: 'Invalid ID format' });
@@ -280,10 +312,33 @@ const updateBook = async (req, res, next) => {
         const cleanCategory = category !== undefined ? validate.sanitize(category, 100) : '';
         const cleanFileUrl = validate.sanitize(rawFileUrl || pdf, 500);
         const cleanThumbnail = validate.sanitize(thumbnail, 500);
+        const cleanDescription = description !== undefined ? validate.sanitize(description, 2000) : undefined;
+        const cleanLanguage = language !== undefined ? validate.sanitize(language, 100) : undefined;
+        const cleanDifficulty = difficulty !== undefined ? validate.sanitize(difficulty, 50) : undefined;
+
+        let cleanTags = undefined;
+        if (tags !== undefined) {
+            try {
+                const parsed = typeof tags === 'string' ? JSON.parse(tags) : tags;
+                if (Array.isArray(parsed)) {
+                    cleanTags = parsed;
+                } else if (typeof tags === 'string') {
+                    cleanTags = tags.split(',').map((t) => t.trim()).filter(Boolean);
+                }
+            } catch {
+                if (typeof tags === 'string') {
+                    cleanTags = tags.split(',').map((t) => t.trim()).filter(Boolean);
+                }
+            }
+        }
 
         book.title = cleanTitle || book.title;
         book.author = cleanAuthor || book.author;
         book.category = cleanCategory || book.category;
+        if (cleanDescription !== undefined) book.description = cleanDescription;
+        if (cleanLanguage !== undefined) book.language = cleanLanguage;
+        if (cleanDifficulty !== undefined) book.difficulty = cleanDifficulty;
+        if (cleanTags !== undefined) book.tags = cleanTags;
 
         const nextFileUrl = cleanFileUrl || book.fileUrl || book.pdf;
         const nextFileType = rawFileType || getFileTypeFromPathOrMime(nextFileUrl);
