@@ -89,7 +89,7 @@ const main = async () => {
     
     // Ensure public folder exists just in case
     const publicDir = path.dirname(sitemapPath);
-    if (!fs.existsSync(publicDir)) {
+    if (!fs.existsSync(publicDir)) { 
         fs.mkdirSync(publicDir, { recursive: true });
     }
 
