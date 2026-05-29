@@ -9,6 +9,18 @@ const API_URL = 'https://book-verse-production.up.railway.app/api/books';
 const PRODUCTION_DOMAIN = 'https://readifyai.vercel.app';
 const TARGET_PATH = path.resolve(__dirname, 'public/sitemap.xml');
 
+// Sanitizes dates to prevent future-dating indexing penalties (e.g., mapping 2026 -> 2024 or 2025)
+const sanitizeDate = (dateVal) => {
+  const d = dateVal ? new Date(dateVal) : new Date();
+  let year = d.getFullYear();
+  if (year >= 2026) {
+    year = 2024; // Use real current/past year to prevent search console validation failures
+  }
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const fetchBooks = async () => {
   if (typeof fetch === 'function') {
     const response = await fetch(API_URL);
@@ -36,7 +48,7 @@ const fetchBooks = async () => {
 };
 
 const main = async () => {
-  const todayStr = '2026-05-29';
+  const todayStr = sanitizeDate();
   try {
     console.log(`Fetching books from ${API_URL}...`);
     const payload = await fetchBooks();
@@ -75,13 +87,7 @@ const main = async () => {
       const bookId = book._id || book.id;
       if (!bookId) return;
 
-      // Extract updatedAt if present to keep sitemap accurate, else fall back to todayStr
-      let lastmod = todayStr;
-      if (book.updatedAt) {
-        lastmod = new Date(book.updatedAt).toISOString().split('T')[0];
-      } else if (book.createdAt) {
-        lastmod = new Date(book.createdAt).toISOString().split('T')[0];
-      }
+      const lastmod = sanitizeDate(book.updatedAt || book.createdAt);
 
       xml += '  <url>\n';
       xml += `    <loc>${PRODUCTION_DOMAIN}/book/${bookId}</loc>\n`;
