@@ -6,11 +6,11 @@ import Footer from '../components/Footer'
 export default function MainLayout({ children, hideChrome = false, fullBleed = false }) {
   const location = useLocation()
   const mobileNavItems = [
-    { label: 'Home', href: '/', icon: <MdHome className="h-5.5 w-5.5" /> },
-    { label: 'Categories', href: '/categories', icon: <MdLibraryBooks className="h-5.5 w-5.5" /> },
-    { label: 'Recommended', href: '/recommended', icon: <MdStar className="h-5.5 w-5.5" /> },
-    { label: 'Explore', href: '/books', icon: <MdExplore className="h-5.5 w-5.5" /> },
-    { label: 'Account', href: '/me', icon: <MdPerson className="h-5.5 w-5.5" /> },
+    { label: 'Home', href: '/', Icon: MdHome },
+    { label: 'Categories', href: '/categories', Icon: MdLibraryBooks },
+    { label: 'Recommended', href: '/recommended', Icon: MdStar },
+    { label: 'Explore', href: '/books', Icon: MdExplore },
+    { label: 'Account', href: '/me', Icon: MdPerson },
   ]
 
   return (
@@ -28,22 +28,25 @@ export default function MainLayout({ children, hideChrome = false, fullBleed = f
       </main>
       {!hideChrome ? <Footer /> : null}
 
-      {!hideChrome ? <nav className="fixed bottom-0 left-0 right-0 z-[90] border-t border-[#222] bg-[#0a0a0f]/95 pb-[var(--safe-bottom)] backdrop-blur-xl md:hidden">
-        <ul className="mx-auto grid max-w-7xl grid-cols-5 px-1">
+      {!hideChrome ? <nav className="fixed bottom-0 left-0 right-0 z-[90] border-t border-white/[0.08] bg-[#05070f]/95 pb-[calc(4px+var(--safe-bottom))] backdrop-blur-xl md:hidden">
+        <ul className="mx-auto grid max-w-7xl grid-cols-5 px-1 py-1">
           {mobileNavItems.map((item) => {
             const active = location.pathname === item.href
+            const IconComponent = item.Icon
             return (
-              <li key={item.label}>
+              <li key={item.label} className="px-0.5">
                 <Link
                   to={item.href}
-                  className={`flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-lg py-2 text-[10px] font-semibold transition ${
-                    active ? 'text-indigo-300' : 'text-slate-400 hover:text-slate-200'
+                  className={`flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl py-1 text-[10px] font-bold transition duration-300 ${
+                    active 
+                      ? 'text-white bg-gradient-to-b from-purple-500/10 to-pink-500/10' 
+                      : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  <span className={`transition-all duration-200 ${active ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_rgba(129,140,248,0.6)]' : 'text-slate-400'}`}>
-                    {item.icon}
+                  <span className={`transition-all duration-300 ${active ? 'text-pink-400 scale-110 drop-shadow-[0_0_10px_rgba(244,63,94,0.65)]' : 'text-slate-400'}`}>
+                    <IconComponent className="h-6 w-6" />
                   </span>
-                  <span>{item.label}</span>
+                  <span className={active ? 'text-white font-extrabold' : 'text-slate-400'}>{item.label}</span>
                 </Link>
               </li>
             )

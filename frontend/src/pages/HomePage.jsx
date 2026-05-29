@@ -23,6 +23,19 @@ function timeAgo(value) {
 }
 
 
+function getCategoryColor(category) {
+  const cat = (category || '').toString().trim().toLowerCase()
+  if (cat.includes('business') || cat.includes('finance')) return '#10b981' // green
+  if (cat.includes('programming') || cat.includes('code') || cat.includes('software')) return '#3b82f6' // blue
+  if (cat.includes('self-help') || cat.includes('selfhelp') || cat.includes('psychology')) return '#a855f7' // purple
+  if (cat.includes('productivity') || cat.includes('time')) return '#f97316' // orange
+  if (cat.includes('startup') || cat.includes('entrepreneur')) return '#06b6d4' // cyan
+  if (cat.includes('design') || cat.includes('ui') || cat.includes('ux') || cat.includes('art')) return '#ec4899' // pink
+  if (cat.includes('ai') || cat.includes('artificial') || cat.includes('machine')) return '#6366f1' // indigo
+  if (cat.includes('lifestyle') || cat.includes('health') || cat.includes('fitness')) return '#eab308' // yellow
+  return '#6b7280' // default gray
+}
+
 const BookCard = memo(function BookCard({ book, index }) {
   const resumePage = Number.isInteger(book?.currentPage) && book.currentPage > 0 ? book.currentPage : undefined
   const readerLink = buildReaderHash(book, { page: resumePage, cfi: book?.resumeCfi || '' })
@@ -30,62 +43,69 @@ const BookCard = memo(function BookCard({ book, index }) {
 
   return (
     <motion.article
-      whileHover={{ scale: 1.04, y: -6 }}
-      transition={{ type: 'spring', stiffness: 240, damping: 18 }}
-      className="book-card"
+      whileHover={{ scale: 1.03, y: -2 }}
+      whileTap={{ scale: 0.97 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+      className="book-card min-h-[245px] sm:min-h-[345px] shadow-md shadow-black/20 rounded-2xl p-3 sm:p-4 flex flex-col justify-between"
     >
       <SaveBookHeart bookId={book._id} book={book} />
-      <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition duration-500 group-hover:opacity-100 [background:linear-gradient(145deg,rgba(84,132,255,0.2),rgba(146,92,255,0.18))]" />
-      <div className="pointer-events-none absolute inset-0 rounded-2xl border border-transparent opacity-0 transition duration-500 group-hover:opacity-100 [background:linear-gradient(135deg,rgba(95,144,255,0.55),rgba(165,111,255,0.45))_border-box] [mask:linear-gradient(#fff_0_0)_padding-box,linear-gradient(#fff_0_0)] [mask-composite:exclude]" />
-      <div className="pointer-events-none absolute -right-12 -top-10 h-32 w-32 rounded-full bg-violet-400/25 blur-3xl opacity-0 transition duration-500 group-hover:opacity-100" />
-      <div className="relative">
-        <div className="mb-3 h-48 w-full overflow-hidden rounded-xl bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 shadow-inner ring-1 ring-white/10 sm:h-56">
-          {book.thumbnail && !thumbFailed ? (
-            <img loading="lazy" src={getBookThumbnailUrl(book)} alt={book.title} onError={(event) => { setThumbFailed(true); applyThumbnailFallback(event) }} className="h-full w-full object-cover" />
-          ) : (
-            <div
-              className={`h-full w-full rounded-lg bg-gradient-to-br ${index % 3 === 0
-                  ? 'from-blue-500/70 to-violet-600/70'
-                  : index % 3 === 1
-                    ? 'from-indigo-500/70 to-sky-500/70'
-                    : 'from-violet-500/70 to-fuchsia-500/70'
-                } p-4`}
-            >
-              <p className="line-clamp-3 text-lg font-bold leading-tight text-white">{book.title}</p>
-            </div>
-          )}
+      <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition duration-500 group-hover:opacity-100 [background:linear-gradient(145deg,rgba(84,132,255,0.1),rgba(146,92,255,0.08))]" />
+      <div className="pointer-events-none absolute inset-0 rounded-2xl border border-transparent opacity-0 transition duration-500 group-hover:opacity-100 [background:linear-gradient(135deg,rgba(95,144,255,0.35),rgba(165,111,255,0.25))_border-box] [mask:linear-gradient(#fff_0_0)_padding-box,linear-gradient(#fff_0_0)] [mask-composite:exclude]" />
+      
+      <div className="relative flex flex-col h-full justify-between">
+        <div>
+          <div className="mb-2.5 aspect-[3/4] w-full overflow-hidden rounded-xl bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 shadow-inner ring-1 ring-white/10 relative block">
+            {book.thumbnail && !thumbFailed ? (
+              <img loading="lazy" src={getBookThumbnailUrl(book)} alt={book.title} onError={(event) => { setThumbFailed(true); applyThumbnailFallback(event) }} className="h-full w-full object-cover transition-transform duration-500 hover:scale-105" />
+            ) : (
+              <div
+                className={`h-full w-full rounded-lg bg-gradient-to-br ${index % 3 === 0
+                    ? 'from-blue-500/70 to-violet-600/70'
+                    : index % 3 === 1
+                      ? 'from-indigo-500/70 to-sky-500/70'
+                      : 'from-violet-500/70 to-fuchsia-500/70'
+                  } p-2 flex items-center justify-center`}
+              >
+                <p className="line-clamp-3 text-[10px] font-black leading-snug text-center text-white">{book.title}</p>
+              </div>
+            )}
+          </div>
+
+          <h4 className="line-clamp-1 text-xs sm:text-sm font-bold text-white leading-tight">{book.title}</h4>
+          <p className="line-clamp-1 text-[10px] text-slate-400 font-medium mt-0.5">{book.author}</p>
         </div>
 
-        <h4 className="line-clamp-1 text-sm font-semibold text-white">{book.title}</h4>
-        <p className="line-clamp-1 text-xs text-slate-300/90">{book.author}</p>
-
-        {book.progress > 0 ? (
-          <div className="mt-3">
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-blue-400 to-violet-500"
-                style={{ width: `${book.progress}%` }}
-              />
+        <div className="mt-auto pt-1">
+          {book.progress > 0 ? (
+            <div className="mb-1.5">
+              <div className="h-1 w-full overflow-hidden rounded-full bg-white/10">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-blue-400 to-violet-500"
+                  style={{ width: `${book.progress}%` }}
+                />
+              </div>
+              <p className="mt-0.5 text-[9px] font-medium text-slate-500">
+                {book.progress}% completed
+              </p>
             </div>
-            <p className="mt-1 text-[11px] text-slate-300/80">
-              {book.progress}% completed
-            </p>
-            <p className="mt-1 text-[11px] text-blue-100/90">Page {book.currentPage} of {book.totalPages}</p>
-          </div>
-        ) : (
-          <div className="mt-3">
-            <p className="mt-1 text-[11px] text-slate-300/80">
-              New to your shelf
-            </p>
-          </div>
-        )}
+          ) : (
+            <div className="mb-1.5 flex items-center">
+              <span 
+                className="inline-block text-[9px] font-bold uppercase tracking-wider truncate max-w-full block" 
+                style={{ color: getCategoryColor(book.category) }}
+              >
+                {book.category || 'New to shelf'}
+              </span>
+            </div>
+          )}
 
-        <a
-          href={readerLink}
-          className="mt-3 inline-flex w-full items-center justify-center rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:border-blue-300/40 hover:bg-white/15"
-        >
-          {book.progress > 0 ? 'Resume Reading' : 'Open Reader'}
-        </a>
+          <a
+            href={readerLink}
+            className="inline-flex w-full items-center justify-center rounded-lg border border-white/10 bg-white/5 py-1 text-[10px] font-bold text-white transition hover:border-blue-300/40 hover:bg-white/15"
+          >
+            {book.progress > 0 ? 'Resume' : 'Open'}
+          </a>
+        </div>
       </div>
     </motion.article>
   )
@@ -189,29 +209,32 @@ export default function HomePage() {
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.05),transparent_42%),radial-gradient(circle_at_80%_10%,rgba(132,145,255,0.04),transparent_33%)]" />
 
-      <div className="relative space-y-7 md:hidden">
-        <section className="relative overflow-hidden rounded-2xl hero">
+      <div className="relative space-y-4 px-2.5 md:hidden">
+        <section className="relative overflow-hidden rounded-3xl hero">
           {loading ? <HeroSkeleton /> : null}
-          <div className="relative h-[58vw] min-h-[280px] max-h-[420px] w-full overflow-hidden rounded-2xl bg-slate-900">
+          <div className="relative h-[48vw] min-h-[230px] max-h-[340px] w-full overflow-hidden rounded-3xl bg-slate-950 flex items-center justify-center">
             {featuredBook?.thumbnail ? (
-              <img loading="lazy" src={getBookThumbnailUrl(featuredBook)} onError={applyThumbnailFallback} alt={featuredBook.title} className="h-full w-full object-cover" />
+              <img loading="lazy" src={getBookThumbnailUrl(featuredBook)} onError={applyThumbnailFallback} alt={featuredBook.title} className="h-full w-full object-contain bg-slate-950/40 opacity-90" />
             ) : (
               <div className="grid h-full w-full place-items-center bg-gradient-to-br from-indigo-600/60 to-violet-700/60 px-6 text-center text-2xl font-black text-white">
                 {featuredBook?.title || 'Featured Book'}
               </div>
             )}
-            <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/95 via-black/60 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black via-black/85 via-black/30 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 p-4 pb-5">
-              <h2 className="line-clamp-2 text-2xl font-bold text-white">{featuredBook?.title || 'Featured Book'}</h2>
-              <p className="mt-1 line-clamp-1 text-sm text-slate-200">{featuredBook?.author || 'Readify AI Pick'}</p>
-              <div className="mt-3 flex gap-2.5">
+              <h2 className="line-clamp-2 text-xl font-extrabold tracking-tight leading-tight text-white">{featuredBook?.title || 'Featured Book'}</h2>
+              <p className="mt-0.5 line-clamp-1 text-[11px] text-slate-300 font-medium">{featuredBook?.author || 'Readify AI Pick'}</p>
+              <div className="mt-2.5 flex gap-2.5">
                 <a
                   href={featuredBook ? buildReaderHash(featuredBook) : '#'}
-                  className="btn btn-primary"
+                  className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 px-4 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-white border-none shadow-[0_4px_10px_rgba(219,39,119,0.3)] transition-all duration-300 active:scale-95 flex items-center justify-center"
                 >
                   Read Now
                 </a>
-                <button onClick={() => navigate('/saved-books')} className="btn">
+                <button
+                  onClick={() => navigate('/saved-books')}
+                  className="border border-white/20 bg-white/10 hover:bg-white/20 rounded-full px-4 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-white transition-all duration-300 active:scale-95 flex items-center justify-center"
+                >
                   Saved Books
                 </button>
               </div>
@@ -220,21 +243,21 @@ export default function HomePage() {
         </section>
 
         <section id="continue-reading">
-          <div className="mb-3 flex items-center justify-between px-4">
-            <h3 className="text-[18px] font-bold text-white">Continue Reading</h3>
-            <button onClick={() => navigate('/books')} className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-300">VIEW ALL</button>
+          <div className="mb-1.5 mt-2 flex items-center justify-between px-0.5">
+            <h3 className="text-base font-extrabold tracking-tight text-white">Continue Reading</h3>
+            <button onClick={() => navigate('/books')} className="text-[11px] font-bold uppercase tracking-wider text-pink-400 hover:text-pink-300 transition-colors">VIEW ALL</button>
           </div>
           {progressLoading ? (
-            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pr-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pr-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {[...Array(3)].map((_, idx) => (
                 <ProgressCardSkeleton key={`mobile-continue-skeleton-${idx}`} />
               ))}
             </div>
           ) : progressError ? (
-            <p className="px-4 text-xs text-rose-200">{progressError}</p>
+            <p className="px-1 text-xs text-rose-200">{progressError}</p>
           ) : continueReadingBooks.length === 0 ? (
             <EmptyState
-              className="mx-4"
+              className="mx-1"
               icon="📘"
               title="No books in progress"
               description="Start reading any book and it will appear here."
@@ -243,33 +266,38 @@ export default function HomePage() {
               compact
             />
           ) : (
-            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pr-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pr-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {continueReadingBooks.slice(0, 10).map((item) => {
                 const book = item.book || {}
                 const computed = computeProgress(item)
                 const currentPage = computed.currentPage
                 const percent = computed.progressPercentage
                 return (
-                  <article key={item._id} className="min-w-[66vw] max-w-[66vw] shrink-0 snap-start rounded-xl border border-white/10 bg-white/[0.04] p-2.5">
-                    <a href={buildReaderHash(book, { page: currentPage, cfi: item.resumeCfi || '' })} className="group relative block h-[170px] overflow-hidden rounded-lg bg-slate-900">
-                      {book.thumbnail ? (
-                        <img loading="lazy" src={getBookThumbnailUrl(book)} onError={applyThumbnailFallback} alt={book.title} className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="grid h-full w-full place-items-center bg-gradient-to-br from-blue-500/45 to-violet-600/45 p-3 text-center text-sm font-semibold text-white">
-                          {book.title || 'Book'}
-                        </div>
-                      )}
-                      <span className="absolute right-2 top-2 rounded-full bg-black/70 px-2 py-1 text-[11px] font-semibold text-white">{percent}%</span>
-                    </a>
-                    <p className="mt-2 line-clamp-1 text-xs font-semibold text-white">{book.title}</p>
-                    <p className="mt-0.5 text-[11px] text-slate-300">Page {currentPage} of {computed.totalPages}</p>
-                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
-                      <div className="h-full bg-indigo-400 transition-all duration-500" style={{ width: `${percent}%` }} />
+                  <article key={item._id} className="min-w-[66vw] max-w-[66vw] shrink-0 snap-start rounded-2xl border border-white/10 bg-white/[0.04] p-3 shadow-md flex flex-col justify-between min-h-[300px]">
+                    <div>
+                      <a href={buildReaderHash(book, { page: currentPage, cfi: item.resumeCfi || '' })} className="group relative block h-[150px] overflow-hidden rounded-xl bg-slate-950">
+                        {book.thumbnail ? (
+                          <img loading="lazy" src={getBookThumbnailUrl(book)} onError={applyThumbnailFallback} alt={book.title} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="grid h-full w-full place-items-center bg-gradient-to-br from-blue-500/45 to-violet-600/45 p-3 text-center text-sm font-semibold text-white">
+                            {book.title || 'Book'}
+                          </div>
+                        )}
+                        <span className="absolute right-2 top-2 rounded-full bg-black/80 px-2 py-0.5 text-[10px] font-bold text-white shadow-md">{percent}%</span>
+                      </a>
+                      <p className="mt-2 line-clamp-1 text-sm font-bold text-white leading-tight">{book.title}</p>
+                      <p className="mt-0.5 text-[11px] font-medium text-slate-400">Page {currentPage} of {computed.totalPages}</p>
                     </div>
-                    <p className="mt-1 text-[11px] text-slate-300/80">Last opened {timeAgo(item.lastReadAt)}</p>
-                    <a href={buildReaderHash(book, { page: currentPage, cfi: item.resumeCfi || '' })} className="mt-2.5 inline-flex w-full items-center justify-center rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:bg-white/15">
-                      Resume Reading
-                    </a>
+
+                    <div className="mt-auto pt-2">
+                      <div className="h-1 w-full overflow-hidden rounded-full bg-white/10">
+                        <div className="h-full bg-pink-500 transition-all duration-500" style={{ width: `${percent}%` }} />
+                      </div>
+                      <p className="mt-1 text-[10px] text-slate-500">Last opened {timeAgo(item.lastReadAt)}</p>
+                      <a href={buildReaderHash(book, { page: currentPage, cfi: item.resumeCfi || '' })} className="mt-2.5 inline-flex w-full items-center justify-center rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-bold text-white transition hover:bg-white/15">
+                        Resume
+                      </a>
+                    </div>
                   </article>
                 )
               })}
@@ -278,11 +306,11 @@ export default function HomePage() {
         </section>
 
         <section>
-          <div className="mb-3 flex items-center justify-between px-4">
-            <h3 className="text-[18px] font-bold text-white">Recommended</h3>
-            <button onClick={() => navigate('/recommended')} className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-300">VIEW ALL</button>
+          <div className="mb-1.5 mt-2 flex items-center justify-between px-0.5">
+            <h3 className="text-base font-extrabold tracking-tight text-white">Recommended</h3>
+            <button onClick={() => navigate('/recommended')} className="text-[11px] font-bold uppercase tracking-wider text-pink-400 hover:text-pink-300 transition-colors">VIEW ALL</button>
           </div>
-          <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pr-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pr-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {safeRecommendedBooks.map((book, index) => (
               <BookCard key={`mobile-rec-${book._id || index}`} book={book} index={index} />
             ))}
@@ -290,11 +318,11 @@ export default function HomePage() {
         </section>
 
         <section>
-          <div className="mb-3 flex items-center justify-between px-4">
-            <h3 className="text-[18px] font-bold text-white">Top 10 Books</h3>
-            <button onClick={() => navigate('/books')} className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-300">VIEW ALL</button>
+          <div className="mb-1.5 mt-2 flex items-center justify-between px-0.5">
+            <h3 className="text-base font-extrabold tracking-tight text-white">Top 10 Books</h3>
+            <button onClick={() => navigate('/books')} className="text-[11px] font-bold uppercase tracking-wider text-pink-400 hover:text-pink-300 transition-colors">VIEW ALL</button>
           </div>
-          <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pr-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pr-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {topTenBooks.map((book, idx) => (
               <article key={`topten-${book._id || idx}`} className="relative min-w-[72vw] pl-7 snap-start">
                 <span className="pointer-events-none absolute -left-0 top-3 text-8xl font-black leading-none text-white/20">{idx + 1}</span>
@@ -306,11 +334,11 @@ export default function HomePage() {
 
         {bookSections.map((section) => (
           <section key={`mobile-${section.title}`}>
-            <div className="mb-3 flex items-center justify-between px-4">
-              <h3 className="text-[18px] font-bold text-white">{section.title}</h3>
-              <button onClick={() => navigate('/books')} className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-300">VIEW ALL</button>
+            <div className="mb-1.5 mt-2 flex items-center justify-between px-0.5">
+              <h3 className="text-base font-extrabold tracking-tight text-white">{section.title}</h3>
+              <button onClick={() => navigate('/books')} className="text-[11px] font-bold uppercase tracking-wider text-pink-400 hover:text-pink-300 transition-colors">VIEW ALL</button>
             </div>
-            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pr-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pr-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {section.books.map((book, index) => (
                 <BookCard key={`mobile-${section.title}-${book._id || index}`} book={book} index={index} />
               ))}

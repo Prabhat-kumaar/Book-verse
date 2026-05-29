@@ -21,6 +21,19 @@ function sortCollectionsByOrder(collections, order) {
   })
 }
 
+function getCategoryColor(category) {
+  const cat = (category || '').toString().trim().toLowerCase()
+  if (cat.includes('business') || cat.includes('finance')) return '#10b981' // green
+  if (cat.includes('programming') || cat.includes('code') || cat.includes('software')) return '#3b82f6' // blue
+  if (cat.includes('self-help') || cat.includes('selfhelp') || cat.includes('psychology')) return '#a855f7' // purple
+  if (cat.includes('productivity') || cat.includes('time')) return '#f97316' // orange
+  if (cat.includes('startup') || cat.includes('entrepreneur')) return '#06b6d4' // cyan
+  if (cat.includes('design') || cat.includes('ui') || cat.includes('ux') || cat.includes('art')) return '#ec4899' // pink
+  if (cat.includes('ai') || cat.includes('artificial') || cat.includes('machine')) return '#6366f1' // indigo
+  if (cat.includes('lifestyle') || cat.includes('health') || cat.includes('fitness')) return '#eab308' // yellow
+  return '#6b7280' // default gray
+}
+
 export default function SavedBooksPage() {
   const {
     collections,
@@ -296,28 +309,43 @@ export default function SavedBooksPage() {
               const progress = progressMap.get(book._id)
               const readerLink = buildReaderHash(book, { page: progress?.currentPage, cfi: progress?.cfi || '' })
               return (
-                <article key={savedItem._id} className={`group rounded-2xl border border-white/10 bg-white/[0.05] p-3 backdrop-blur-lg transition duration-200 hover:border-blue-300/35 hover:bg-white/[0.08] ${removingIds.includes(savedItem._id) ? 'scale-[0.98] opacity-0' : 'scale-100 opacity-100'}`}>
-                  <div className="mb-3 h-52 overflow-hidden rounded-xl bg-slate-900 ring-1 ring-white/10">
-                    {book.thumbnail ? (
-                      <img loading="lazy" src={getBookThumbnailUrl(book)} onError={applyThumbnailFallback} alt={book.title} className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="grid h-full w-full place-items-center bg-gradient-to-br from-blue-500/50 to-violet-600/50 p-3 text-center text-sm font-semibold text-white">
-                        {book.title}
+                <article key={savedItem._id} className={`book-card min-h-[245px] sm:min-h-[345px] shadow-md shadow-black/20 rounded-2xl p-3 sm:p-4 flex flex-col justify-between transition-all duration-300 ${removingIds.includes(savedItem._id) ? 'scale-[0.98] opacity-0' : 'scale-100 opacity-100'}`}>
+                  <div className="relative flex flex-col h-full justify-between">
+                    <div>
+                      <div className="mb-2 aspect-[3/4] w-full overflow-hidden rounded-lg bg-slate-950/50 shadow-inner ring-1 ring-white/10 relative block">
+                        {book.thumbnail ? (
+                          <img loading="lazy" src={getBookThumbnailUrl(book)} onError={applyThumbnailFallback} alt={book.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        ) : (
+                          <div className="grid h-full w-full place-items-center bg-gradient-to-br from-blue-500/50 to-violet-600/50 p-2 text-center text-sm font-semibold text-white">
+                            {book.title}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  <h3 className="line-clamp-1 text-sm font-semibold text-white">{book.title}</h3>
-                  <p className="line-clamp-1 text-xs text-slate-300">{book.author || 'Unknown author'}</p>
-                  <div className="mt-2 h-1.5 w-full rounded-full bg-white/10">
-                    <div className="h-full rounded-full bg-gradient-to-r from-blue-400 to-violet-500" style={{ width: `${progress?.progressPercentage || 0}%` }} />
-                  </div>
-                  <div className="mt-3 flex gap-2">
-                    <button onClick={() => handleRemoveSavedBook(savedItem)} className="rounded-xl border border-rose-300/25 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-200 transition duration-200 hover:bg-rose-500/20">
-                      Remove
-                    </button>
-                    <a href={readerLink} className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-semibold text-slate-100 transition duration-200 hover:bg-white/15">
-                      Open Book
-                    </a>
+                      <h3 className="line-clamp-1 text-xs sm:text-sm font-bold text-white leading-tight group-hover:text-indigo-200 transition-colors">{book.title}</h3>
+                      <p className="mt-0.5 line-clamp-1 text-[10px] text-slate-400 font-medium">{book.author || 'Unknown author'}</p>
+                    </div>
+
+                    <div className="mt-auto pt-1">
+                      <div className="mb-1.5 h-1 w-full rounded-full bg-white/10">
+                        <div className="h-full rounded-full bg-gradient-to-r from-blue-400 to-violet-500" style={{ width: `${progress?.progressPercentage || 0}%` }} />
+                      </div>
+                      <div className="mb-1.5 flex items-center">
+                        <span 
+                          className="inline-block text-[9px] font-bold uppercase tracking-wider truncate max-w-full block"
+                          style={{ color: getCategoryColor(book.category) }}
+                        >
+                          {book.category || 'New to shelf'}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleRemoveSavedBook(savedItem)} className="flex-1 rounded-lg border border-rose-300/25 bg-rose-500/10 py-1 text-[10px] font-bold text-rose-200 transition duration-200 hover:bg-rose-500/20">
+                          Remove
+                        </button>
+                        <a href={readerLink} className="flex-1 text-center rounded-lg border border-white/10 bg-white/5 py-1 text-[10px] font-bold text-white transition duration-200 hover:bg-white/15">
+                          Open
+                        </a>
+                      </div>
+                    </div>
                   </div>
                 </article>
               )

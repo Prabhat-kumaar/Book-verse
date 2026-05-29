@@ -7,6 +7,7 @@ import EmptyState from '../components/EmptyState'
 import { GridSkeleton } from '../components/Skeletons'
 import { buildReaderHash } from '../lib/readerLink'
 import { buildProgressMap } from '../lib/readingProgress'
+import { applyThumbnailFallback, getBookThumbnailUrl } from '../lib/mediaUrls'
 
 function normalize(value) {
   return (value || '').toString().trim().toLowerCase()
@@ -14,50 +15,98 @@ function normalize(value) {
 
 const categories = ['All', 'Programming', 'AI', 'Business', 'Self-Help', 'Design', 'Productivity']
 
+const categoryEmojis = {
+  all: '🌐',
+  programming: '💻',
+  ai: '🤖',
+  'artificial intelligence': '🤖',
+  business: '💼',
+  'self-help': '🌱',
+  selfhelp: '🌱',
+  design: '🎨',
+  productivity: '⚡',
+  fiction: '📚',
+  technology: '⚙️',
+  science: '🔬',
+  history: '📜',
+  biography: '👤',
+  mystery: '🕵️',
+  fantasy: '🧙',
+  thriller: '🗡️',
+  romance: '💖'
+}
+
+function getCategoryEmoji(cat) {
+  const normalized = normalize(cat)
+  return categoryEmojis[normalized] || '📘'
+}
+
+function getCategoryColor(category) {
+  const cat = (category || '').toString().trim().toLowerCase()
+  if (cat.includes('business') || cat.includes('finance')) return '#10b981' // green
+  if (cat.includes('programming') || cat.includes('code') || cat.includes('software')) return '#3b82f6' // blue
+  if (cat.includes('self-help') || cat.includes('selfhelp') || cat.includes('psychology')) return '#a855f7' // purple
+  if (cat.includes('productivity') || cat.includes('time')) return '#f97316' // orange
+  if (cat.includes('startup') || cat.includes('entrepreneur')) return '#06b6d4' // cyan
+  if (cat.includes('design') || cat.includes('ui') || cat.includes('ux') || cat.includes('art')) return '#ec4899' // pink
+  if (cat.includes('ai') || cat.includes('artificial') || cat.includes('machine')) return '#6366f1' // indigo
+  if (cat.includes('lifestyle') || cat.includes('health') || cat.includes('fitness')) return '#eab308' // yellow
+  return '#6b7280' // default gray
+}
+
 const BookCard = memo(function BookCard({ book, progress }) {
   const resumePage = Number.isInteger(progress?.currentPage) && progress.currentPage > 0 ? progress.currentPage : undefined
   const readerLink = buildReaderHash(book, { page: resumePage, cfi: progress?.cfi || '' })
   const [thumbFailed, setThumbFailed] = useState(false)
 
   return (
-    <article className="group book-card">
+    <article className="book-card min-h-[245px] sm:min-h-[345px] shadow-md shadow-black/20 rounded-2xl p-3 sm:p-4 flex flex-col justify-between transition-all duration-300">
       <SaveBookHeart bookId={book._id} book={book} />
-      <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition duration-500 group-hover:opacity-100 [background:linear-gradient(145deg,rgba(84,132,255,0.08),rgba(146,92,255,0.06))]" />
-      <div className="pointer-events-none absolute inset-0 rounded-2xl border border-transparent opacity-0 transition duration-500 group-hover:opacity-100 [background:linear-gradient(135deg,rgba(95,144,255,0.25),rgba(165,111,255,0.2))_border-box] [mask:linear-gradient(#fff_0_0)_padding-box,linear-gradient(#fff_0_0)] [mask-composite:exclude]" />
-      <div className="pointer-events-none absolute -right-12 -top-10 h-32 w-32 rounded-full bg-violet-400/10 blur-3xl opacity-0 transition duration-500 group-hover:opacity-100" />
+      <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition duration-500 group-hover:opacity-100 [background:linear-gradient(145deg,rgba(84,132,255,0.1),rgba(146,92,255,0.08))]" />
+      <div className="pointer-events-none absolute inset-0 rounded-2xl border border-transparent opacity-0 transition duration-500 group-hover:opacity-100 [background:linear-gradient(135deg,rgba(95,144,255,0.35),rgba(165,111,255,0.25))_border-box] [mask:linear-gradient(#fff_0_0)_padding-box,linear-gradient(#fff_0_0)] [mask-composite:exclude]" />
       
-      <div className="relative flex flex-col h-full">
-        <div className="mb-4 aspect-[3/4] w-full overflow-hidden rounded-xl bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 shadow-inner ring-1 ring-white/10 relative">
-          {book.thumbnail && !thumbFailed ? (
-            <img loading="lazy" src={book.thumbnail} alt={book.title} onError={() => setThumbFailed(true)} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+      <div className="relative flex flex-col h-full justify-between">
+        <div>
+          <div className="mb-2 aspect-[3/4] w-full overflow-hidden rounded-lg bg-slate-950/50 shadow-inner ring-1 ring-white/10 relative block">
+            {book.thumbnail && !thumbFailed ? (
+              <img loading="lazy" src={getBookThumbnailUrl(book)} onError={() => setThumbFailed(true)} alt={book.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+            ) : (
+              <div className="grid h-full w-full place-items-center bg-gradient-to-br from-blue-500/50 to-violet-600/50 p-2 text-center text-sm font-semibold text-white">
+                {book.title}
+              </div>
+            )}
+          </div>
+          
+          <h4 className="line-clamp-1 text-xs sm:text-sm font-bold text-white leading-tight group-hover:text-indigo-200 transition-colors">{book.title}</h4>
+          <p className="mt-0.5 line-clamp-1 text-[10px] text-slate-400 font-medium">{book.author || 'Unknown Author'}</p>
+        </div>
+
+        <div className="mt-auto pt-1">
+          {progress?.percent > 0 ? (
+            <div className="mb-1.5">
+              <div className="h-1 w-full overflow-hidden rounded-full bg-white/10">
+                <div className="h-full rounded-full bg-gradient-to-r from-blue-400 to-violet-500" style={{ width: `${progress.percent}%` }} />
+              </div>
+              <p className="mt-0.5 text-[9px] font-medium text-slate-500">{progress.percent}% completed</p>
+            </div>
           ) : (
-            <div className="grid h-full w-full place-items-center bg-gradient-to-br from-blue-500/50 to-violet-600/50 p-3 text-center text-sm font-semibold text-white">
-              {book.title}
+            <div className="mb-1.5 flex items-center">
+              <span 
+                className="inline-block text-[9px] font-bold uppercase tracking-wider truncate max-w-full block"
+                style={{ color: getCategoryColor(book.category) }}
+              >
+                {book.category || 'New to shelf'}
+              </span>
             </div>
           )}
+
+          <a
+            href={readerLink}
+            className="inline-flex w-full items-center justify-center rounded-lg border border-white/10 bg-white/5 py-1 text-[10px] font-bold text-white transition hover:border-blue-300/40 hover:bg-white/15"
+          >
+            {progress?.percent > 0 ? 'Resume' : 'Open'}
+          </a>
         </div>
-        
-        <h4 className="line-clamp-1 text-sm font-semibold text-white leading-tight group-hover:text-indigo-200 transition-colors">{book.title}</h4>
-        <p className="mt-0.5 line-clamp-1 text-xs text-slate-400">{book.author || 'Unknown Author'}</p>
-        <p className="mt-1.5 inline-block text-[10px] font-medium tracking-wide uppercase text-indigo-400">{book.category || 'Uncategorized'}</p>
-
-        <div className="flex-grow"></div>
-
-        {progress?.percent > 0 && (
-          <div className="mt-3">
-            <div className="h-1 w-full overflow-hidden rounded-full bg-white/10">
-              <div className="h-full rounded-full bg-gradient-to-r from-blue-400 to-violet-500" style={{ width: `${progress.percent}%` }} />
-            </div>
-            <p className="mt-1 text-[10px] text-slate-400">{progress.percent}% completed</p>
-          </div>
-        )}
-
-        <a
-          href={readerLink}
-          className="mt-3 inline-flex w-full items-center justify-center rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:border-blue-300/40 hover:bg-white/15"
-        >
-          {progress?.percent > 0 ? 'Resume Reading' : 'Open Reader'}
-        </a>
       </div>
     </article>
   )
@@ -129,7 +178,7 @@ export default function BooksPage() {
 
   return (
     <section id="books-section" className="rounded-2xl border border-white/10 bg-white/[0.05] p-5 sm:p-7">
-      <h1 className="text-2xl font-bold text-white sm:text-3xl">Explore Books</h1>
+      <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">Explore Books</h1>
       <p className="mt-1 text-sm text-slate-300">Search, filter, and discover your next read.</p>
 
       {/* Premium Search and Filtering Controls */}
@@ -164,21 +213,23 @@ export default function BooksPage() {
 
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2.5">Filter by Category</p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-row overflow-x-auto gap-2 scrollbar-none flex-nowrap pb-1.5 pt-0.5 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap">
             {categories.map((cat) => {
               const active = selectedCategory === cat
+              const emoji = getCategoryEmoji(cat)
               return (
                 <button
                   key={cat}
                   type="button"
                   onClick={() => setSelectedCategory(cat)}
-                  className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all duration-300 ${
+                  className={`shrink-0 rounded-full px-4 py-2 text-xs font-bold transition-all duration-300 flex items-center gap-1.5 ${
                     active
                       ? 'bg-gradient-to-r from-blue-500 to-violet-600 text-white shadow-[0_0_15px_rgba(99,102,241,0.4)] scale-105'
                       : 'border border-white/10 bg-white/[0.04] text-slate-300 hover:border-indigo-400/30 hover:text-white'
                   }`}
                 >
-                  {cat}
+                  <span className="text-sm">{emoji}</span>
+                  <span className="truncate max-w-[100px] block">{cat}</span>
                 </button>
               )
             })}
@@ -186,19 +237,15 @@ export default function BooksPage() {
         </div>
       </div>
 
-      <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-200">
-        Showing {filteredBooks.length} of {books.length} books{searchTerm ? ` for "${searchTerm}"` : ''}
-      </div>
-
       {loading ? (
-        <div className="mt-5 animate-[fadeIn_220ms_ease-out]">
+        <div className="mt-6 animate-[fadeIn_220ms_ease-out]">
           <GridSkeleton count={8} />
         </div>
       ) : error ? (
-        <div className="mt-5 rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</div>
+        <div className="mt-6 rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</div>
       ) : filteredBooks.length === 0 ? (
         <EmptyState
-          className="mt-5"
+          className="mt-6"
           icon="🔍"
           title="No books found"
           description="Try adjusting your keywords or category filters."
@@ -210,7 +257,7 @@ export default function BooksPage() {
           }}
         />
       ) : (
-        <div className="book-grid">
+        <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 sm:gap-5 mt-6">
           {filteredBooks.map((book) => (
             <BookCard key={book._id || `${book.title}-${book.author}`} book={book} progress={progressMap.get(book._id)} />
           ))}
