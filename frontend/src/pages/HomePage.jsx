@@ -9,6 +9,7 @@ import { BookCardSkeleton, HeroSkeleton, ProgressCardSkeleton } from '../compone
 import { buildReaderHash } from '../lib/readerLink'
 import { applyThumbnailFallback, getBookThumbnailUrl } from '../lib/mediaUrls'
 import { buildProgressMap, computeProgress } from '../lib/readingProgress'
+import SEO from '../components/SEO'
 
 function timeAgo(value) {
   const then = new Date(value || 0).getTime()
@@ -200,6 +201,33 @@ export default function HomePage() {
     navigate('/books')
   }
 
+  const homeSchema = useMemo(() => {
+    return {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Readify AI",
+      "url": "https://readifyai.vercel.app",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://readifyai.vercel.app/books?q={search_term_string}"
+        },
+        "query-input": "required name=search_term_string"
+      }
+    }
+  }, [])
+
+  const orgSchema = useMemo(() => {
+    return {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Readify AI",
+      "url": "https://readifyai.vercel.app",
+      "logo": "https://readifyai.vercel.app/favicon.svg"
+    }
+  }, [])
+
   return (
     <motion.section
       initial={{ opacity: 0, y: 28 }}
@@ -207,6 +235,12 @@ export default function HomePage() {
       transition={{ duration: 0.85, ease: 'easeOut' }}
       className="relative overflow-hidden py-4 sm:py-10 animate-[fadeIn_300ms_ease-out]"
     >
+      <SEO
+        title="Readify AI - Read Books Online Free"
+        description="Streamlined digital reading companion platform for ebooks, textbooks, and personal documents. Track reading progress, study note bookmarks, and streaks completely free."
+        path="/"
+        schema={[homeSchema, orgSchema]}
+      />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.05),transparent_42%),radial-gradient(circle_at_80%_10%,rgba(132,145,255,0.04),transparent_33%)]" />
 
       {/* Shared Premium Hero featured book section */}

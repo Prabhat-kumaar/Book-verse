@@ -8,6 +8,7 @@ import { GridSkeleton } from '../components/Skeletons'
 import { buildReaderHash } from '../lib/readerLink'
 import { getBookThumbnailUrl } from '../lib/mediaUrls'
 import { buildProgressMap } from '../lib/readingProgress'
+import SEO from '../components/SEO'
 
 function getCategoryColor(category) {
   const cat = (category || '').toString().trim().toLowerCase()
@@ -95,6 +96,11 @@ export default function RecommendedPage() {
   const progressMap = useMemo(() => buildProgressMap(progressItems), [progressItems])
   return (
     <section className="rounded-2xl border border-white/10 bg-white/[0.05] p-5 sm:p-7">
+      <SEO
+        title="Recommended Books - Readify AI"
+        description="Personalized recommendations, standard curated collections, and top digital library books based on your reading progress and learning shelf on Readify AI."
+        path="/recommended"
+      />
       <h1 className="text-2xl font-bold text-white sm:text-3xl">Recommended</h1>
       <p className="mt-1 text-sm text-slate-300">Suggestions based on available library books.</p>
 

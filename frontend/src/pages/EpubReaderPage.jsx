@@ -889,7 +889,7 @@ export default function EpubReaderPage() {
               </div>
               <div className="flex items-center gap-3">
                 {coverUrl ? (
-                  <img src={coverUrl} alt={params.title} className="h-14 w-12 rounded-xl object-cover shadow-md" />
+                  <img loading="lazy" src={coverUrl} alt={params.title} className="h-14 w-12 rounded-xl object-cover shadow-md" />
                 ) : (
                   <div className="grid h-14 w-12 place-items-center rounded-xl bg-primary/20 text-base font-bold shadow-md">
                     {(params.title || 'B').slice(0, 1)}
@@ -956,7 +956,7 @@ export default function EpubReaderPage() {
 
             <div className="mb-3 flex items-center gap-3">
               {coverUrl ? (
-                <img src={coverUrl} alt={params.title} className="h-12 w-9 rounded-lg object-cover shadow" />
+                <img loading="lazy" src={coverUrl} alt={params.title} className="h-12 w-9 rounded-lg object-cover shadow" />
               ) : (
                 <div className="grid h-12 w-9 place-items-center rounded-lg bg-primary/20 text-xs font-bold">
                   {(params.title || 'B').slice(0, 1)}

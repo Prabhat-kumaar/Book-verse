@@ -20,6 +20,7 @@ const CategoriesPage = lazy(() => import('./pages/CategoriesPage'))
 const RecommendedPage = lazy(() => import('./pages/RecommendedPage'))
 const SavedBooksPage = lazy(() => import('./pages/SavedBooksPage'))
 const ProfileDashboardPage = lazy(() => import('./pages/ProfileDashboardPage'))
+const BookDetailPage = lazy(() => import('./pages/BookDetailPage'))
 
 function readAuthUser() {
   try {
@@ -126,6 +127,7 @@ function App() {
           <Routes>
             <Route path="/" element={<MainLayout><HomePage /></MainLayout>} />
             <Route path="/books" element={<MainLayout><BooksPage /></MainLayout>} />
+            <Route path="/book/:id" element={<MainLayout><BookDetailPage /></MainLayout>} />
             <Route path="/categories" element={<MainLayout><CategoriesPage /></MainLayout>} />
             <Route path="/recommended" element={<MainLayout><RecommendedPage /></MainLayout>} />
             <Route path="/login" element={<LoginPage />} />

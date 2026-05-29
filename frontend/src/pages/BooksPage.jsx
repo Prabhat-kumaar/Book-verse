@@ -8,6 +8,7 @@ import { GridSkeleton } from '../components/Skeletons'
 import { buildReaderHash } from '../lib/readerLink'
 import { buildProgressMap } from '../lib/readingProgress'
 import { applyThumbnailFallback, getBookThumbnailUrl } from '../lib/mediaUrls'
+import SEO from '../components/SEO'
 
 function normalize(value) {
   return (value || '').toString().trim().toLowerCase()
@@ -178,6 +179,11 @@ export default function BooksPage() {
 
   return (
     <section id="books-section" className="rounded-2xl border border-white/10 bg-white/[0.05] p-5 sm:p-7">
+      <SEO
+        title="Explore Books - Readify AI"
+        description="Search, sort, filter, and discover your next read from our extensive list of digital books, guides, textbooks, and personal documents on Readify AI."
+        path="/books"
+      />
       <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">Explore Books</h1>
       <p className="mt-1 text-sm text-slate-300">Search, filter, and discover your next read.</p>
 

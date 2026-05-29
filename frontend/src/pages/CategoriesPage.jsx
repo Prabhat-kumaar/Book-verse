@@ -8,6 +8,7 @@ import { GridSkeleton } from '../components/Skeletons'
 import { buildReaderHash } from '../lib/readerLink'
 import { buildProgressMap } from '../lib/readingProgress'
 import { applyThumbnailFallback, getBookThumbnailUrl } from '../lib/mediaUrls'
+import SEO from '../components/SEO'
 
 function normalize(value) {
   return (value || '').toString().trim().toLowerCase()
@@ -146,6 +147,11 @@ export default function CategoriesPage() {
 
   return (
     <section className="rounded-2xl border border-white/10 bg-white/[0.05] p-5 sm:p-7">
+      <SEO
+        title="Book Categories - Readify AI"
+        description="Browse books by category: Programming, Artificial Intelligence, Business, Self-Help, Design, and Productivity. Find the perfect resource for your learning goals on Readify AI."
+        path="/categories"
+      />
       <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">Categories</h1>
       <p className="mt-1 text-sm text-slate-300">Discover and browse books by subject matter.</p>
 
