@@ -63,30 +63,43 @@ const allowedOrigins = new Set([
         process.env.FRONTEND_URLS,
         process.env.CORS_ORIGINS
     ),
-    ...(isDev
-        ? [
-            'http://localhost:3000',
-            'http://localhost:4173',
-            'http://localhost:5173',
-            'http://localhost:5174',
-            'http://localhost:5175',
-            'http://127.0.0.1:3000',
-            'http://127.0.0.1:4173',
-            'http://127.0.0.1:5173',
-            'http://127.0.0.1:5174',
-            'http://127.0.0.1:5175',
-        ]
-        : []),
+    'http://localhost:3000',
+    'http://localhost:4173',
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:5175',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:4173',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:5174',
+    'http://127.0.0.1:5175',
 ]);
 
 const normalizeOrigin = (origin = '') => origin.trim().replace(/\/+$/, '');
 
 app.use(cors({
     origin: function (origin, callback) {
-        const normalizedOrigin = normalizeOrigin(origin || '');
-        if (!origin || allowedOrigins.has(normalizedOrigin)) {
+        if (!origin) {
             return callback(null, true);
         }
+
+        const normalizedOrigin = normalizeOrigin(origin);
+
+        // 1. Check exact match in configured allowed origins
+        if (allowedOrigins.has(normalizedOrigin)) {
+            return callback(null, true);
+        }
+
+        // 2. Allow any Vercel deployment dynamically to prevent dynamic subdomain blockages
+        if (normalizedOrigin.endsWith('.vercel.app')) {
+            return callback(null, true);
+        }
+
+        // 3. Allow localhost/127.0.0.1 patterns dynamically for development
+        if (/^https?:\/\/localhost(:\d+)?$/i.test(normalizedOrigin) || /^https?:\/\/127\.0\.0\.1(:\d+)?$/i.test(normalizedOrigin)) {
+            return callback(null, true);
+        }
+
         return callback(new Error('Not allowed by CORS'));
     },
 
