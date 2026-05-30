@@ -545,6 +545,7 @@ const getAdminDetails = async (req, res, next) => {
 
         // 8. Popular Pages (Top 5 routes)
         const pageStats = await SiteVisitLog.aggregate([
+            { $match: { path: { $type: 'string', $not: /^\/admin/i } } },
             { $group: { _id: '$path', count: { $sum: 1 } } },
             { $sort: { count: -1 } },
             { $limit: 5 }
