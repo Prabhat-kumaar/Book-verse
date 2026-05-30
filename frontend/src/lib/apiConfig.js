@@ -23,6 +23,8 @@ function isLocalHost(hostname = '') {
 const rawEnvOrigin = normalizeOrigin(import.meta.env.VITE_API_URL)
 const envOrigin = isTemplateOrigin(rawEnvOrigin) ? '' : rawEnvOrigin
 
+const PRODUCTION_BACKEND_FALLBACK = 'https://book-verse-production.up.railway.app'
+
 const browserFallbackOrigin = (() => {
   if (!isBrowser) return ''
   const { protocol, hostname, port } = window.location
@@ -33,7 +35,7 @@ const browserFallbackOrigin = (() => {
   return `${protocol}//${hostname}${port ? `:${port}` : ''}`
 })()
 
-export const API_ORIGIN = envOrigin || browserFallbackOrigin
+export const API_ORIGIN = envOrigin || (import.meta.env.DEV ? browserFallbackOrigin : PRODUCTION_BACKEND_FALLBACK)
 export const API_URL = API_ORIGIN ? `${API_ORIGIN}/api` : '/api'
 
 if (!envOrigin && !import.meta.env.DEV) {
