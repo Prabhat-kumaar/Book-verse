@@ -9,7 +9,7 @@ const normalizeId = (value) => {
   return String(value)
 }
 
-export default function SaveBookHeart({ bookId, book = null, className = '' }) {
+export default function SaveBookHeart({ bookId, book = null, className = '', asButton = false }) {
   const { collections, createCollection, saveBook, savedStatus, removeSavedBook, isAuthed, hydrated } = useSavedBooksContext()
 
   const [open, setOpen] = useState(false)
@@ -57,6 +57,16 @@ export default function SaveBookHeart({ bookId, book = null, className = '' }) {
   if (!isAuthed) return null
 
   if (!hydrated) {
+    if (asButton) {
+      return (
+        <div
+          className={`inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-bold text-slate-400 ${className}`}
+        >
+          <FaRegHeart className="animate-pulse" />
+          <span>Loading...</span>
+        </div>
+      )
+    }
     return (
       <div
         className={`absolute right-3 top-3 z-40 grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-slate-950/75 text-white shadow-[0_8px_26px_rgba(0,0,0,0.45)] transition duration-200 ${className}`}
@@ -134,14 +144,25 @@ export default function SaveBookHeart({ bookId, book = null, className = '' }) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={onHeartClick}
-        className={`absolute right-3 top-3 z-40 grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-slate-950/75 text-white shadow-[0_8px_26px_rgba(0,0,0,0.45)] transition duration-200 hover:scale-110 hover:border-violet-300/45 hover:bg-slate-900/90 ${pop ? 'animate-[heartPop_260ms_ease-out]' : ''
-          } ${className}`}
-      >
-        {isSaved ? <FaHeart className="text-red-500" /> : <FaRegHeart className="text-slate-100" />}
-      </button>
+      {asButton ? (
+        <button
+          type="button"
+          onClick={onHeartClick}
+          className={`inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-bold text-slate-300 transition hover:bg-white/10 hover:border-indigo-500/35 hover:text-white ${pop ? 'animate-[heartPop_260ms_ease-out]' : ''} ${className}`}
+        >
+          {isSaved ? <FaHeart className="text-red-500 text-sm animate-pulse" /> : <FaRegHeart className="text-slate-300 text-sm" />}
+          <span>{isSaved ? 'Saved in Library' : 'Save to Library'}</span>
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={onHeartClick}
+          className={`absolute right-3 top-3 z-40 grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-slate-950/75 text-white shadow-[0_8px_26px_rgba(0,0,0,0.45)] transition duration-200 hover:scale-110 hover:border-violet-300/45 hover:bg-slate-900/90 ${pop ? 'animate-[heartPop_260ms_ease-out]' : ''
+            } ${className}`}
+        >
+          {isSaved ? <FaHeart className="text-red-500" /> : <FaRegHeart className="text-slate-100" />}
+        </button>
+      )}
 
       {mounted ? createPortal(
         <div
