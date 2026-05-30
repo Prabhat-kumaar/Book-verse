@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { FaPen, FaTrash } from 'react-icons/fa'
+import { Link } from 'react-router-dom'
 import apiClient from '../lib/apiClient'
 import { useSavedBooksContext } from '../context/SavedBooksContext'
 import useProgress from '../hooks/useProgress'
@@ -311,7 +312,7 @@ export default function SavedBooksPage() {
               return (
                 <article key={savedItem._id} className={`book-card min-h-[245px] sm:min-h-[345px] shadow-md shadow-black/20 rounded-2xl p-3 sm:p-4 flex flex-col justify-between transition-all duration-300 ${removingIds.includes(savedItem._id) ? 'scale-[0.98] opacity-0' : 'scale-100 opacity-100'}`}>
                   <div className="relative flex flex-col h-full justify-between">
-                    <div>
+                    <Link to={`/book/${book._id}`} className="group/link block cursor-pointer text-left">
                       <div className="mb-2 aspect-[3/4] w-full overflow-hidden rounded-lg bg-slate-950/50 shadow-inner ring-1 ring-white/10 relative block">
                         {book.thumbnail ? (
                           <img loading="lazy" src={getBookThumbnailUrl(book)} onError={applyThumbnailFallback} alt={book.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
@@ -321,9 +322,9 @@ export default function SavedBooksPage() {
                           </div>
                         )}
                       </div>
-                      <h3 className="line-clamp-1 text-xs sm:text-sm font-bold text-white leading-tight group-hover:text-indigo-200 transition-colors">{book.title}</h3>
+                      <h3 className="line-clamp-1 text-xs sm:text-sm font-bold text-white leading-tight group-hover/link:text-indigo-400 transition-colors">{book.title}</h3>
                       <p className="mt-0.5 line-clamp-1 text-[10px] text-slate-400 font-medium">{book.author || 'Unknown author'}</p>
-                    </div>
+                    </Link>
 
                     <div className="mt-auto pt-1">
                       <div className="mb-1.5 h-1 w-full rounded-full bg-white/10">

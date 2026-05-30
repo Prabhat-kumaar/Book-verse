@@ -64,7 +64,7 @@ function CategoryBookCard({ book, progress }) {
       <div className="pointer-events-none absolute inset-0 rounded-2xl border border-transparent opacity-0 transition duration-500 group-hover:opacity-100 [background:linear-gradient(135deg,rgba(95,144,255,0.35),rgba(165,111,255,0.25))_border-box] [mask:linear-gradient(#fff_0_0)_padding-box,linear-gradient(#fff_0_0)] [mask-composite:exclude]" />
       
       <div className="relative flex flex-col h-full justify-between">
-        <div>
+        <Link to={`/book/${book._id}`} className="group/link block cursor-pointer text-left">
           <div className="mb-2 aspect-[3/4] w-full overflow-hidden rounded-lg bg-slate-950/50 shadow-inner ring-1 ring-white/10 relative block">
             {book.thumbnail && !thumbFailed ? (
               <img loading="lazy" src={getBookThumbnailUrl(book)} onError={() => setThumbFailed(true)} alt={book.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
@@ -75,9 +75,9 @@ function CategoryBookCard({ book, progress }) {
             )}
           </div>
           
-          <h4 className="line-clamp-1 text-xs sm:text-sm font-bold text-white leading-tight group-hover:text-indigo-200 transition-colors">{book.title}</h4>
+          <h4 className="line-clamp-1 text-xs sm:text-sm font-bold text-white leading-tight group-hover/link:text-indigo-400 transition-colors">{book.title}</h4>
           <p className="mt-0.5 line-clamp-1 text-[10px] text-slate-400 font-medium">{book.author || 'Unknown Author'}</p>
-        </div>
+        </Link>
 
         <div className="mt-auto pt-1">
           {progress?.percent > 0 ? (

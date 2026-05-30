@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { memo, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import useRecommendations from '../hooks/useRecommendations'
 import useProgress from '../hooks/useProgress'
 import SaveBookHeart from '../components/SaveBookHeart'
@@ -54,7 +54,7 @@ const BookCard = memo(function BookCard({ book, index }) {
       <div className="pointer-events-none absolute inset-0 rounded-2xl border border-transparent opacity-0 transition duration-500 group-hover:opacity-100 [background:linear-gradient(135deg,rgba(95,144,255,0.35),rgba(165,111,255,0.25))_border-box] [mask:linear-gradient(#fff_0_0)_padding-box,linear-gradient(#fff_0_0)] [mask-composite:exclude]" />
       
       <div className="relative flex flex-col h-full justify-between">
-        <div>
+        <Link to={`/book/${book._id}`} className="group/link block cursor-pointer text-left">
           <div className="mb-2.5 aspect-[3/4] w-full overflow-hidden rounded-xl bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 shadow-inner ring-1 ring-white/10 relative block">
             {book.thumbnail && !thumbFailed ? (
               <img loading="lazy" src={getBookThumbnailUrl(book)} alt={book.title} onError={(event) => { setThumbFailed(true); applyThumbnailFallback(event) }} className="h-full w-full object-cover transition-transform duration-500 hover:scale-105" />
@@ -72,9 +72,9 @@ const BookCard = memo(function BookCard({ book, index }) {
             )}
           </div>
 
-          <h4 className="line-clamp-1 text-xs sm:text-sm font-bold text-white leading-tight">{book.title}</h4>
+          <h4 className="line-clamp-1 text-xs sm:text-sm font-bold text-white leading-tight group-hover/link:text-indigo-400 transition-colors">{book.title}</h4>
           <p className="line-clamp-1 text-[10px] text-slate-400 font-medium mt-0.5">{book.author}</p>
-        </div>
+        </Link>
 
         <div className="mt-auto pt-1">
           {book.progress > 0 ? (
@@ -247,14 +247,14 @@ export default function HomePage() {
       <div className="px-2.5 sm:px-0 mb-6">
         <section className="relative overflow-hidden rounded-3xl hero border border-white/10 bg-gradient-to-br from-[#1e1b4b] via-[#311042] to-[#450a26] shadow-[0_16px_45px_rgba(0,0,0,0.4)] md:h-[280px] lg:h-[300px] flex flex-col md:flex-row items-stretch">
           {/* Left side: book cover (40% width, object-cover) */}
-          <div className="relative w-full md:w-[40%] h-[220px] md:h-auto overflow-hidden shrink-0">
+          <Link to={`/book/${featuredBook?._id}`} className="relative w-full md:w-[40%] h-[220px] md:h-auto overflow-hidden shrink-0 block group/hero-cover">
             {featuredBook?.thumbnail ? (
               <img 
                 loading="lazy" 
                 src={getBookThumbnailUrl(featuredBook)} 
                 onError={applyThumbnailFallback} 
                 alt={featuredBook.title} 
-                className="h-full w-full object-cover object-center" 
+                className="h-full w-full object-cover object-center transition-transform duration-500 group-hover/hero-cover:scale-105" 
               />
             ) : (
               <div className="grid h-full w-full place-items-center bg-gradient-to-br from-indigo-600 to-violet-700 px-6 text-center text-xl font-black text-white">
@@ -262,14 +262,16 @@ export default function HomePage() {
               </div>
             )}
             <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-transparent to-black/40 pointer-events-none" />
-          </div>
+          </Link>
 
           {/* Right side: title, author, buttons (60% width) */}
           <div className="relative flex-1 p-5 md:p-8 flex flex-col justify-center bg-slate-950/40 backdrop-blur-sm">
             <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-pink-400">Featured Pick</span>
-            <h2 className="mt-1.5 line-clamp-2 text-xl md:text-2xl font-black text-white leading-tight tracking-tight">
-              {featuredBook?.title || 'Featured Book'}
-            </h2>
+            <Link to={`/book/${featuredBook?._id}`}>
+              <h2 className="mt-1.5 line-clamp-2 text-xl md:text-2xl font-black text-white leading-tight tracking-tight hover:text-pink-400 transition-colors">
+                {featuredBook?.title || 'Featured Book'}
+              </h2>
+            </Link>
             <p className="mt-1 line-clamp-1 text-xs md:text-sm text-slate-300 font-medium">
               by {featuredBook?.author || 'Readify AI Pick'}
             </p>
@@ -279,14 +281,16 @@ export default function HomePage() {
                 href={featuredBook ? buildReaderHash(featuredBook) : '#'}
                 className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 px-5 py-2.5 text-xs font-extrabold uppercase tracking-wider text-white border-none shadow-[0_4px_14px_rgba(219,39,119,0.3)] transition-all duration-300 active:scale-95 flex items-center justify-center"
               >
-                Read Now
+                Start Reading
               </a>
-              <button
-                onClick={() => navigate('/saved-books')}
-                className="border border-white/20 bg-white/10 hover:bg-white/20 rounded-full px-5 py-2.5 text-xs font-extrabold uppercase tracking-wider text-white transition-all duration-300 active:scale-95 flex items-center justify-center"
-              >
-                Saved Books
-              </button>
+              {featuredBook?._id && (
+                <Link
+                  to={`/book/${featuredBook._id}`}
+                  className="rounded-full border border-white/15 bg-white/5 hover:bg-white/10 px-5 py-2.5 text-xs font-extrabold uppercase tracking-wider text-white transition-all duration-300 active:scale-95 flex items-center justify-center"
+                >
+                  View Details
+                </Link>
+              )}
             </div>
           </div>
         </section>
