@@ -1,6 +1,5 @@
 import { Navigate, Outlet, Route, Routes, useNavigate, useLocation } from 'react-router-dom'
 import { Suspense, lazy, useEffect, useState } from 'react'
-import { SavedBooksProvider } from './context/SavedBooksContext'
 import apiClient from './lib/apiClient'
 import { BookCardSkeleton, HeroSkeleton, NavbarSkeleton } from './components/Skeletons'
 
@@ -115,8 +114,7 @@ function App() {
   const isReaderRoute = hash.startsWith('#reader')
 
   return (
-    <SavedBooksProvider>
-      <Suspense fallback={<RouteFallback />}>
+    <Suspense fallback={<RouteFallback />}>
         {isReaderRoute ? (
           <RequireAuth>
             <MainLayout hideChrome fullBleed>
@@ -148,7 +146,6 @@ function App() {
           </Routes>
         )}
       </Suspense>
-    </SavedBooksProvider>
   )
 }
 

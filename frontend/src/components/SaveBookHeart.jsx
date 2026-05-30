@@ -21,6 +21,26 @@ export default function SaveBookHeart({ bookId, book = null, className = '', asB
   const [selectedCollectionIds, setSelectedCollectionIds] = useState([])
   const [submitting, setSubmitting] = useState(false)
   const [toast, setToast] = useState('')
+  const [portalElement, setPortalElement] = useState(null)
+
+  // ── dynamic portal container creation and cleanup ──────────────────────────
+  useEffect(() => {
+    if (!mounted) {
+      setPortalElement(null)
+      return undefined
+    }
+
+    const container = document.createElement('div')
+    container.setAttribute('id', 'save-book-heart-portal')
+    document.body.appendChild(container)
+    setPortalElement(container)
+
+    return () => {
+      if (document.body.contains(container)) {
+        document.body.removeChild(container)
+      }
+    }
+  }, [mounted])
 
   const bookIdNormalized = normalizeId(bookId)
 
@@ -164,7 +184,7 @@ export default function SaveBookHeart({ bookId, book = null, className = '', asB
         </button>
       )}
 
-      {mounted ? createPortal(
+      {mounted && portalElement ? createPortal(
         <div
           className={`fixed inset-0 z-[120] transition-all duration-[350ms] ease-[cubic-bezier(0.4,0,0.2,1)] ${open ? 'bg-slate-950/70 backdrop-blur-sm opacity-100' : 'bg-slate-950/0 opacity-0'
             }`}
@@ -254,7 +274,7 @@ export default function SaveBookHeart({ bookId, book = null, className = '', asB
             </div>
           </div>
         </div>,
-        document.body,
+        portalElement,
       ) : null}
 
       {toast ? (
