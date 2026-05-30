@@ -3,6 +3,7 @@ const {
     getDailyAnalytics,
     getWeeklyAnalytics,
     getOverallAnalytics,
+    getCalendarAnalytics,
     recordVisit,
     getAdminAnalytics,
     getAdminDetails,
@@ -14,6 +15,7 @@ const router = express.Router();
 router.get('/daily', protect, getDailyAnalytics);
 router.get('/weekly', protect, getWeeklyAnalytics);
 router.get('/overall', protect, getOverallAnalytics);
+router.get('/calendar', protect, getCalendarAnalytics);
 router.post('/visit', recordVisit);
 router.get('/admin/details', protect, admin, getAdminDetails);
 router.get('/admin', protect, admin, getAdminAnalytics);

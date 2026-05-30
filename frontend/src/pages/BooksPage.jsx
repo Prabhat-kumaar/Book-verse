@@ -7,7 +7,7 @@ import EmptyState from '../components/EmptyState'
 import { GridSkeleton } from '../components/Skeletons'
 import { buildReaderHash } from '../lib/readerLink'
 import { buildProgressMap } from '../lib/readingProgress'
-import { applyThumbnailFallback, getBookThumbnailUrl } from '../lib/mediaUrls'
+import { getBookThumbnailUrl } from '../lib/mediaUrls'
 import SEO from '../components/SEO'
 
 function normalize(value) {
@@ -80,6 +80,13 @@ const BookCard = memo(function BookCard({ book, progress }) {
           
           <h4 className="line-clamp-1 text-xs sm:text-sm font-bold text-white leading-tight group-hover/link:text-indigo-400 transition-colors">{book.title}</h4>
           <p className="mt-0.5 line-clamp-1 text-[10px] text-slate-400 font-medium">{book.author || 'Unknown Author'}</p>
+          {book.totalReviews > 0 && (
+            <div className="mt-1 flex items-center gap-1 text-[10px] text-amber-400 font-semibold select-none">
+              <span>★</span>
+              <span>{Number(book.averageRating || 0).toFixed(1)}</span>
+              <span className="text-slate-500 font-normal">({book.totalReviews})</span>
+            </div>
+          )}
         </Link>
 
         <div className="mt-auto pt-1">
@@ -103,7 +110,7 @@ const BookCard = memo(function BookCard({ book, progress }) {
 
           <a
             href={readerLink}
-            className="inline-flex w-full items-center justify-center rounded-lg border border-white/10 bg-white/5 py-1 text-[10px] font-bold text-white transition hover:border-blue-300/40 hover:bg-white/15"
+            className="inline-flex w-full items-center justify-center rounded-xl border border-white/10 bg-white/5 py-2.5 min-h-[44px] text-xs font-bold text-white transition hover:border-blue-300/40 hover:bg-white/15"
           >
             {progress?.percent > 0 ? 'Resume' : 'Open'}
           </a>
@@ -263,7 +270,7 @@ export default function BooksPage() {
           }}
         />
       ) : (
-        <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 sm:gap-5 mt-6">
+        <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 sm:gap-5 mt-6">
           {filteredBooks.map((book) => (
             <BookCard key={book._id || `${book.title}-${book.author}`} book={book} progress={progressMap.get(book._id)} />
           ))}

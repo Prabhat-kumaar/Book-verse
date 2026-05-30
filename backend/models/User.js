@@ -80,6 +80,15 @@ const userSchema = new mongoose.Schema(
                 default: null,
             },
         },
+        avatar: {
+            type: String,
+            default: '',
+        },
+        readingGoal: {
+            type: Number,
+            default: 12,
+            min: 0,
+        },
     },
     {
         timestamps: true,

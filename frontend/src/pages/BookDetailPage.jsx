@@ -7,6 +7,7 @@ import { getBookThumbnailUrl, applyThumbnailFallback } from '../lib/mediaUrls'
 import { buildReaderHash } from '../lib/readerLink'
 import SEO from '../components/SEO'
 import SaveBookHeart from '../components/SaveBookHeart'
+import EmptyState from '../components/EmptyState'
 
 const getCategoryColorStyles = (category) => {
   const cat = (category || '').toString().trim().toLowerCase()
@@ -85,6 +86,136 @@ export default function BookDetailPage() {
   const [relatedBooks, setRelatedBooks] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  const [reviews, setReviews] = useState([])
+  const [reviewsLoading, setReviewsLoading] = useState(true)
+  const [sortBy, setSortBy] = useState('recent')
+  const [visibleReviewsCount, setVisibleReviewsCount] = useState(5)
+  const [formRating, setFormRating] = useState(0)
+  const [formHoverRating, setFormHoverRating] = useState(0)
+  const [formText, setFormText] = useState('')
+  const [formSubmitError, setFormSubmitError] = useState('')
+  const [formSubmitLoading, setFormSubmitLoading] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+
+  const authUser = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('authUser')
+      return raw ? JSON.parse(raw) : null
+    } catch {
+      return null
+    }
+  }, [])
+
+  const fetchReviews = async () => {
+    try {
+      setReviewsLoading(true)
+      const res = await apiClient.get(`/reviews/${id}`, { params: { sortBy } })
+      if (res.data?.success) {
+        setReviews(res.data.data || [])
+      }
+    } catch (err) {
+      console.error('Failed to load reviews:', err)
+    } finally {
+      setReviewsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchReviews()
+  }, [id, sortBy])
+
+  const myReview = useMemo(() => {
+    if (!authUser || !reviews.length) return null
+    return reviews.find((r) => (r.user?._id === authUser._id || r.user === authUser._id))
+  }, [reviews, authUser])
+
+  useEffect(() => {
+    if (myReview && !isEditing) {
+      setFormRating(myReview.rating || 0)
+      setFormText(myReview.reviewText || '')
+    }
+  }, [myReview, isEditing])
+
+  const getFirstName = (username) => {
+    if (!username) return 'Anonymous'
+    return username.trim().split(/[\s._-]+/)[0]
+  }
+
+  const renderFormStars = () => {
+    return (
+      <div className="flex items-center gap-2 select-none">
+        {[1, 2, 3, 4, 5].map((star) => {
+          const isFilled = formHoverRating ? star <= formHoverRating : star <= formRating
+          return (
+            <button
+              key={`star-selector-${star}`}
+              type="button"
+              onMouseEnter={() => setFormHoverRating(star)}
+              onMouseLeave={() => setFormHoverRating(0)}
+              onClick={() => setFormRating(star)}
+              className="text-2xl sm:text-3xl focus:outline-none transition-transform active:scale-95 duration-100"
+            >
+              <span className={isFilled ? 'text-amber-400 font-bold' : 'text-slate-700 font-normal'}>
+                {isFilled ? '★' : '☆'}
+              </span>
+            </button>
+          )
+        })}
+        {formRating > 0 && (
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">
+            {formRating === 1 ? 'Poor' : formRating === 2 ? 'Fair' : formRating === 3 ? 'Good' : formRating === 4 ? 'Very Good' : 'Excellent'}
+          </span>
+        )}
+      </div>
+    )
+  }
+
+  const handleSubmitReview = async (e) => {
+    e.preventDefault()
+    if (formRating === 0) {
+      setFormSubmitError('Please select a rating before submitting')
+      return
+    }
+    try {
+      setFormSubmitLoading(true)
+      setFormSubmitError('')
+      const res = await apiClient.post(`/reviews/${id}`, {
+        rating: formRating,
+        reviewText: formText
+      })
+      if (res.data?.success) {
+        await fetchReviews()
+        const bookDetailsRes = await apiClient.get(`/books/${id}`)
+        if (bookDetailsRes.data?.success) {
+          setBook(bookDetailsRes.data.data)
+        }
+        setIsEditing(false)
+      }
+    } catch (err) {
+      setFormSubmitError(err.response?.data?.message || err.message || 'Failed to submit review')
+    } finally {
+      setFormSubmitLoading(false)
+    }
+  }
+
+  const handleDeleteReview = async () => {
+    if (!window.confirm('Are you sure you want to delete your review?')) return
+    try {
+      const res = await apiClient.delete(`/reviews/${id}`)
+      if (res.data?.success) {
+        setFormRating(0)
+        setFormText('')
+        await fetchReviews()
+        const bookDetailsRes = await apiClient.get(`/books/${id}`)
+        if (bookDetailsRes.data?.success) {
+          setBook(bookDetailsRes.data.data)
+        }
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || err.message || 'Failed to delete review')
+    }
+  }
 
   useEffect(() => {
     const fetchBookDetails = async () => {
@@ -293,6 +424,24 @@ export default function BookDetailPage() {
                   </span>
                 )}
               </div>
+
+              {/* Star rating under author */}
+              <div className="mt-2.5 flex items-center gap-2 select-none">
+                <div className="flex items-center text-sm text-amber-400 font-bold">
+                  {[1, 2, 3, 4, 5].map((star) => {
+                    const isFilled = star <= Math.round(book.averageRating || 0);
+                    return <span key={`header-star-${star}`} className="text-base">{isFilled ? '★' : '☆'}</span>;
+                  })}
+                </div>
+                {book.totalReviews > 0 ? (
+                  <p className="text-xs font-semibold text-slate-300">
+                    <span className="text-sm font-black text-white">{Number(book.averageRating || 0).toFixed(1)}</span>{' '}
+                    <span className="text-slate-400 font-medium">({book.totalReviews} {book.totalReviews === 1 ? 'review' : 'reviews'})</span>
+                  </p>
+                ) : (
+                  <p className="text-xs font-semibold text-slate-500 italic">No reviews yet</p>
+                )}
+              </div>
             </div>
 
             {/* Tags Pills Section */}
@@ -365,6 +514,246 @@ export default function BookDetailPage() {
                 className="w-full sm:w-auto"
               />
             </div>
+          </div>
+        </div>
+
+        {/* 6. REVIEWS AND RATINGS SECTION */}
+        <div className="mt-16 pt-8 border-t border-white/10 animate-[fadeIn_350ms_ease-out]">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            {/* Reviews List (Left Column) */}
+            <div className="lg:col-span-8 space-y-6">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-white/5 pb-4">
+                <div>
+                  <h3 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+                    💬 Book Reviews
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Hear from other readers in the community</p>
+                </div>
+                
+                {reviews.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Sort by:</span>
+                    <div className="inline-flex rounded-lg bg-slate-900 border border-white/5 p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setSortBy('recent')}
+                        className={`rounded-md px-2.5 py-1 text-[10px] font-bold transition-all ${sortBy === 'recent' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                      >
+                        Recent
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSortBy('rating')}
+                        className={`rounded-md px-2.5 py-1 text-[10px] font-bold transition-all ${sortBy === 'rating' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                      >
+                        Highest Rated
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {reviewsLoading ? (
+                <div className="space-y-4 py-2">
+                  {[...Array(2)].map((_, i) => (
+                    <div key={i} className="h-28 animate-pulse rounded-2xl border border-white/5 bg-white/[0.02]" />
+                  ))}
+                </div>
+              ) : reviews.length === 0 ? (
+                <EmptyState
+                  className="py-12 bg-white/[0.01] border border-white/5 rounded-2xl"
+                  icon="💬"
+                  title="No reviews yet"
+                  description="Be the very first reader to review this book and help others on their reading journey."
+                  compact
+                />
+              ) : (
+                <div className="space-y-4">
+                  {reviews.slice(0, visibleReviewsCount).map((review) => {
+                    const reviewerName = review.user?.username || 'Anonymous';
+                    const firstName = getFirstName(reviewerName);
+                    const reviewDate = new Date(review.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                    
+                    return (
+                      <article
+                        key={review._id}
+                        className="group relative flex flex-col gap-3 rounded-2xl border border-white/5 bg-[#0f1424]/30 p-4 transition duration-300 hover:border-white/10 hover:bg-[#0f1424]/40"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-slate-800 border border-white/10 shadow-[0_4px_10px_rgba(0,0,0,0.3)] flex items-center justify-center text-xs font-black text-white bg-gradient-to-br from-indigo-500/30 to-violet-500/30">
+                              {review.user?.avatar ? (
+                                <img src={review.user.avatar} alt={reviewerName} className="h-full w-full object-cover" />
+                              ) : (
+                                (firstName?.[0] || 'A').toUpperCase()
+                              )}
+                            </div>
+                            <div>
+                              <h4 className="text-xs font-bold text-white tracking-wide">{firstName}</h4>
+                              <p className="text-[9px] text-slate-500 font-semibold mt-0.5">{reviewDate}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center text-xs text-amber-400 select-none">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <span key={`review-star-${review._id}-${star}`}>
+                                {star <= review.rating ? '★' : '☆'}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {review.reviewText && (
+                          <p className="text-xs leading-relaxed text-slate-300 font-medium whitespace-pre-line bg-white/[0.01] border border-white/5 rounded-xl p-3">
+                            {review.reviewText}
+                          </p>
+                        )}
+
+                        {authUser && (review.user?._id === authUser._id || review.user === authUser._id) && (
+                          <div className="flex items-center gap-3 mt-1 justify-end border-t border-white/5 pt-2">
+                            <button
+                              type="button"
+                              onClick={() => setIsEditing(true)}
+                              className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 hover:text-indigo-300 transition"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleDeleteReview}
+                              className="text-[10px] font-bold uppercase tracking-wider text-rose-400 hover:text-rose-300 transition"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </article>
+                    )
+                  })}
+
+                  {reviews.length > visibleReviewsCount && (
+                    <button
+                      type="button"
+                      onClick={() => setVisibleReviewsCount(prev => prev + 5)}
+                      className="w-full flex items-center justify-center rounded-xl border border-white/10 bg-white/5 py-2.5 text-xs font-bold text-white transition hover:bg-white/10"
+                    >
+                      Load More Reviews
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Review Form (Right Column) */}
+            <div className="lg:col-span-4 rounded-2xl border border-white/10 bg-slate-950/50 p-5 sm:p-6 backdrop-blur-md">
+              <h3 className="text-base font-bold text-white mb-2 tracking-tight">
+                {myReview && !isEditing ? 'Your Submitted Review' : myReview ? 'Edit Your Review' : 'Write a Review'}
+              </h3>
+              <p className="text-[10px] text-slate-400 mb-4 font-semibold leading-relaxed">
+                {myReview && !isEditing 
+                  ? 'Thank you for reviewing this title. You can modify or delete your feedback at any time.'
+                  : 'Share your stars and written thoughts about this book with the community.'}
+              </p>
+
+              {formSubmitError && (
+                <div className="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-400 font-semibold leading-normal">
+                  {formSubmitError}
+                </div>
+              )}
+
+              {!authUser ? (
+                <div className="text-center py-6 border border-dashed border-white/10 rounded-2xl bg-white/[0.01]">
+                  <p className="text-xs text-slate-400 font-semibold mb-3.5">Please sign in to read/write reviews</p>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/login')}
+                    className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-md transition hover:bg-indigo-500 active:scale-95"
+                  >
+                    Login to Write Review
+                  </button>
+                </div>
+              ) : myReview && !isEditing ? (
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-white/5 bg-[#0f1424]/20 p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center text-amber-400 text-sm select-none">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <span key={`my-review-star-${star}`}>
+                            {star <= myReview.rating ? '★' : '☆'}
+                          </span>
+                        ))}
+                      </div>
+                      <span className="text-[10px] text-slate-500 font-semibold">
+                        {new Date(myReview.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    {myReview.reviewText && (
+                      <p className="mt-3 text-xs text-slate-300 font-medium whitespace-pre-line italic">
+                        "{myReview.reviewText}"
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditing(true)}
+                      className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-bold text-white transition hover:bg-white/10"
+                    >
+                      ✏️ Edit Review
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDeleteReview}
+                      className="flex-1 rounded-xl border border-rose-500/20 bg-rose-500/10 py-2 text-xs font-bold text-rose-300 transition hover:bg-rose-500/20"
+                    >
+                      🗑️ Delete
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmitReview} className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Rating</label>
+                    {renderFormStars()}
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Review (Optional)</label>
+                    <textarea
+                      maxLength="500"
+                      value={formText}
+                      onChange={(e) => setFormText(e.target.value)}
+                      className="w-full h-24 rounded-xl border border-white/10 bg-slate-950/65 p-3 text-xs text-white placeholder:text-zinc-500 outline-none focus:border-indigo-500/50 resize-none font-medium"
+                      placeholder="What did you think of the author, pace, or key insights? (max 500 characters)"
+                    />
+                    <div className="flex justify-between mt-1 text-[9px] font-bold text-slate-500">
+                      <span>{formText.length}/500</span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-1">
+                    {myReview && isEditing && (
+                      <button
+                        type="button"
+                        onClick={() => setIsEditing(false)}
+                        className="flex-1 rounded-xl border border-white/10 bg-transparent py-2 text-xs font-bold text-white transition hover:bg-white/5"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={formSubmitLoading}
+                      className="flex-1 rounded-xl bg-indigo-600 py-2 text-xs font-bold text-white shadow-md transition hover:bg-indigo-500 disabled:opacity-50"
+                    >
+                      {formSubmitLoading ? 'Saving...' : myReview ? 'Update Review' : 'Submit Review'}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+
           </div>
         </div>
 

@@ -117,8 +117,8 @@ export default function Navbar() {
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600 text-sm font-bold text-white shadow-[0_0_35px_rgba(100,105,255,0.55)] transition duration-300 group-hover:scale-105 group-hover:rotate-3 sm:h-11 sm:w-11 sm:rounded-2xl">
               R
             </span>
-            <div className="hidden min-[360px]:block">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.36em] text-blue-200/75">Intelligent Reading</p>
+            <div className="hidden min-[380px]:block">
+              <p className="hidden sm:block text-[10px] font-semibold uppercase tracking-[0.36em] text-blue-200/75">Intelligent Reading</p>
               <p className="bg-gradient-to-r from-blue-300 via-indigo-200 to-violet-300 bg-clip-text text-base font-extrabold text-transparent sm:text-lg">
                 Readify AI
               </p>
@@ -167,7 +167,7 @@ export default function Navbar() {
             ) : null}
           </ul>
 
-          <div className="relative hidden md:block lg:hidden">
+          <div className="relative ml-auto hidden md:block lg:hidden">
             <button
               type="button"
               aria-label="Open menu"
@@ -180,7 +180,7 @@ export default function Navbar() {
               <div className="absolute right-0 mt-2 w-52 overflow-hidden rounded-2xl border border-white/15 bg-slate-950/90 p-2 shadow-[0_20px_60px_rgba(0,0,0,0.55)] backdrop-blur-2xl">
                 {authUser ? (
                   <>
-                    <Link to="/me" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
+                    <Link to="/profile" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
                       My Profile
                     </Link>
                     <Link to="/" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
@@ -192,7 +192,7 @@ export default function Navbar() {
                     <Link to="/#continue-reading" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
                       Reading History
                     </Link>
-                    <Link to="/me" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
+                    <Link to="/profile" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
                       Settings
                     </Link>
                     {isAdmin ? (
@@ -215,9 +215,9 @@ export default function Navbar() {
               type="button"
               aria-label="Open menu"
               onClick={() => setMenuOpen((prev) => !prev)}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-slate-100 transition hover:border-blue-300/45 hover:bg-white/15"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-slate-100 transition hover:border-blue-300/45 hover:bg-white/15"
             >
-              <MdMenu className="h-4.5 w-4.5" />
+              <MdMenu className="h-5 w-5" />
             </button>
             <button
               type="button"
@@ -228,21 +228,21 @@ export default function Navbar() {
                 }
                 setMobileSearchOpen((prev) => !prev)
               }}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-slate-100 transition hover:border-blue-300/45 hover:bg-white/15"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-slate-100 transition hover:border-blue-300/45 hover:bg-white/15"
             >
-              <MdSearch className="h-4.5 w-4.5" />
+              <MdSearch className="h-5 w-5" />
             </button>
             <Link
-              to={authUser ? '/me' : '/login'}
+              to={authUser ? '/profile' : '/login'}
               aria-label="Account"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-slate-100 transition hover:border-blue-300/45 hover:bg-white/15"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-slate-100 transition hover:border-blue-300/45 hover:bg-white/15"
             >
               {authUser ? (
-                <span className="grid h-6.5 w-6.5 place-items-center rounded-md bg-gradient-to-br from-blue-500 to-violet-600 text-[11px] font-bold text-white">
+                <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-blue-500 to-violet-600 text-xs font-bold text-white">
                   {avatarLabel}
                 </span>
               ) : (
-                <MdPerson className="h-4.5 w-4.5" />
+                <MdPerson className="h-5 w-5" />
               )}
             </Link>
           </div>
@@ -265,7 +265,7 @@ export default function Navbar() {
 
               {profileOpen ? (
                 <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-2xl border border-white/15 bg-slate-950/90 p-2 shadow-[0_20px_60px_rgba(0,0,0,0.55)] backdrop-blur-2xl">
-                  <Link to="/me" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
+                  <Link to="/profile" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
                     My Profile
                   </Link>
                   <Link to="/" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
@@ -277,7 +277,7 @@ export default function Navbar() {
                   <Link to="/#continue-reading" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
                     Reading History
                   </Link>
-                  <Link to="/me" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
+                  <Link to="/profile" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
                     Settings
                   </Link>
                   {isAdmin ? (
@@ -323,7 +323,7 @@ export default function Navbar() {
             <div className="overflow-hidden rounded-xl border border-white/15 bg-slate-950/85 p-2 backdrop-blur-xl">
               {authUser ? (
                 <>
-                  <Link to="/me" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10">
+                  <Link to="/profile" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10">
                     My Profile
                   </Link>
                   <Link to="/" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10">
@@ -335,7 +335,7 @@ export default function Navbar() {
                   <Link to="/#continue-reading" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10">
                     Reading History
                   </Link>
-                  <Link to="/me" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10">
+                  <Link to="/profile" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10">
                     Settings
                   </Link>
                   {isAdmin ? (

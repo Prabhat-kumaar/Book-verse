@@ -3,12 +3,9 @@ import * as pdfjsLib from 'pdfjs-dist'
 import { MdFullscreen } from 'react-icons/md'
 import { ReaderSkeleton } from '../components/Skeletons'
 import { API_ORIGIN } from '../lib/apiConfig'
-import { computeProgress } from '../lib/readingProgress'
 import useReadingProgress from '../hooks/useReadingProgress'
 
 const API = API_ORIGIN
-const DEFAULT_TOTAL_PAGES = 200
-const AUTO_SAVE_INTERVAL_MS = 8000
 const PAGE_OVERSCAN = 2
 const PAGE_VERTICAL_GAP = 24
 const DEFAULT_PAGE_HEIGHT = 1100
@@ -20,7 +17,6 @@ const WHEEL_ZOOM_FACTOR = 0.0012
 const PINCH_DAMPING = 0.25
 const FULLSCREEN_DEFAULT_ZOOM = 1.1
 const CONTROLS_HIDE_DELAY_MS = 2500
-const PAGE_SYNC_DEBOUNCE_MS = 800
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
 
@@ -71,7 +67,6 @@ export default function PdfReaderPage() {
     progressPercentage,
     loading: progressLoading,
     updateProgress,
-    triggerSave,
   } = useReadingProgress(params.bookId, resolvedUserId, 'pdf')
 
   const scrollContainerRef = useRef(null)

@@ -130,6 +130,77 @@ const getMe = async (req, res, next) => {
             username: user.username,
             email: user.email || '',
             role: user.role,
+            avatar: user.avatar || '',
+            readingGoal: user.readingGoal || 12,
+            streak: user.streak,
+            analytics: user.analytics,
+            createdAt: user.createdAt,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const updateProfile = async (req, res, next) => {
+    try {
+        const { username, email, readingGoal, avatar } = req.body;
+        const user = await User.findById(req.user._id);
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (username !== undefined) {
+            const cleanUsername = validate.sanitize(username, 100);
+            if (cleanUsername) {
+                if (cleanUsername !== user.username) {
+                    const exists = await User.findOne({ username: cleanUsername });
+                    if (exists) {
+                        return res.status(400).json({ message: 'Username is already taken' });
+                    }
+                }
+                user.username = cleanUsername;
+            }
+        }
+
+        if (email !== undefined) {
+            const normalizedEmail = validate.sanitize(email, 254).toLowerCase();
+            if (normalizedEmail) {
+                if (!validate.email(normalizedEmail)) {
+                    return res.status(400).json({ message: 'Invalid email format' });
+                }
+                if (normalizedEmail !== user.email) {
+                    const exists = await User.findOne({ email: normalizedEmail });
+                    if (exists) {
+                        return res.status(400).json({ message: 'Email is already taken' });
+                    }
+                }
+                user.email = normalizedEmail;
+            }
+        }
+
+        if (readingGoal !== undefined) {
+            const goal = Number(readingGoal);
+            if (!isNaN(goal) && goal >= 0) {
+                user.readingGoal = goal;
+            }
+        }
+
+        if (avatar !== undefined) {
+            user.avatar = String(avatar || '').trim();
+        }
+
+        await user.save();
+
+        res.json({
+            _id: user._id,
+            username: user.username,
+            email: user.email || '',
+            role: user.role,
+            avatar: user.avatar || '',
+            readingGoal: user.readingGoal || 12,
+            streak: user.streak,
+            analytics: user.analytics,
             createdAt: user.createdAt,
         });
     } catch (error) {
@@ -141,4 +212,5 @@ module.exports = {
     register,
     login,
     getMe,
+    updateProfile,
 };

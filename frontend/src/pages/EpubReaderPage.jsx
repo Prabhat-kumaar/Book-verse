@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import ePub from 'epubjs'
 import {
   MdBookmarkBorder,
@@ -19,8 +19,15 @@ import './epubReader.css'
 
 const API = API_ORIGIN
 const SWIPE_MIN_DISTANCE = 80
-const EPUB_AUTO_SAVE_INTERVAL_MS = 8000
-const EPUB_SAVE_COOLDOWN_MS = 2500
+
+function forceScrollReset(rendition) {
+  if (!rendition) return
+  const container = rendition.manager?.container
+  if (container) {
+    container.scrollTop = 0
+    container.scrollLeft = 0
+  }
+}
 const isDev = import.meta.env.DEV
 const debugLog = (...args) => {
   if (isDev) console.debug(...args)
@@ -51,13 +58,7 @@ function toAbsoluteUrl(value) {
   return raw
 }
 
-function getLocationsKey(bookId, fileUrl) {
-  const urlHash = (fileUrl || '')
-    .split('')
-    .reduce((hash, char) => (((hash << 5) - hash) + char.charCodeAt(0)) | 0, 0)
-    .toString(36)
-  return `epub-locations-${bookId || 'unknown'}-${urlHash}`
-}
+
 
 function getActiveHref(locationHref = '') {
   return locationHref.split('#')[0].split('/').pop() || ''
@@ -166,7 +167,6 @@ export default function EpubReaderPage() {
     return 'light'
   })
   const isDarkMode = theme === 'dark'
-  const isSepiaMode = theme === 'sepia'
   const setIsDarkMode = (val) => {
     const nextVal = typeof val === 'function' ? val(theme === 'dark') : val
     setTheme(nextVal ? 'dark' : 'light')
@@ -179,7 +179,6 @@ export default function EpubReaderPage() {
   const [currentChapterLabel, setCurrentChapterLabel] = useState('')
 
   const [currentCfi, setCurrentCfi] = useState('')
-  const [currentSpineIndex, setCurrentSpineIndex] = useState(0)
   const [showChrome, setShowChrome] = useState(true)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -195,7 +194,6 @@ export default function EpubReaderPage() {
   const locationTimerRef = useRef(null)
   const spineItemsRef = useRef([])
   const spineIndexRef = useRef(0)
-  const progressMetaRef = useRef({ percentage: 0, currentPage: 1, totalPages: 1, chapterTitle: '', chapterIndex: 0 })
   const lastScrollYRef = useRef(0)
   const currentCfiRef = useRef('')
   const currentChapterRef = useRef('')
@@ -214,8 +212,6 @@ export default function EpubReaderPage() {
   const resolvedFileUrl = useMemo(() => toAbsoluteUrl(params.fileUrl), [params.fileUrl])
   const fileUrl = resolvedFileUrl
   const bookId = params?.bookId || ''
-  const locationsKey = useMemo(() => getLocationsKey(bookId, fileUrl), [bookId, fileUrl])
-
   const authUser = useMemo(() => {
     try {
       const raw = localStorage.getItem('authUser')
@@ -238,7 +234,6 @@ export default function EpubReaderPage() {
 
   const updateSpineIndex = (idx) => {
     spineIndexRef.current = idx
-    setCurrentSpineIndex(idx)
   }
 
   const increaseFontSize = () => {
@@ -711,11 +706,7 @@ export default function EpubReaderPage() {
       
       // If navigating to a section without a specific hash anchor, force container scroll to 0 to prevent dynamic loading jumps
       if (!item.href.includes('#')) {
-        const container = rendition.manager?.container
-        if (container) {
-          container.scrollTop = 0
-          container.scrollLeft = 0
-        }
+        forceScrollReset(rendition)
       }
     } catch (e) {
       debugError('Chapter navigation failed:', item.href, e)
@@ -737,7 +728,6 @@ export default function EpubReaderPage() {
   }
 
   const chapterEstimatePages = Math.max(1, Math.round(totalPages / Math.max(1, tocItems.length)))
-  const activeChapterNumber = Math.max(1, currentSpineIndex + 1)
   const coverUrl = toAbsoluteUrl(params.cover)
 
   const bookmarkCurrentLocation = async () => {

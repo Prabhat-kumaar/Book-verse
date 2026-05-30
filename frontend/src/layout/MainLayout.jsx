@@ -22,7 +22,7 @@ export default function MainLayout({ children, hideChrome = false, fullBleed = f
       {!hideChrome ? <Navbar /> : null}
       <main className={fullBleed
         ? 'relative w-full flex-1'
-        : 'relative mx-auto w-full max-w-7xl flex-1 bg-[#0d0d1a] px-3 pb-[calc(92px+var(--safe-bottom))] pt-5 sm:bg-transparent sm:px-8 sm:pt-10 md:pb-16 lg:px-12'}
+        : 'relative mx-auto w-full max-w-7xl flex-1 bg-[#0d0d1a] px-3 pb-[calc(80px+var(--safe-bottom))] pt-20 sm:bg-transparent sm:px-8 sm:pt-28 md:pb-16 lg:px-12'}
       >
         {children}
       </main>

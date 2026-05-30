@@ -1,15 +1,16 @@
 import { motion } from 'framer-motion'
-import { memo, useMemo, useState } from 'react'
+import { memo, useMemo, useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import useRecommendations from '../hooks/useRecommendations'
 import useProgress from '../hooks/useProgress'
 import SaveBookHeart from '../components/SaveBookHeart'
 import EmptyState from '../components/EmptyState'
-import { BookCardSkeleton, HeroSkeleton, ProgressCardSkeleton } from '../components/Skeletons'
+import { BookCardSkeleton, ProgressCardSkeleton } from '../components/Skeletons'
 import { buildReaderHash } from '../lib/readerLink'
 import { applyThumbnailFallback, getBookThumbnailUrl } from '../lib/mediaUrls'
 import { buildProgressMap, computeProgress } from '../lib/readingProgress'
 import SEO from '../components/SEO'
+import apiClient from '../lib/apiClient'
 
 function timeAgo(value) {
   const then = new Date(value || 0).getTime()
@@ -74,6 +75,13 @@ const BookCard = memo(function BookCard({ book, index }) {
 
           <h4 className="line-clamp-1 text-xs sm:text-sm font-bold text-white leading-tight group-hover/link:text-indigo-400 transition-colors">{book.title}</h4>
           <p className="line-clamp-1 text-[10px] text-slate-400 font-medium mt-0.5">{book.author}</p>
+          {book.totalReviews > 0 && (
+            <div className="mt-1 flex items-center gap-1 text-[10px] text-amber-400 font-semibold select-none">
+              <span>★</span>
+              <span>{Number(book.averageRating || 0).toFixed(1)}</span>
+              <span className="text-slate-500 font-normal">({book.totalReviews})</span>
+            </div>
+          )}
         </Link>
 
         <div className="mt-auto pt-1">
@@ -123,6 +131,29 @@ export default function HomePage() {
       return null
     }
   })()
+
+  // Reading Goal Motivator States
+  const [goalData, setGoalData] = useState(null)
+  const [goalLoading, setGoalLoading] = useState(true)
+  const currentYear = new Date().getFullYear()
+
+  useEffect(() => {
+    if (!authUser?._id) {
+      setGoalLoading(false)
+      return
+    }
+    const fetchGoal = async () => {
+      try {
+        const res = await apiClient.get('/api/goals/me')
+        setGoalData(res.data)
+      } catch {
+        // Fail silently
+      } finally {
+        setGoalLoading(false)
+      }
+    }
+    fetchGoal()
+  }, [authUser?._id])
   const {
     progressItems,
     latestProgress,
@@ -182,6 +213,13 @@ export default function HomePage() {
     const prioritized = booksWithProgress.filter((book) => topIds.has(book._id))
     return prioritized.length > 0 ? prioritized.slice(0, 10) : booksWithProgress.slice(0, 10)
   }, [booksWithProgress, topBooks])
+
+  const topRatedBooks = useMemo(() => {
+    return [...booksWithProgress]
+      .filter((book) => (book.totalReviews || 0) >= 3)
+      .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
+      .slice(0, 8)
+  }, [booksWithProgress])
 
   const handleStartReading = () => {
     const section = document.getElementById('books-section')
@@ -295,6 +333,76 @@ export default function HomePage() {
           </div>
         </section>
       </div>
+
+      {/* Homepage Reading Goal Motivator Widget */}
+      {authUser && !goalLoading && goalData?.goalSet && (
+        <div className="px-2.5 sm:px-0 mb-6">
+          <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-950/45 p-4 backdrop-blur-md">
+            {/* Soft decorative background glows */}
+            <div className="absolute -right-12 -top-12 h-24 w-24 rounded-full bg-indigo-500/10 blur-2xl pointer-events-none" />
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl select-none">
+                  {goalData.data.completedBooksCount >= goalData.data.goal.targetBooks ? '🏆' : 
+                   goalData.data.status === 'Ahead of schedule' ? '🔥' :
+                   goalData.data.status === 'Behind schedule' ? '⏰' : '✨'}
+                </span>
+                <div>
+                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                    {currentYear} Reading Journey
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      goalData.data.completedBooksCount >= goalData.data.goal.targetBooks
+                        ? 'bg-emerald-500/15 border-emerald-500/20 text-emerald-400'
+                        : goalData.data.status === 'Ahead of schedule'
+                        ? 'bg-teal-500/15 border-teal-500/20 text-teal-400'
+                        : goalData.data.status === 'Behind schedule'
+                        ? 'bg-amber-500/15 border-amber-500/20 text-amber-400'
+                        : 'bg-indigo-500/15 border-indigo-500/20 text-indigo-400'
+                    }`}>
+                      {goalData.data.status === 'Goal achieved!' || goalData.data.completedBooksCount >= goalData.data.goal.targetBooks ? 'Achieved' : 
+                       goalData.data.status === 'Ahead of schedule' ? 'Ahead' :
+                       goalData.data.status === 'Behind schedule' ? 'Behind Pace' : 'On Track'}
+                    </span>
+                  </h4>
+                  
+                  {/* Dynamic pace status motivator alerts */}
+                  <p className="text-xs text-slate-300 mt-1 select-none leading-relaxed">
+                    {goalData.data.completedBooksCount >= goalData.data.goal.targetBooks
+                      ? 'Goal achieved! You completed your reading challenge for the year! 🏆'
+                      : goalData.data.status === 'Ahead of schedule'
+                      ? 'Great pace! You are ahead of schedule. Keep it up! 🔥'
+                      : goalData.data.status === 'Behind schedule'
+                      ? `You can catch up! Read ${goalData.data.booksPerMonthNeeded} ${goalData.data.booksPerMonthNeeded === 1 ? 'book' : 'books'} this month to stay on track. 📚`
+                      : 'Keep going! You are perfectly on track to achieve your yearly goal. ✨'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Progress bar and View Profile details link */}
+              <div className="flex flex-col gap-1.5 sm:w-64 shrink-0 justify-center">
+                <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold select-none">
+                  <span>Progress ({Math.min(100, Math.round((goalData.data.completedBooksCount / goalData.data.goal.targetBooks) * 100))}%)</span>
+                  <span className="font-extrabold text-indigo-400 font-mono">
+                    {goalData.data.completedBooksCount} / {goalData.data.goal.targetBooks} books
+                  </span>
+                </div>
+                <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-blue-400 via-indigo-500 to-violet-600 transition-all duration-700 ease-out"
+                    style={{ width: `${Math.min(100, Math.round((goalData.data.completedBooksCount / goalData.data.goal.targetBooks) * 100))}%` }}
+                  />
+                </div>
+                <Link
+                  to="/profile"
+                  className="text-[10px] text-right font-extrabold text-indigo-400 hover:text-indigo-300 transition-colors uppercase tracking-wider mt-0.5 select-none"
+                >
+                  View Details &rarr;
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="relative space-y-4 px-2.5 md:hidden">
 
@@ -466,7 +574,7 @@ export default function HomePage() {
                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
                       <div className="h-full rounded-full bg-gradient-to-r from-blue-400 to-violet-500 transition-all duration-500" style={{ width: `${percent}%` }} />
                     </div>
-                    <p className="mt-1 text-[11px] text-slate-300/80">{percent}% completed â€¢ Last read {timeAgo(item.lastReadAt)}</p>
+                    <p className="mt-1 text-[11px] text-slate-300/80">{percent}% completed {"\u2022"} Last read {timeAgo(item.lastReadAt)}</p>
                     <a href={link} className="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:border-blue-300/40 hover:bg-white/15">
                       Resume Reading
                     </a>
@@ -563,6 +671,29 @@ export default function HomePage() {
               )}
             </section>
           ))}
+
+          {topRatedBooks.length > 0 && (
+            <section className="relative mt-8 sm:mt-10 animate-[fadeIn_350ms_ease-out]">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-[clamp(1.25rem,6vw,1.5rem)] font-bold text-white sm:text-2xl flex items-center gap-2">
+                    🏆 Top Rated Books
+                  </h3>
+                  <p className="mt-1 text-xs text-slate-400 font-semibold">Reader favorites with the highest average rating</p>
+                </div>
+                <button onClick={() => navigate('/books')} className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-200/80 transition hover:text-blue-100">
+                  View All
+                </button>
+              </div>
+              <div className="flex gap-[14px] overflow-x-auto px-5 pb-2 [scrollbar-width:none] [-ms-overflow-style:none] snap-x snap-mandatory sm:gap-4 sm:px-0 [&::-webkit-scrollbar]:hidden">
+                {topRatedBooks.map((book, index) => (
+                  <div key={`top-rated-${book._id || book.title}-${index}`} className="shrink-0 snap-start">
+                    <BookCard book={book} index={index} />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       </div>
     </motion.section>

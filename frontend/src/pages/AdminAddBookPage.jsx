@@ -4,7 +4,6 @@ import apiClient from '../lib/apiClient'
 import AdminSidebar from '../components/AdminSidebar'
 import CategoryCombobox from '../components/CategoryCombobox'
 
-const categories = ['Programming', 'AI', 'Business', 'Self-Help', 'Design', 'Productivity']
 const difficulties = ['Beginner', 'Intermediate', 'Advanced']
 
 const initialForm = {

@@ -138,6 +138,26 @@ const getOverallAnalytics = async (req, res, next) => {
     }
 };
 
+const getCalendarAnalytics = async (req, res, next) => {
+    try {
+        const userId = req.user?._id?.toString?.() || '';
+        if (!userId) return res.status(401).json({ message: 'Not authorized' });
+
+        const threeMonthsAgo = new Date();
+        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+        threeMonthsAgo.setHours(0, 0, 0, 0);
+
+        const rows = await ReadingAnalyticsDay.find({
+            user: userId,
+            date: { $gte: threeMonthsAgo }
+        }).select('date pagesRead').sort({ date: 1 });
+
+        res.json(rows);
+    } catch (error) {
+        next(error);
+    }
+};
+
 const recordVisit = async (req, res, next) => {
     try {
         const ip = getClientIp(req);
@@ -618,6 +638,7 @@ module.exports = {
     getDailyAnalytics,
     getWeeklyAnalytics,
     getOverallAnalytics,
+    getCalendarAnalytics,
     recordVisit,
     getAdminAnalytics,
     getAdminDetails,
