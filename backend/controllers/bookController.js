@@ -1,4 +1,5 @@
 const Book = require('../models/Book');
+const { uploadToCloudinary, isCloudinaryConfigured } = require('../utils/cloudinary');
 const validate = require('../utils/validate');
 const isDev = process.env.NODE_ENV !== 'production';
 const devLog = (...args) => isDev && console.log(...args);
@@ -52,6 +53,19 @@ const getFileTypeFromPathOrMime = (rawUrl = '', mime = '') => {
     return 'pdf';
 };
 
+const uploadOrLocalFilename = async (file, folder) => {
+    if (!file) return '';
+    if (!isCloudinaryConfigured) return file.filename;
+
+    try {
+        const uploadedUrl = await uploadToCloudinary(file.path, folder);
+        return uploadedUrl || file.filename;
+    } catch (cloudinaryError) {
+        devError(`[Cloudinary] Falling back to local upload for ${file.filename}:`, cloudinaryError.message);
+        return file.filename;
+    }
+};
+
 const normalizeBackendOrigin = (value = '') => {
     const raw = asTrimmedString(value).replace(/\/+$/, '');
     if (!raw) return '';
@@ -63,6 +77,10 @@ const normalizeBackendOrigin = (value = '') => {
 const formatUrl = (req, urlValue) => {
     const value = asTrimmedString(urlValue);
     if (!value) return '';
+
+    if (value.startsWith('https://res.cloudinary.com') || value.includes('cloudinary.com')) {
+        return value;
+    }
 
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     const backendUrl = normalizeBackendOrigin(
@@ -100,6 +118,7 @@ const normalizeBookPayload = (req, bookDoc) => {
     const fileUrlRaw = source.fileUrl || source.pdf || '';
     const fileUrl = toCanonicalUploadUrl(req, fileUrlRaw);
     const thumbnail = toCanonicalUploadUrl(req, source.thumbnail || '');
+    const coverImage = toCanonicalUploadUrl(req, source.coverImage || '');
     const fileType = source.fileType || getFileTypeFromPathOrMime(fileUrl);
     const filename = source.filename || extractFilename(fileUrl);
     return {
@@ -107,6 +126,7 @@ const normalizeBookPayload = (req, bookDoc) => {
         fileUrl,
         filename,
         thumbnail,
+        coverImage: coverImage || thumbnail,
         fileType,
         pdf: source.pdf || (fileType === 'pdf' ? fileUrl : source.pdf),
     };
@@ -124,16 +144,29 @@ const addBook = async (req, res, next) => {
         const uploadFile = req.files?.file?.[0] || req.files?.pdf?.[0];
         const thumbnailFile = req.files?.thumbnail?.[0];
 
-        let fileUrl = fileUrlInput;
-        let thumbnail = thumbnailUrlInput;
-
-        // If files were uploaded, use only the filename (not the full URL)
-        if (uploadFile) {
-            fileUrl = uploadFile.filename;
+        // 1. Validation: Cover image is required
+        if (!thumbnailFile && !thumbnailUrlInput) {
+            return res.status(400).json({ success: false, message: 'Cover image is required' });
         }
 
+        // 2. Validation: Book file is required
+        if (!uploadFile && !fileUrlInput) {
+            return res.status(400).json({ success: false, message: 'Book file is required' });
+        }
+
+        let fileUrl = fileUrlInput;
+        let thumbnail = thumbnailUrlInput;
+        let coverImage = thumbnailUrlInput || '';
+
+        // 3. Upload EPUB/PDF to Cloudinary
+        if (uploadFile) {
+            fileUrl = await uploadOrLocalFilename(uploadFile, 'readifyai/books');
+        }
+
+        // 4. Upload Cover Image to Cloudinary
         if (thumbnailFile) {
-            thumbnail = thumbnailFile.filename;
+            thumbnail = await uploadOrLocalFilename(thumbnailFile, 'readifyai/thumbnails');
+            coverImage = thumbnail;
         }
 
         const fileType = getFileTypeFromPathOrMime(fileUrl, uploadFile?.mimetype);
@@ -179,12 +212,15 @@ const addBook = async (req, res, next) => {
             fileUrl,
             fileType,
             pdf,
-            thumbnail
+            thumbnail,
+            coverImage
         });
+
         const formattedBook = {
             ...book._doc,
             fileUrl: book.fileUrl ? formatUrl(req, book.fileUrl) : null,
-            thumbnail: book.thumbnail ? formatUrl(req, book.thumbnail) : null
+            thumbnail: book.thumbnail ? formatUrl(req, book.thumbnail) : null,
+            coverImage: book.coverImage ? formatUrl(req, book.coverImage) : null
         };
         res.status(201).json({ success: true, data: formattedBook });
     } catch (error) {
@@ -285,7 +321,8 @@ const getBookById = async (req, res, next) => {
         const formattedBook = {
             ...book._doc,
             fileUrl: book.fileUrl ? formatUrl(req, book.fileUrl) : null,
-            thumbnail: book.thumbnail ? formatUrl(req, book.thumbnail) : null
+            thumbnail: book.thumbnail ? formatUrl(req, book.thumbnail) : null,
+            coverImage: book.coverImage ? formatUrl(req, book.coverImage) : null
         };
         res.json({ success: true, data: formattedBook });
     } catch (error) {
@@ -297,6 +334,8 @@ const updateBook = async (req, res, next) => {
     try {
         const bookId = req.params.id;
         const { title, author, category, fileUrl: rawFileUrl, fileType: rawFileType, pdf, thumbnail, description, tags, language, difficulty } = req.body;
+        const uploadFile = req.files?.file?.[0] || req.files?.pdf?.[0];
+        const thumbnailFile = req.files?.thumbnail?.[0];
 
         if (!validate.objectId(bookId)) {
             return res.status(400).json({ success: false, message: 'Invalid ID format' });
@@ -340,18 +379,27 @@ const updateBook = async (req, res, next) => {
         if (cleanDifficulty !== undefined) book.difficulty = cleanDifficulty;
         if (cleanTags !== undefined) book.tags = cleanTags;
 
-        const nextFileUrl = cleanFileUrl || book.fileUrl || book.pdf;
+        let nextFileUrl = cleanFileUrl || book.fileUrl || book.pdf;
+        if (uploadFile) {
+            nextFileUrl = await uploadOrLocalFilename(uploadFile, 'readifyai/books');
+        }
         const nextFileType = rawFileType || getFileTypeFromPathOrMime(nextFileUrl);
         book.fileUrl = nextFileUrl;
         book.fileType = nextFileType;
         book.pdf = nextFileType === 'pdf' ? nextFileUrl : '';
-        book.thumbnail = cleanThumbnail || book.thumbnail;
+        let nextThumbnail = cleanThumbnail || book.thumbnail;
+        if (thumbnailFile) {
+            nextThumbnail = await uploadOrLocalFilename(thumbnailFile, 'readifyai/thumbnails');
+        }
+        book.thumbnail = nextThumbnail;
+        book.coverImage = nextThumbnail || book.coverImage;
 
         const updatedBook = await book.save();
         const formattedBook = {
             ...updatedBook._doc,
             fileUrl: updatedBook.fileUrl ? formatUrl(req, updatedBook.fileUrl) : null,
-            thumbnail: updatedBook.thumbnail ? formatUrl(req, updatedBook.thumbnail) : null
+            thumbnail: updatedBook.thumbnail ? formatUrl(req, updatedBook.thumbnail) : null,
+            coverImage: updatedBook.coverImage ? formatUrl(req, updatedBook.coverImage) : null
         };
         res.json({ success: true, data: formattedBook });
     } catch (error) {
@@ -365,7 +413,8 @@ const getRecommendations = async (req, res, next) => {
         const formattedBooks = books.map(book => ({
             ...book._doc,
             fileUrl: book.fileUrl ? formatUrl(req, book.fileUrl) : null,
-            thumbnail: book.thumbnail ? formatUrl(req, book.thumbnail) : null
+            thumbnail: book.thumbnail ? formatUrl(req, book.thumbnail) : null,
+            coverImage: book.coverImage ? formatUrl(req, book.coverImage) : null
         }));
         res.json({ success: true, data: formattedBooks });
     } catch (error) {

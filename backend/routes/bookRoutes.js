@@ -29,7 +29,18 @@ router.get('/', getAllBooks);
 router.get('/recommendations', getRecommendations);
 router.get('/category/:category', getBooksByCategory);
 router.get('/:id', getBookById);
-router.put('/:id', uploadLimiter, protect, admin, updateBook);
+router.put(
+    '/:id',
+    uploadLimiter,
+    protect,
+    admin,
+    upload.fields([
+        { name: 'thumbnail', maxCount: 1 },
+        { name: 'file', maxCount: 1 },
+        { name: 'pdf', maxCount: 1 },
+    ]),
+    updateBook
+);
 router.delete('/:id', protect, admin, deleteBook);
 
 module.exports = router;

@@ -61,6 +61,10 @@ const bookSchema = new mongoose.Schema(
             required: true,
             trim: true,
         },
+        coverImage: {
+            type: String,
+            trim: true,
+        },
         openCount: {
             type: Number,
             default: 0,

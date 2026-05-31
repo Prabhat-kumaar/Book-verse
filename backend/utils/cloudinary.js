@@ -1,5 +1,6 @@
 const cloudinary = require('cloudinary').v2;
 const fs = require('fs');
+const path = require('path');
 
 const isConfigured = 
     process.env.CLOUDINARY_CLOUD_NAME && 
@@ -20,7 +21,7 @@ if (isConfigured) {
  * @param {string} folder - Destination folder on Cloudinary
  * @returns {Promise<string|null>} Secure absolute URL or null if failed
  */
-const uploadToCloudinary = async (localPath, folder = 'bookverse') => {
+const uploadToCloudinary = async (localPath, folder = 'bookverse', options = {}) => {
     if (!isConfigured) {
         console.warn('[Cloudinary] Skipping upload because Cloudinary environment variables are not set.');
         return null;
@@ -33,10 +34,15 @@ const uploadToCloudinary = async (localPath, folder = 'bookverse') => {
         }
 
         console.log(`[Cloudinary] Starting upload for: ${localPath}`);
-        const result = await cloudinary.uploader.upload(localPath, {
+        const ext = path.extname(localPath).toLowerCase();
+        const uploadOptions = {
             folder: folder,
-            resource_type: 'auto'
-        });
+            resource_type: 'auto',
+            ...options
+        };
+        if (ext === '.epub') uploadOptions.resource_type = 'raw';
+
+        const result = await cloudinary.uploader.upload(localPath, uploadOptions);
 
         console.log(`[Cloudinary] Successfully uploaded to: ${result.secure_url}`);
         
@@ -51,16 +57,6 @@ const uploadToCloudinary = async (localPath, folder = 'bookverse') => {
         return result.secure_url;
     } catch (error) {
         console.error('[Cloudinary] Upload exception occurred:', error.message || error);
-        
-        // Always try to clean up the temporary local file on failure
-        try {
-            if (localPath && fs.existsSync(localPath)) {
-                fs.unlinkSync(localPath);
-                console.log(`[Cloudinary] Cleaned up temporary local file on error: ${localPath}`);
-            }
-        } catch (unlinkError) {
-            // no-op
-        }
         
         throw error;
     }
