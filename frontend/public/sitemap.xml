@@ -31,24 +31,6 @@
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://readifyai.vercel.app/book/6a1bc4f3a20a29b275052616</loc>
-    <lastmod>2026-05-31</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://readifyai.vercel.app/book/6a1ac6e14ef71386f492a90a</loc>
-    <lastmod>2026-05-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://readifyai.vercel.app/book/6a0957b31c6c5dd144e0a447</loc>
-    <lastmod>2026-05-17</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://readifyai.vercel.app/book/6a0957271c6c5dd144e0a444</loc>
     <lastmod>2026-05-17</lastmod>
     <changefreq>weekly</changefreq>
@@ -99,6 +81,24 @@
   <url>
     <loc>https://readifyai.vercel.app/book/6a09267d5dfe3ada8d34a40d</loc>
     <lastmod>2026-05-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://readifyai.vercel.app/book/6a0925ca5dfe3ada8d34a405</loc>
+    <lastmod>2026-05-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://readifyai.vercel.app/book/6a08a1075dfe3ada8d34a369</loc>
+    <lastmod>2026-05-16</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://readifyai.vercel.app/book/6a08a0575dfe3ada8d34a343</loc>
+    <lastmod>2026-05-16</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>

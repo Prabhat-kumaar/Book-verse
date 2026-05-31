@@ -39,8 +39,8 @@ export const API_ORIGIN = envOrigin || (import.meta.env.DEV ? browserFallbackOri
 export const API_URL = API_ORIGIN ? `${API_ORIGIN}/api` : '/api'
 
 if (!envOrigin && !import.meta.env.DEV) {
-  throw new Error(
-    '[apiConfig] VITE_API_URL is not set for production. Configure it to your Render backend URL.',
+  console.warn(
+    `[apiConfig] VITE_API_URL is not set for production. Falling back to ${PRODUCTION_BACKEND_FALLBACK}.`,
   )
 }
 
