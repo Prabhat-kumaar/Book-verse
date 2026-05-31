@@ -4,6 +4,8 @@ import apiClient from './lib/apiClient'
 import MainLayout from './layout/MainLayout'
 
 const isDev = import.meta.env.DEV
+const VISIT_DEDUPE_TTL_MS = 2000
+const recentVisitRequests = new Map()
 
 const HomePage = React.lazy(() => import('./pages/HomePage'))
 const UnifiedReaderPage = React.lazy(() => import('./pages/UnifiedReaderPage'))
@@ -80,6 +82,11 @@ function App() {
     }
 
     const recordVisit = async () => {
+      const visitKey = `${sessionId}:${location.pathname}`
+      const lastRecordedAt = recentVisitRequests.get(visitKey) || 0
+      if (Date.now() - lastRecordedAt < VISIT_DEDUPE_TTL_MS) return
+      recentVisitRequests.set(visitKey, Date.now())
+
       try {
         await apiClient.post('/analytics/visit', {
           path: location.pathname,

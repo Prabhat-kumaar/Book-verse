@@ -4,6 +4,7 @@ import { API_URL, buildApiUrl } from '../lib/apiConfig'
 
 const SAVED_CACHE_KEY = 'savedBooksState:v1'
 const isDev = import.meta.env.DEV
+let savedBooksRefreshInFlight = null
 
 function readSavedCache() {
   try {
@@ -99,15 +100,20 @@ export default function useSavedBooks() {
     try {
       setLoading(true)
       setError('')
-      if (isDev) {
-        console.info('[useSavedBooks] API_URL:', API_URL)
-        console.info('[useSavedBooks] Request URL:', buildApiUrl('/api/collections'))
-        console.info('[useSavedBooks] Request URL:', buildApiUrl('/api/saved-books/status'))
+      if (!savedBooksRefreshInFlight) {
+        if (isDev) {
+          console.info('[useSavedBooks] API_URL:', API_URL)
+          console.info('[useSavedBooks] Request URL:', buildApiUrl('/api/collections'))
+          console.info('[useSavedBooks] Request URL:', buildApiUrl('/api/saved-books/status'))
+        }
+        savedBooksRefreshInFlight = Promise.all([
+          apiClient.get('/api/collections'),
+          apiClient.get('/api/saved-books/status'),
+        ]).finally(() => {
+          savedBooksRefreshInFlight = null
+        })
       }
-      const [collectionsRes, statusRes] = await Promise.all([
-        apiClient.get('/api/collections'),
-        apiClient.get('/api/saved-books/status'),
-      ])
+      const [collectionsRes, statusRes] = await savedBooksRefreshInFlight
       setCollections(Array.isArray(collectionsRes.data) ? collectionsRes.data : [])
       setSavedStatus(Array.isArray(statusRes.data) ? statusRes.data : [])
     } catch (err) {

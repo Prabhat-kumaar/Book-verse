@@ -5,6 +5,7 @@ const isDev = import.meta.env.DEV
 isDev && console.log('[apiClient] API URL:', API_URL)
 
 const REQUEST_TIMEOUT_MS = 20000
+const inFlightGetRequests = new Map()
 
 const apiClient = axios.create({
   baseURL: API_URL,
@@ -54,5 +55,26 @@ apiClient.interceptors.response.use(
     return Promise.reject(error)
   },
 )
+
+const rawGet = apiClient.get.bind(apiClient)
+
+apiClient.get = (url, config = {}) => {
+  if (config?.dedupe === false || config?.signal) {
+    return rawGet(url, config)
+  }
+
+  const key = JSON.stringify({
+    url,
+    params: config.params || null,
+  })
+  const inFlight = inFlightGetRequests.get(key)
+  if (inFlight) return inFlight
+
+  const request = rawGet(url, config).finally(() => {
+    inFlightGetRequests.delete(key)
+  })
+  inFlightGetRequests.set(key, request)
+  return request
+}
 
 export default apiClient

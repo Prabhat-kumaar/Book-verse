@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { memo, useMemo, useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import useRecommendations from '../hooks/useRecommendations'
+import useBooks from '../hooks/useBooks'
 import useProgress from '../hooks/useProgress'
 import SaveBookHeart from '../components/SaveBookHeart'
 import EmptyState from '../components/EmptyState'
@@ -11,6 +11,35 @@ import { applyThumbnailFallback, getBookThumbnailUrl } from '../lib/mediaUrls'
 import { buildProgressMap, computeProgress } from '../lib/readingProgress'
 import SEO from '../components/SEO'
 import apiClient from '../lib/apiClient'
+
+const GOAL_CACHE_TTL_MS = 15000
+const goalCache = {
+  userId: '',
+  data: null,
+  inFlight: null,
+  lastFetchedAt: 0,
+}
+
+async function fetchReadingGoal(userId) {
+  if (!userId) return null
+  if (goalCache.userId === userId && goalCache.inFlight) return goalCache.inFlight
+  if (goalCache.userId === userId && goalCache.lastFetchedAt && Date.now() - goalCache.lastFetchedAt < GOAL_CACHE_TTL_MS) {
+    return goalCache.data
+  }
+
+  goalCache.userId = userId
+  goalCache.inFlight = apiClient.get('/api/goals/me')
+    .then((res) => {
+      goalCache.data = res.data
+      goalCache.lastFetchedAt = Date.now()
+      return res.data
+    })
+    .finally(() => {
+      goalCache.inFlight = null
+    })
+
+  return goalCache.inFlight
+}
 
 function timeAgo(value) {
   const then = new Date(value || 0).getTime()
@@ -120,9 +149,50 @@ const BookCard = memo(function BookCard({ book, index }) {
   )
 })
 
+function SectionHeader({ title, to = '/books' }) {
+  return (
+    <div className="mb-3 flex items-center justify-between px-0.5">
+      <h3 className="text-xl font-bold text-white">{title}</h3>
+      <Link to={to} className="text-[11px] font-bold uppercase tracking-wider text-pink-400 transition-colors hover:text-pink-300">
+        VIEW ALL
+      </Link>
+    </div>
+  )
+}
+
+function BookRow({ books, rowKey, loading, emptyTitle = 'No books available', viewAllTo = '/books' }) {
+  return (
+    <section>
+      <SectionHeader title={rowKey} to={viewAllTo} />
+      {loading ? (
+        <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pr-6 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4">
+          {[...Array(5)].map((_, index) => (
+            <BookCardSkeleton key={`${rowKey}-skeleton-${index}`} />
+          ))}
+        </div>
+      ) : books.length === 0 ? (
+        <EmptyState
+          icon="📚"
+          title={emptyTitle}
+          description="New titles will appear here soon."
+          compact
+        />
+      ) : (
+        <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pr-6 pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden sm:gap-4">
+          {books.map((book, index) => (
+            <div key={`${rowKey}-${book._id || book.title}-${index}`} className="shrink-0 snap-start w-[52vw] min-w-[52vw] sm:w-auto sm:min-w-0">
+              <BookCard book={book} index={index} />
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
 export default function HomePage() {
   const navigate = useNavigate()
-  const { books, topBooks, loading, error } = useRecommendations()
+  const { books, loading, error } = useBooks()
   const authUser = (() => {
     try {
       const raw = localStorage.getItem('authUser')
@@ -138,32 +208,37 @@ export default function HomePage() {
   const currentYear = new Date().getFullYear()
 
   useEffect(() => {
+    let ignore = false
     if (!authUser?._id) {
       setGoalLoading(false)
       return
     }
     const fetchGoal = async () => {
       try {
-        const res = await apiClient.get('/api/goals/me')
-        setGoalData(res.data)
+        const data = await fetchReadingGoal(authUser._id)
+        if (!ignore) setGoalData(data)
       } catch {
         // Fail silently
       } finally {
-        setGoalLoading(false)
+        if (!ignore) setGoalLoading(false)
       }
     }
     fetchGoal()
+
+    return () => {
+      ignore = true
+    }
   }, [authUser?._id])
+
   const {
     progressItems,
-    latestProgress,
     loading: progressLoading,
     error: progressError,
   } = useProgress(authUser?._id)
 
   const progressMap = useMemo(() => buildProgressMap(progressItems), [progressItems])
 
-  const booksWithProgress = useMemo(() => books.map((book) => {
+  const addProgressToBook = useMemo(() => (book) => {
     const progressEntry = progressMap.get(book._id)
     const computed = progressEntry
       ? computeProgress(progressEntry)
@@ -176,64 +251,48 @@ export default function HomePage() {
       totalPages: computed.totalPages,
       resumeCfi: progressEntry?.cfi || '',
     }
-  }), [books, progressMap])
+  }, [progressMap])
 
-  const firstSlice = useMemo(() => booksWithProgress.slice(0, 8), [booksWithProgress])
-  const secondSlice = useMemo(() => booksWithProgress.slice(8, 16), [booksWithProgress])
-  const bookSections = useMemo(() => [
-    { title: 'Recommended', books: firstSlice },
-    { title: 'Top Books', books: secondSlice.length > 0 ? secondSlice : firstSlice },
-  ], [firstSlice, secondSlice])
+  const booksWithProgress = useMemo(() => books.map(addProgressToBook), [books, addProgressToBook])
 
-  const recentCategory =
-    latestProgress?.book?.category ||
-    progressItems.find((item) => item.book?.category)?.book?.category ||
-    booksWithProgress[0]?.category ||
-    'Programming'
+  const topTenBooks = useMemo(() => {
+    return [...booksWithProgress]
+      .sort((a, b) => (b.openCount || 0) - (a.openCount || 0))
+      .slice(0, 10)
+  }, [booksWithProgress])
 
-  const readBookIds = useMemo(() => new Set(progressItems.map((item) => item.book?._id || item.book)), [progressItems])
+  const topTenBookIds = useMemo(() => new Set(topTenBooks.map((book) => book._id).filter(Boolean)), [topTenBooks])
 
-  const recommendedBooks = useMemo(() => booksWithProgress
-    .filter((book) => !readBookIds.has(book._id))
-    .sort((a, b) => {
-      const aScore = a.category === recentCategory ? 1 : 0
-      const bScore = b.category === recentCategory ? 1 : 0
-      if (aScore !== bScore) return bScore - aScore
-      return a.title.localeCompare(b.title)
-    })
-    .slice(0, 8), [booksWithProgress, readBookIds, recentCategory])
-  const safeRecommendedBooks = recommendedBooks.length > 0 ? recommendedBooks : booksWithProgress.slice(0, 8)
+  const newArrivalBooks = useMemo(() => {
+    return [...booksWithProgress]
+      .filter((book) => !topTenBookIds.has(book._id))
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+      .slice(0, 10)
+  }, [booksWithProgress, topTenBookIds])
+
+  const showNewArrivals = loading || newArrivalBooks.length >= 3
+
+  const categoryRows = useMemo(() => {
+    const grouped = booksWithProgress.reduce((rows, book) => {
+      const category = (book.category || '').toString().trim()
+      if (!category) return rows
+      if (!rows[category]) rows[category] = []
+      rows[category].push(book)
+      return rows
+    }, {})
+
+    return Object.entries(grouped)
+      .filter(([, categoryBooks]) => categoryBooks.length >= 2)
+      .map(([category, categoryBooks]) => ({
+        category,
+        books: categoryBooks.slice(0, 6),
+      }))
+      .sort((a, b) => a.category.localeCompare(b.category))
+  }, [booksWithProgress])
 
   const continueReadingBooks = useMemo(() => [...progressItems]
     .filter((item) => item.book && Number(item.progressPercentage || item.percentage || 0) > 0 && Number(item.progressPercentage || item.percentage || 0) < 100)
     .sort((a, b) => new Date(b.lastReadAt || 0).getTime() - new Date(a.lastReadAt || 0).getTime()), [progressItems])
-  const featuredBook = safeRecommendedBooks[0] || booksWithProgress[0]
-  const topTenBooks = useMemo(() => {
-    const topIds = new Set(topBooks.map((book) => book?._id).filter(Boolean))
-    const prioritized = booksWithProgress.filter((book) => topIds.has(book._id))
-    return prioritized.length > 0 ? prioritized.slice(0, 10) : booksWithProgress.slice(0, 10)
-  }, [booksWithProgress, topBooks])
-
-  const topRatedBooks = useMemo(() => {
-    return [...booksWithProgress]
-      .filter((book) => (book.totalReviews || 0) >= 3)
-      .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
-      .slice(0, 8)
-  }, [booksWithProgress])
-
-  const handleStartReading = () => {
-    const section = document.getElementById('books-section')
-    if (section) {
-      section.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      return
-    }
-
-    if (booksWithProgress.length > 0) {
-      const firstBook = booksWithProgress[0]
-      const readerLink = buildReaderHash(firstBook)
-      window.location.hash = readerLink
-    }
-  }
 
   const handleExploreBooks = () => {
     navigate('/books')
@@ -281,71 +340,118 @@ export default function HomePage() {
       />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.05),transparent_42%),radial-gradient(circle_at_80%_10%,rgba(132,145,255,0.04),transparent_33%)]" />
 
-      {/* Shared Premium Hero featured book section */}
-      <div className="px-2.5 sm:px-0 mb-6">
-        <section className="relative overflow-hidden rounded-3xl hero border border-white/10 bg-gradient-to-br from-[#1e1b4b] via-[#311042] to-[#450a26] shadow-[0_16px_45px_rgba(0,0,0,0.4)] md:h-[280px] lg:h-[300px] flex flex-col md:flex-row items-stretch">
-          {/* Left side: book cover (40% width, object-cover) */}
-          <Link to={`/book/${featuredBook?._id}`} className="relative w-full md:w-[40%] h-[220px] md:h-auto overflow-hidden shrink-0 block group/hero-cover">
-            {featuredBook?.thumbnail ? (
-              <img 
-                loading="lazy" 
-                src={getBookThumbnailUrl(featuredBook)} 
-                onError={applyThumbnailFallback} 
-                alt={featuredBook.title} 
-                className="h-full w-full object-cover object-center transition-transform duration-500 group-hover/hero-cover:scale-105" 
-              />
-            ) : (
-              <div className="grid h-full w-full place-items-center bg-gradient-to-br from-indigo-600 to-violet-700 px-6 text-center text-xl font-black text-white">
-                {featuredBook?.title || 'Featured Book'}
-              </div>
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-transparent to-black/40 pointer-events-none" />
-          </Link>
-
-          {/* Right side: title, author, buttons (60% width) */}
-          <div className="relative flex-1 p-5 md:p-8 flex flex-col justify-center bg-slate-950/40 backdrop-blur-sm">
-            <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-pink-400">Featured Pick</span>
-            <Link to={`/book/${featuredBook?._id}`}>
-              <h2 className="mt-1.5 line-clamp-2 text-xl md:text-2xl font-black text-white leading-tight tracking-tight hover:text-pink-400 transition-colors">
-                {featuredBook?.title || 'Featured Book'}
-              </h2>
-            </Link>
-            <p className="mt-1 line-clamp-1 text-xs md:text-sm text-slate-300 font-medium">
-              by {featuredBook?.author || 'Readify AI Pick'}
-            </p>
-            
-            <div className="mt-5 flex flex-wrap gap-3">
-              <a
-                href={featuredBook ? buildReaderHash(featuredBook) : '#'}
-                className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 px-5 py-2.5 text-xs font-extrabold uppercase tracking-wider text-white border-none shadow-[0_4px_14px_rgba(219,39,119,0.3)] transition-all duration-300 active:scale-95 flex items-center justify-center"
-              >
-                Start Reading
-              </a>
-              {featuredBook?._id && (
-                <Link
-                  to={`/book/${featuredBook._id}`}
-                  className="rounded-full border border-white/15 bg-white/5 hover:bg-white/10 px-5 py-2.5 text-xs font-extrabold uppercase tracking-wider text-white transition-all duration-300 active:scale-95 flex items-center justify-center"
-                >
-                  View Details
-                </Link>
-              )}
+      <div className="relative space-y-8 px-2.5 sm:px-0">
+        <section id="continue-reading">
+          <SectionHeader title="CONTINUE READING" to="/books" />
+          {progressLoading ? (
+            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pr-6 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4">
+              {[...Array(4)].map((_, idx) => (
+                <ProgressCardSkeleton key={`continue-skeleton-${idx}`} />
+              ))}
             </div>
-          </div>
+          ) : progressError ? (
+            <p className="px-1 text-sm text-rose-200">{progressError}</p>
+          ) : continueReadingBooks.length === 0 ? (
+            <EmptyState
+              className="mx-1"
+              icon="Book"
+              title="No books in progress"
+              description="Start reading any book and it will appear here."
+              actionLabel="Explore Books"
+              onAction={handleExploreBooks}
+              compact
+            />
+          ) : (
+            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pr-6 pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden sm:gap-4">
+              {continueReadingBooks.slice(0, 10).map((item) => {
+                const book = item.book || {}
+                const computed = computeProgress(item)
+                const currentPage = computed.currentPage
+                const percent = computed.progressPercentage
+                const link = buildReaderHash(book, { page: currentPage, cfi: item.resumeCfi || '' })
+                return (
+                  <div key={item._id} className="group w-[66vw] min-w-[66vw] shrink-0 snap-start rounded-2xl border border-white/10 bg-white/[0.05] p-3 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-blue-300/35 hover:bg-white/[0.09] sm:w-[230px] sm:min-w-[230px]">
+                    <a href={link} className="group relative block h-[150px] overflow-hidden rounded-xl bg-slate-950">
+                      {book.thumbnail ? (
+                        <img loading="lazy" src={getBookThumbnailUrl(book)} onError={applyThumbnailFallback} alt={book.title} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="grid h-full w-full place-items-center bg-gradient-to-br from-blue-500/45 to-violet-600/45 p-3 text-center text-sm font-semibold text-white">
+                          {book.title || 'Book'}
+                        </div>
+                      )}
+                      <span className="absolute right-2 top-2 rounded-full bg-black/80 px-2 py-0.5 text-[10px] font-bold text-white shadow-md">{percent}%</span>
+                    </a>
+                    <p className="mt-2 line-clamp-1 text-sm font-bold text-white leading-tight">{book.title}</p>
+                    <p className="mt-0.5 text-[11px] font-medium text-slate-400">Page {currentPage} of {computed.totalPages}</p>
+                    <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-white/10">
+                      <div className="h-full bg-pink-500 transition-all duration-500" style={{ width: `${percent}%` }} />
+                    </div>
+                    <p className="mt-1 text-[10px] text-slate-500">Last opened {timeAgo(item.lastReadAt)}</p>
+                    <a href={link} className="mt-2.5 inline-flex w-full items-center justify-center rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-bold text-white transition hover:bg-white/15">
+                      Resume
+                    </a>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </section>
-      </div>
 
-      {/* Homepage Reading Goal Motivator Widget */}
-      {authUser && !goalLoading && goalData?.goalSet && (
-        <div className="px-2.5 sm:px-0 mb-6">
+        <section>
+          <SectionHeader title="TOP 10 BOOKS" to="/books" />
+          {loading ? (
+            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pr-6 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4">
+              {[...Array(5)].map((_, index) => (
+                <BookCardSkeleton key={`top-ten-skeleton-${index}`} />
+              ))}
+            </div>
+          ) : error ? (
+            <div className="rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+              {error}
+            </div>
+          ) : (
+            <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pr-6 pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              {topTenBooks.map((book, idx) => (
+                <div key={`topten-${book._id || idx}`} className="relative shrink-0 snap-start w-[72vw] min-w-[72vw] pl-7 sm:w-[230px] sm:min-w-[230px]">
+                  <span className="pointer-events-none absolute left-0 top-3 text-8xl font-black leading-none text-white/20">{idx + 1}</span>
+                  <BookCard book={book} index={idx} />
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {showNewArrivals && (
+          <BookRow
+            rowKey="NEW ARRIVALS"
+            books={newArrivalBooks}
+            loading={loading && newArrivalBooks.length === 0}
+            emptyTitle="No new arrivals yet"
+            viewAllTo="/books"
+          />
+        )}
+
+        <div id="books-section" className="space-y-8">
+          {categoryRows.map(({ category, books: categoryBooks }) => (
+            <BookRow
+              key={category}
+              rowKey={category}
+              books={categoryBooks}
+              loading={loading}
+              viewAllTo={`/categories?category=${encodeURIComponent(category)}`}
+            />
+          ))}
+        </div>
+
+        {authUser && !goalLoading && goalData?.goalSet && (
           <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-950/45 p-4 backdrop-blur-md">
-            {/* Soft decorative background glows */}
             <div className="absolute -right-12 -top-12 h-24 w-24 rounded-full bg-indigo-500/10 blur-2xl pointer-events-none" />
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center gap-3">
                 <span className="text-2xl select-none">
-                  {goalData.data.completedBooksCount >= goalData.data.goal.targetBooks ? '🏆' : 
-                   goalData.data.status === 'Ahead of schedule' ? '🔥' :
-                   goalData.data.status === 'Behind schedule' ? '⏰' : '✨'}
+                  {goalData.data.completedBooksCount >= goalData.data.goal.targetBooks ? 'Goal' :
+                   goalData.data.status === 'Ahead of schedule' ? 'Hot' :
+                   goalData.data.status === 'Behind schedule' ? 'Time' : 'On'}
                 </span>
                 <div>
                   <h4 className="text-sm font-bold text-white flex items-center gap-2">
@@ -359,26 +465,22 @@ export default function HomePage() {
                         ? 'bg-amber-500/15 border-amber-500/20 text-amber-400'
                         : 'bg-indigo-500/15 border-indigo-500/20 text-indigo-400'
                     }`}>
-                      {goalData.data.status === 'Goal achieved!' || goalData.data.completedBooksCount >= goalData.data.goal.targetBooks ? 'Achieved' : 
+                      {goalData.data.status === 'Goal achieved!' || goalData.data.completedBooksCount >= goalData.data.goal.targetBooks ? 'Achieved' :
                        goalData.data.status === 'Ahead of schedule' ? 'Ahead' :
                        goalData.data.status === 'Behind schedule' ? 'Behind Pace' : 'On Track'}
                     </span>
                   </h4>
-                  
-                  {/* Dynamic pace status motivator alerts */}
                   <p className="text-xs text-slate-300 mt-1 select-none leading-relaxed">
                     {goalData.data.completedBooksCount >= goalData.data.goal.targetBooks
-                      ? 'Goal achieved! You completed your reading challenge for the year! 🏆'
+                      ? 'Goal achieved! You completed your reading challenge for the year!'
                       : goalData.data.status === 'Ahead of schedule'
-                      ? 'Great pace! You are ahead of schedule. Keep it up! 🔥'
+                      ? 'Great pace! You are ahead of schedule. Keep it up!'
                       : goalData.data.status === 'Behind schedule'
-                      ? `You can catch up! Read ${goalData.data.booksPerMonthNeeded} ${goalData.data.booksPerMonthNeeded === 1 ? 'book' : 'books'} this month to stay on track. 📚`
-                      : 'Keep going! You are perfectly on track to achieve your yearly goal. ✨'}
+                      ? `You can catch up! Read ${goalData.data.booksPerMonthNeeded} ${goalData.data.booksPerMonthNeeded === 1 ? 'book' : 'books'} this month to stay on track.`
+                      : 'Keep going! You are perfectly on track to achieve your yearly goal.'}
                   </p>
                 </div>
               </div>
-
-              {/* Progress bar and View Profile details link */}
               <div className="flex flex-col gap-1.5 sm:w-64 shrink-0 justify-center">
                 <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold select-none">
                   <span>Progress ({Math.min(100, Math.round((goalData.data.completedBooksCount / goalData.data.goal.targetBooks) * 100))}%)</span>
@@ -401,304 +503,7 @@ export default function HomePage() {
               </div>
             </div>
           </div>
-        </div>
-      )}
-
-      <div className="relative space-y-4 px-2.5 md:hidden">
-
-        <section id="continue-reading">
-          <div className="mb-1.5 mt-2 flex items-center justify-between px-0.5">
-            <h3 className="text-base font-extrabold tracking-tight text-white">Continue Reading</h3>
-            <button onClick={() => navigate('/books')} className="text-[11px] font-bold uppercase tracking-wider text-pink-400 hover:text-pink-300 transition-colors">VIEW ALL</button>
-          </div>
-          {progressLoading ? (
-            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pr-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {[...Array(3)].map((_, idx) => (
-                <ProgressCardSkeleton key={`mobile-continue-skeleton-${idx}`} />
-              ))}
-            </div>
-          ) : progressError ? (
-            <p className="px-1 text-xs text-rose-200">{progressError}</p>
-          ) : continueReadingBooks.length === 0 ? (
-            <EmptyState
-              className="mx-1"
-              icon="📘"
-              title="No books in progress"
-              description="Start reading any book and it will appear here."
-              actionLabel="Explore Books"
-              onAction={() => navigate('/books')}
-              compact
-            />
-          ) : (
-            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pr-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {continueReadingBooks.slice(0, 10).map((item) => {
-                const book = item.book || {}
-                const computed = computeProgress(item)
-                const currentPage = computed.currentPage
-                const percent = computed.progressPercentage
-                return (
-                  <article key={item._id} className="min-w-[66vw] max-w-[66vw] shrink-0 snap-start rounded-2xl border border-white/10 bg-white/[0.04] p-3 shadow-md flex flex-col justify-between min-h-[300px]">
-                    <div>
-                      <a href={buildReaderHash(book, { page: currentPage, cfi: item.resumeCfi || '' })} className="group relative block h-[150px] overflow-hidden rounded-xl bg-slate-950">
-                        {book.thumbnail ? (
-                          <img loading="lazy" src={getBookThumbnailUrl(book)} onError={applyThumbnailFallback} alt={book.title} className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="grid h-full w-full place-items-center bg-gradient-to-br from-blue-500/45 to-violet-600/45 p-3 text-center text-sm font-semibold text-white">
-                            {book.title || 'Book'}
-                          </div>
-                        )}
-                        <span className="absolute right-2 top-2 rounded-full bg-black/80 px-2 py-0.5 text-[10px] font-bold text-white shadow-md">{percent}%</span>
-                      </a>
-                      <p className="mt-2 line-clamp-1 text-sm font-bold text-white leading-tight">{book.title}</p>
-                      <p className="mt-0.5 text-[11px] font-medium text-slate-400">Page {currentPage} of {computed.totalPages}</p>
-                    </div>
-
-                    <div className="mt-auto pt-2">
-                      <div className="h-1 w-full overflow-hidden rounded-full bg-white/10">
-                        <div className="h-full bg-pink-500 transition-all duration-500" style={{ width: `${percent}%` }} />
-                      </div>
-                      <p className="mt-1 text-[10px] text-slate-500">Last opened {timeAgo(item.lastReadAt)}</p>
-                      <a href={buildReaderHash(book, { page: currentPage, cfi: item.resumeCfi || '' })} className="mt-2.5 inline-flex w-full items-center justify-center rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-bold text-white transition hover:bg-white/15">
-                        Resume
-                      </a>
-                    </div>
-                  </article>
-                )
-              })}
-            </div>
-          )}
-        </section>
-
-        <section>
-          <div className="mb-1.5 mt-2 flex items-center justify-between px-0.5">
-            <h3 className="text-base font-extrabold tracking-tight text-white">Recommended</h3>
-            <button onClick={() => navigate('/recommended')} className="text-[11px] font-bold uppercase tracking-wider text-pink-400 hover:text-pink-300 transition-colors">VIEW ALL</button>
-          </div>
-          <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pr-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {safeRecommendedBooks.map((book, index) => (
-              <div key={`mobile-rec-${book._id || index}`} className="shrink-0 snap-start w-[52vw] min-w-[52vw]">
-                <BookCard book={book} index={index} />
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section>
-          <div className="mb-1.5 mt-2 flex items-center justify-between px-0.5">
-            <h3 className="text-base font-extrabold tracking-tight text-white">Top 10 Books</h3>
-            <button onClick={() => navigate('/books')} className="text-[11px] font-bold uppercase tracking-wider text-pink-400 hover:text-pink-300 transition-colors">VIEW ALL</button>
-          </div>
-          <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pr-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {topTenBooks.map((book, idx) => (
-              <article key={`topten-${book._id || idx}`} className="relative min-w-[72vw] pl-7 snap-start">
-                <span className="pointer-events-none absolute -left-0 top-3 text-8xl font-black leading-none text-white/20">{idx + 1}</span>
-                <BookCard book={book} index={idx} />
-              </article>
-            ))}
-          </div>
-        </section>
-
-        {bookSections.map((section) => (
-          <section key={`mobile-${section.title}`}>
-            <div className="mb-1.5 mt-2 flex items-center justify-between px-0.5">
-              <h3 className="text-base font-extrabold tracking-tight text-white">{section.title}</h3>
-              <button onClick={() => navigate('/books')} className="text-[11px] font-bold uppercase tracking-wider text-pink-400 hover:text-pink-300 transition-colors">VIEW ALL</button>
-            </div>
-            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pr-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {section.books.map((book, index) => (
-                <div key={`mobile-${section.title}-${book._id || index}`} className="shrink-0 snap-start w-[52vw] min-w-[52vw]">
-                  <BookCard book={book} index={index} />
-                </div>
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
-
-      <div className="hidden md:block">
-
-        <motion.section
-          initial={{ opacity: 0, y: 14 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-80px' }}
-          transition={{ duration: 0.4 }}
-          id="continue-reading"
-          className="relative mt-6 overflow-hidden rounded-2xl border border-white/15 bg-gradient-to-r from-blue-500/12 via-indigo-500/10 to-violet-500/12 p-4 shadow-[0_16px_45px_rgba(62,88,255,0.25)] sm:mt-10 sm:p-5"
-        >
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-100/85">Continue Reading</p>
-          {progressLoading ? (
-            <div className="mt-4 flex gap-4 overflow-x-auto pb-2 animate-[fadeIn_220ms_ease-out] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {[...Array(4)].map((_, idx) => (
-                <ProgressCardSkeleton key={`continue-skeleton-${idx}`} />
-              ))}
-            </div>
-          ) : progressError ? (
-            <p className="mt-3 text-sm text-rose-200">{progressError}</p>
-          ) : continueReadingBooks.length === 0 ? (
-            <EmptyState
-              className="mt-4"
-              icon="🚀"
-              title="Start your reading journey"
-              description="Books you read will appear here automatically."
-              actionLabel="Explore Books"
-              onAction={handleExploreBooks}
-              compact
-            />
-          ) : (
-            <div className="mt-4 flex gap-[14px] overflow-x-auto px-5 pb-2 [scrollbar-width:none] [-ms-overflow-style:none] snap-x snap-mandatory sm:gap-4 sm:px-0 [&::-webkit-scrollbar]:hidden">
-              {continueReadingBooks.map((item) => {
-                const book = item.book || {}
-                const computed = computeProgress(item)
-                const currentPage = computed.currentPage
-                const total = computed.totalPages
-                const percent = computed.progressPercentage
-                const link = buildReaderHash(book, { page: currentPage, cfi: item.resumeCfi || '' })
-                return (
-                  <article key={item._id} className="group w-[76vw] min-w-[76vw] max-w-[76vw] shrink-0 snap-start rounded-2xl border border-white/10 bg-white/[0.05] p-3 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-blue-300/35 hover:bg-white/[0.09] sm:w-[46vw] sm:min-w-[46vw] sm:max-w-[46vw] lg:w-[230px] lg:min-w-[230px] lg:max-w-[230px]">
-                    <div className="relative mb-3 h-32 overflow-hidden rounded-xl bg-slate-900 ring-1 ring-white/10">
-                      <div className="grid h-full w-full place-items-center bg-gradient-to-br from-blue-500/40 to-violet-600/40 p-3 text-center text-sm font-semibold text-white">
-                        {book.title || 'Book'}
-                      </div>
-                      {book.thumbnail ? (
-                        <img
-                          loading="lazy"
-                          src={getBookThumbnailUrl(book)}
-                          alt={book.title}
-                          className="absolute inset-0 h-full w-full object-cover"
-                          onError={(e) => {
-                            applyThumbnailFallback(e);
-                            e.currentTarget.style.display = 'none'
-                          }}
-                        />
-                      ) : null}
-                    </div>
-                    <h4 className="line-clamp-1 text-sm font-semibold text-white">{book.title}</h4>
-                    <p className="line-clamp-1 text-xs text-slate-300">{book.author}</p>
-                    <p className="mt-1 text-[11px] text-blue-100/90">Page {currentPage} of {total}</p>
-                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
-                      <div className="h-full rounded-full bg-gradient-to-r from-blue-400 to-violet-500 transition-all duration-500" style={{ width: `${percent}%` }} />
-                    </div>
-                    <p className="mt-1 text-[11px] text-slate-300/80">{percent}% completed {"\u2022"} Last read {timeAgo(item.lastReadAt)}</p>
-                    <a href={link} className="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:border-blue-300/40 hover:bg-white/15">
-                      Resume Reading
-                    </a>
-                  </article>
-                )
-              })}
-            </div>
-          )}
-        </motion.section>
-
-        <motion.section
-          initial={{ opacity: 0, y: 14 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-80px' }}
-          transition={{ duration: 0.45 }}
-          className="relative mt-8 overflow-hidden rounded-2xl border border-white/15 bg-gradient-to-r from-white/[0.08] via-blue-500/[0.06] to-violet-500/[0.08] p-4 sm:mt-10 sm:p-6"
-        >
-          <div className="pointer-events-none absolute -left-14 top-1/2 h-36 w-36 -translate-y-1/2 rounded-full bg-blue-500/20 blur-3xl" />
-          <div className="relative mb-4 flex items-center justify-between">
-            <div>
-              <h3 className="text-[clamp(1.25rem,6vw,1.5rem)] font-bold text-white sm:text-2xl">Recommended for You</h3>
-              <p className="mt-1 text-sm text-blue-100/90 sm:text-base">Because you read {recentCategory}</p>
-            </div>
-            <span className="rounded-full border border-blue-300/35 bg-blue-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-100">
-              Personalized
-            </span>
-          </div>
-
-          {loading ? (
-            <div className="flex gap-4 overflow-x-auto pb-2 animate-[fadeIn_220ms_ease-out] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {[...Array(5)].map((_, index) => (
-                <BookCardSkeleton key={`recommended-smart-skeleton-${index}`} />
-              ))}
-            </div>
-          ) : safeRecommendedBooks.length === 0 ? (
-            <EmptyState
-              icon="🎯"
-              title="No recommendations yet"
-              description="Read a few books to unlock smarter recommendations."
-              actionLabel="Start Reading"
-              onAction={handleStartReading}
-              compact
-            />
-          ) : (
-            <div className="flex gap-[14px] overflow-x-auto px-5 pb-2 [scrollbar-width:none] [-ms-overflow-style:none] snap-x snap-mandatory sm:gap-4 sm:px-0 [&::-webkit-scrollbar]:hidden">
-              {safeRecommendedBooks.map((book, index) => (
-                <div key={`smart-${book._id || book.title}-${index}`} className="relative shrink-0 snap-start">
-                  <BookCard book={book} index={index} />
-                  <span className="pointer-events-none absolute left-3 top-3 z-20 rounded-full border border-white/20 bg-slate-950/70 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-blue-100">
-                    Because you read {recentCategory}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </motion.section>
-
-        <div id="books-section" className="relative mt-8 space-y-8 sm:mt-12 sm:space-y-10">
-          {bookSections.map((section) => (
-            <section key={section.title}>
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-[clamp(1.25rem,6vw,1.5rem)] font-bold text-white sm:text-2xl">{section.title}</h3>
-                <button onClick={() => navigate('/books')} className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-200/80 transition hover:text-blue-100">
-                  View All
-                </button>
-              </div>
-              {loading ? (
-                <div className="flex gap-4 overflow-x-auto pb-2 animate-[fadeIn_220ms_ease-out] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  {[...Array(5)].map((_, index) => (
-                    <BookCardSkeleton key={`${section.title}-skeleton-${index}`} />
-                  ))}
-                </div>
-              ) : error ? (
-                <div className="rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
-                  {error}
-                </div>
-              ) : section.books.length === 0 ? (
-                <EmptyState
-                  icon="📖"
-                  title="No books available"
-                  description="New titles will appear here soon."
-                  actionLabel="Browse Categories"
-                  onAction={() => navigate('/categories')}
-                  compact
-                />
-              ) : (
-                <div className="flex gap-[14px] overflow-x-auto px-5 pb-2 [scrollbar-width:none] [-ms-overflow-style:none] snap-x snap-mandatory sm:gap-4 sm:px-0 [&::-webkit-scrollbar]:hidden">
-                  {section.books.map((book, index) => (
-                    <div key={`${section.title}-${book._id || book.title}-${index}`} className="shrink-0 snap-start">
-                      <BookCard book={book} index={index} />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-          ))}
-
-          {topRatedBooks.length > 0 && (
-            <section className="relative mt-8 sm:mt-10 animate-[fadeIn_350ms_ease-out]">
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <h3 className="text-[clamp(1.25rem,6vw,1.5rem)] font-bold text-white sm:text-2xl flex items-center gap-2">
-                    🏆 Top Rated Books
-                  </h3>
-                  <p className="mt-1 text-xs text-slate-400 font-semibold">Reader favorites with the highest average rating</p>
-                </div>
-                <button onClick={() => navigate('/books')} className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-200/80 transition hover:text-blue-100">
-                  View All
-                </button>
-              </div>
-              <div className="flex gap-[14px] overflow-x-auto px-5 pb-2 [scrollbar-width:none] [-ms-overflow-style:none] snap-x snap-mandatory sm:gap-4 sm:px-0 [&::-webkit-scrollbar]:hidden">
-                {topRatedBooks.map((book, index) => (
-                  <div key={`top-rated-${book._id || book.title}-${index}`} className="shrink-0 snap-start">
-                    <BookCard book={book} index={index} />
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
+        )}
       </div>
     </motion.section>
   )
