@@ -1,25 +1,24 @@
 import { Navigate, Outlet, Route, Routes, useNavigate, useLocation } from 'react-router-dom'
-import { Suspense, lazy, useEffect, useState } from 'react'
+import React, { Suspense, useEffect, useState } from 'react'
 import apiClient from './lib/apiClient'
-import { BookCardSkeleton, HeroSkeleton, NavbarSkeleton } from './components/Skeletons'
+import MainLayout from './layout/MainLayout'
 
 const isDev = import.meta.env.DEV
 
-const MainLayout = lazy(() => import('./layout/MainLayout'))
-const HomePage = lazy(() => import('./pages/HomePage'))
-const UnifiedReaderPage = lazy(() => import('./pages/UnifiedReaderPage'))
-const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'))
-const AdminAddBookPage = lazy(() => import('./pages/AdminAddBookPage'))
-const AdminManageBooksPage = lazy(() => import('./pages/AdminManageBooksPage'))
-const AdminAnalyticsPage = lazy(() => import('./pages/AdminAnalyticsPage'))
-const LoginPage = lazy(() => import('./pages/LoginPage'))
-const SignUpPage = lazy(() => import('./pages/SignUpPage'))
-const BooksPage = lazy(() => import('./pages/BooksPage'))
-const CategoriesPage = lazy(() => import('./pages/CategoriesPage'))
-const RecommendedPage = lazy(() => import('./pages/RecommendedPage'))
-const SavedBooksPage = lazy(() => import('./pages/SavedBooksPage'))
-const ProfileDashboardPage = lazy(() => import('./pages/ProfileDashboardPage'))
-const BookDetailPage = lazy(() => import('./pages/BookDetailPage'))
+const HomePage = React.lazy(() => import('./pages/HomePage'))
+const UnifiedReaderPage = React.lazy(() => import('./pages/UnifiedReaderPage'))
+const AdminDashboardPage = React.lazy(() => import('./pages/AdminDashboardPage'))
+const AdminAddBookPage = React.lazy(() => import('./pages/AdminAddBookPage'))
+const AdminManageBooksPage = React.lazy(() => import('./pages/AdminManageBooksPage'))
+const AdminAnalyticsPage = React.lazy(() => import('./pages/AdminAnalyticsPage'))
+const LoginPage = React.lazy(() => import('./pages/LoginPage'))
+const SignUpPage = React.lazy(() => import('./pages/SignUpPage'))
+const BooksPage = React.lazy(() => import('./pages/BooksPage'))
+const CategoriesPage = React.lazy(() => import('./pages/CategoriesPage'))
+const RecommendedPage = React.lazy(() => import('./pages/RecommendedPage'))
+const SavedBooksPage = React.lazy(() => import('./pages/SavedBooksPage'))
+const ProfileDashboardPage = React.lazy(() => import('./pages/ProfileDashboardPage'))
+const BookDetailPage = React.lazy(() => import('./pages/BookDetailPage'))
 
 function readAuthUser() {
   try {
@@ -46,16 +45,12 @@ function RequireAdmin({ children }) {
 
 function RouteFallback() {
   return (
-    <div className="min-h-screen px-3 pt-3 sm:px-6">
-      <NavbarSkeleton />
-      <main className="mx-auto mt-6 w-full max-w-7xl space-y-6">
-        <HeroSkeleton />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {[...Array(4)].map((_, idx) => (
-            <BookCardSkeleton key={`route-skeleton-${idx}`} />
-          ))}
-        </div>
-      </main>
+    <div className="grid min-h-screen place-items-center bg-slate-50 text-slate-700">
+      <div
+        className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-600"
+        role="status"
+        aria-label="Loading"
+      />
     </div>
   )
 }
@@ -115,37 +110,37 @@ function App() {
 
   return (
     <Suspense fallback={<RouteFallback />}>
-        {isReaderRoute ? (
-          <RequireAuth>
-            <MainLayout hideChrome fullBleed>
-              <UnifiedReaderPage />
-            </MainLayout>
-          </RequireAuth>
-        ) : (
-          <Routes>
-            <Route path="/" element={<MainLayout><HomePage /></MainLayout>} />
-            <Route path="/books" element={<MainLayout><BooksPage /></MainLayout>} />
-            <Route path="/book/:id" element={<MainLayout><BookDetailPage /></MainLayout>} />
-            <Route path="/categories" element={<MainLayout><CategoriesPage /></MainLayout>} />
-            <Route path="/recommended" element={<MainLayout><RecommendedPage /></MainLayout>} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignUpPage />} />
-            <Route path="/admin/login" element={<Navigate to="/login" replace />} />
-            <Route path="/admin" element={<RequireAdmin><Outlet /></RequireAdmin>}>
-              <Route path="dashboard" element={<AdminDashboardPage />} />
-              <Route path="add-book" element={<AdminAddBookPage />} />
-              <Route path="manage-books" element={<AdminManageBooksPage />} />
-              <Route path="analytics" element={<AdminAnalyticsPage />} />
-              <Route index element={<Navigate to="/admin/dashboard" replace />} />
-              <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
-            </Route>
-            <Route path="/profile" element={<RequireAuth><MainLayout><ProfileDashboardPage /></MainLayout></RequireAuth>} />
-            <Route path="/me" element={<Navigate to="/profile" replace />} />
-            <Route path="/saved-books" element={<RequireAuth><MainLayout><SavedBooksPage /></MainLayout></RequireAuth>} />
-            <Route path="*" element={<MainLayout><HomePage /></MainLayout>} />
-          </Routes>
-        )}
-      </Suspense>
+      {isReaderRoute ? (
+        <RequireAuth>
+          <MainLayout hideChrome fullBleed>
+            <UnifiedReaderPage />
+          </MainLayout>
+        </RequireAuth>
+      ) : (
+        <Routes>
+          <Route path="/" element={<MainLayout><HomePage /></MainLayout>} />
+          <Route path="/books" element={<MainLayout><BooksPage /></MainLayout>} />
+          <Route path="/book/:id" element={<MainLayout><BookDetailPage /></MainLayout>} />
+          <Route path="/categories" element={<MainLayout><CategoriesPage /></MainLayout>} />
+          <Route path="/recommended" element={<MainLayout><RecommendedPage /></MainLayout>} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignUpPage />} />
+          <Route path="/admin/login" element={<Navigate to="/login" replace />} />
+          <Route path="/admin" element={<RequireAdmin><Outlet /></RequireAdmin>}>
+            <Route path="dashboard" element={<AdminDashboardPage />} />
+            <Route path="add-book" element={<AdminAddBookPage />} />
+            <Route path="manage-books" element={<AdminManageBooksPage />} />
+            <Route path="analytics" element={<AdminAnalyticsPage />} />
+            <Route index element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
+          </Route>
+          <Route path="/profile" element={<RequireAuth><MainLayout><ProfileDashboardPage /></MainLayout></RequireAuth>} />
+          <Route path="/me" element={<Navigate to="/profile" replace />} />
+          <Route path="/saved-books" element={<RequireAuth><MainLayout><SavedBooksPage /></MainLayout></RequireAuth>} />
+          <Route path="*" element={<MainLayout><HomePage /></MainLayout>} />
+        </Routes>
+      )}
+    </Suspense>
   )
 }
 

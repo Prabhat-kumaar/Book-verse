@@ -476,7 +476,9 @@ export default function HomePage() {
           </div>
           <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pr-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {safeRecommendedBooks.map((book, index) => (
-              <BookCard key={`mobile-rec-${book._id || index}`} book={book} index={index} />
+              <div key={`mobile-rec-${book._id || index}`} className="shrink-0 snap-start w-[52vw] min-w-[52vw]">
+                <BookCard book={book} index={index} />
+              </div>
             ))}
           </div>
         </section>
@@ -504,7 +506,9 @@ export default function HomePage() {
             </div>
             <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pr-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {section.books.map((book, index) => (
-                <BookCard key={`mobile-${section.title}-${book._id || index}`} book={book} index={index} />
+                <div key={`mobile-${section.title}-${book._id || index}`} className="shrink-0 snap-start w-[52vw] min-w-[52vw]">
+                  <BookCard book={book} index={index} />
+                </div>
               ))}
             </div>
           </section>

@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
-
+Disallow: /admin
 Sitemap: https://readifyai.vercel.app/sitemap.xml

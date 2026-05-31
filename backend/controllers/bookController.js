@@ -1,5 +1,5 @@
 const Book = require('../models/Book');
-const { uploadToCloudinary, isCloudinaryConfigured } = require('../utils/cloudinary');
+const { cloudinary, uploadToCloudinary, isCloudinaryConfigured } = require('../utils/cloudinary');
 const validate = require('../utils/validate');
 const isDev = process.env.NODE_ENV !== 'production';
 const devLog = (...args) => isDev && console.log(...args);
@@ -65,6 +65,37 @@ const uploadOrLocalFilename = async (file, folder) => {
         return file.filename;
     }
 };
+
+const extractCloudinaryPublicId = (urlValue = '') => {
+    const raw = asTrimmedString(urlValue);
+    if (!raw || !raw.includes('cloudinary.com')) return null;
+
+    try {
+        const parsed = new URL(raw);
+        const match = parsed.pathname.match(/\/upload\/(?:[^/]+\/)*v\d+\/(.+)$/);
+        if (!match?.[1]) return null;
+        return decodeURIComponent(match[1]).replace(/\.[^/.]+$/, '');
+    } catch {
+        return null;
+    }
+};
+
+const destroyCloudinaryAsset = async (urlValue, options = {}) => {
+    if (!isCloudinaryConfigured) return;
+
+    const publicId = extractCloudinaryPublicId(urlValue);
+    if (!publicId) return;
+
+    try {
+        await cloudinary.uploader.destroy(publicId, options);
+    } catch (cloudinaryError) {
+        devError(`[Cloudinary] Failed to delete ${publicId}:`, cloudinaryError.message);
+    }
+};
+
+const shouldDestroyAsRaw = (urlValue = '', fileType = '') => (
+    fileType === 'epub' || getFileTypeFromPathOrMime(urlValue) === 'epub'
+);
 
 const normalizeBackendOrigin = (value = '') => {
     const raw = asTrimmedString(value).replace(/\/+$/, '');
@@ -381,6 +412,8 @@ const updateBook = async (req, res, next) => {
 
         let nextFileUrl = cleanFileUrl || book.fileUrl || book.pdf;
         if (uploadFile) {
+            const destroyOptions = shouldDestroyAsRaw(book.fileUrl || book.pdf, book.fileType) ? { resource_type: 'raw' } : {};
+            await destroyCloudinaryAsset(book.fileUrl || book.pdf, destroyOptions);
             nextFileUrl = await uploadOrLocalFilename(uploadFile, 'readifyai/books');
         }
         const nextFileType = rawFileType || getFileTypeFromPathOrMime(nextFileUrl);
@@ -389,6 +422,7 @@ const updateBook = async (req, res, next) => {
         book.pdf = nextFileType === 'pdf' ? nextFileUrl : '';
         let nextThumbnail = cleanThumbnail || book.thumbnail;
         if (thumbnailFile) {
+            await destroyCloudinaryAsset(book.thumbnail);
             nextThumbnail = await uploadOrLocalFilename(thumbnailFile, 'readifyai/thumbnails');
         }
         book.thumbnail = nextThumbnail;
@@ -409,7 +443,7 @@ const updateBook = async (req, res, next) => {
 
 const getRecommendations = async (req, res, next) => {
     try {
-        const books = await Book.find().limit(8);
+        const books = await Book.find().sort({ averageRating: -1, createdAt: -1 }).limit(12);
         const formattedBooks = books.map(book => ({
             ...book._doc,
             fileUrl: book.fileUrl ? formatUrl(req, book.fileUrl) : null,
@@ -431,6 +465,10 @@ const deleteBook = async (req, res, next) => {
         }
 
         await Book.findByIdAndDelete(bookId);
+
+        const fileDestroyOptions = shouldDestroyAsRaw(book.fileUrl || book.pdf, book.fileType) ? { resource_type: 'raw' } : {};
+        await destroyCloudinaryAsset(book.fileUrl || book.pdf, fileDestroyOptions);
+        await destroyCloudinaryAsset(book.thumbnail);
         
         // Auto-cleanup orphaned progress records for the deleted book
         const Progress = require('../models/Progress');

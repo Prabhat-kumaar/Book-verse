@@ -886,8 +886,8 @@ export default function EpubReaderPage() {
                   </div>
                 )}
                 <div className="min-w-0">
-                  <p className="truncate text-[36px] font-semibold leading-tight">{params.title}</p>
-                  <p className="mt-0.5 truncate text-[27px] opacity-55">{params.author}</p>
+                  <p className="truncate text-sm font-semibold leading-tight">{params.title}</p>
+                  <p className="mt-0.5 truncate text-xs opacity-55">{params.author}</p>
                 </div>
               </div>
             </div>

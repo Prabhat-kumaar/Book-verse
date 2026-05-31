@@ -277,32 +277,28 @@ export default function BookDetailPage() {
     return pageCount * 2 // 2 minutes per page
   }, [pageCount])
 
-  const bookSchema = useMemo(() => {
-    if (!book) return null
-    return {
-      "@context": "https://schema.org",
-      "@type": "Book",
-      "name": book.title,
-      "author": {
-        "@type": "Person",
-        "name": book.author || 'Unknown Author'
-      },
-      "image": getBookThumbnailUrl(book),
-      "description": book.description || `Read ${book.title} by ${book.author} on Readify AI free online.`,
-      "workExample": {
-        "@type": "Book",
-        "name": book.title,
-        "bookFormat": "https://schema.org/EBook",
-        "potentialAction": {
-          "@type": "ReadAction",
-          "target": {
-            "@type": "EntryPoint",
-            "urlTemplate": `https://readifyai.vercel.app/#reader?bookId=${book._id}`
-          }
-        }
-      }
-    }
+  const seoDescription = useMemo(() => {
+    return (book?.description || '').slice(0, 155)
   }, [book])
+
+  useEffect(() => {
+    if (!book) return undefined
+
+    const script = document.createElement('script')
+    script.type = 'application/ld+json'
+    script.textContent = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'Book',
+      name: book.title,
+      author: book.author,
+      description: seoDescription
+    })
+    document.head.appendChild(script)
+
+    return () => {
+      script.remove()
+    }
+  }, [book, seoDescription])
 
   if (loading) {
     return <SkeletonLoader />
@@ -333,11 +329,10 @@ export default function BookDetailPage() {
       className="mx-auto w-full max-w-6xl text-slate-100 bg-slate-950"
     >
       <SEO
-        title={`${book.title} by ${book.author} - Readify AI`}
-        description={book.description || `Read ${book.title} by ${book.author} online. Readify AI offers the ultimate streamlined reading experience with full formatting controls.`}
-        image={getBookThumbnailUrl(book)}
+        title={`${book.title} by ${book.author} — Readify AI`}
+        description={seoDescription}
+        image={book.thumbnail}
         path={`/book/${book._id}`}
-        schema={bookSchema}
       />
 
       {/* Mobile Top Header Backdrop (Cover Image) */}

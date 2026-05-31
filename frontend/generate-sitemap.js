@@ -9,17 +9,21 @@ const API_URL = 'https://book-verse-production.up.railway.app/api/books';
 const PRODUCTION_DOMAIN = 'https://readifyai.vercel.app';
 const TARGET_PATH = path.resolve(__dirname, 'public/sitemap.xml');
 
-// Sanitizes dates to prevent future-dating indexing penalties (e.g., mapping 2026 -> 2024 or 2025)
 const sanitizeDate = (dateVal) => {
   const d = dateVal ? new Date(dateVal) : new Date();
-  let year = d.getFullYear();
-  if (year >= 2026) {
-    year = 2024; // Use real current/past year to prevent search console validation failures
-  }
+  const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
+
+const staticRoutes = [
+  { loc: `${PRODUCTION_DOMAIN}/`, priority: '1.0' },
+  { loc: `${PRODUCTION_DOMAIN}/books`, priority: '0.6' },
+  { loc: `${PRODUCTION_DOMAIN}/categories`, priority: '0.6' },
+  { loc: `${PRODUCTION_DOMAIN}/recommended`, priority: '0.6' },
+  { loc: `${PRODUCTION_DOMAIN}/explore`, priority: '0.6' }
+];
 
 const fetchBooks = async () => {
   if (typeof fetch === 'function') {
@@ -65,14 +69,6 @@ const main = async () => {
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
     xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
 
-    // 1. Static Routes (Priority: 1.0 for home, 0.6 for others)
-    const staticRoutes = [
-      { loc: `${PRODUCTION_DOMAIN}/`, priority: '1.0' },
-      { loc: `${PRODUCTION_DOMAIN}/books`, priority: '0.6' },
-      { loc: `${PRODUCTION_DOMAIN}/categories`, priority: '0.6' },
-      { loc: `${PRODUCTION_DOMAIN}/recommended`, priority: '0.6' }
-    ];
-
     staticRoutes.forEach(route => {
       xml += '  <url>\n';
       xml += `    <loc>${route.loc}</loc>\n`;
@@ -112,13 +108,6 @@ const main = async () => {
 
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
     xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-
-    const staticRoutes = [
-      { loc: `${PRODUCTION_DOMAIN}/`, priority: '1.0' },
-      { loc: `${PRODUCTION_DOMAIN}/books`, priority: '0.6' },
-      { loc: `${PRODUCTION_DOMAIN}/categories`, priority: '0.6' },
-      { loc: `${PRODUCTION_DOMAIN}/recommended`, priority: '0.6' }
-    ];
 
     staticRoutes.forEach(route => {
       xml += '  <url>\n';

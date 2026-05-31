@@ -28,14 +28,18 @@ export function normalizeMediaUrl(value = '') {
 export const FALLBACK_THUMBNAIL =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 900'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='%231e3a8a'/><stop offset='100%' stop-color='%234c1d95'/></linearGradient></defs><rect width='600' height='900' fill='url(%23g)'/><g fill='white' fill-opacity='0.9'><rect x='130' y='250' width='340' height='24' rx='12'/><rect x='130' y='295' width='280' height='20' rx='10'/><rect x='130' y='335' width='240' height='20' rx='10'/></g></svg>"
 
+function optimizeCloudinaryThumbnail(url = '') {
+  if (!url.includes('res.cloudinary.com')) return url
+  return url.replace('/upload/', '/upload/w_400,h_600,c_fill,q_auto,f_auto/')
+}
+
 export function getBookThumbnailUrl(bookOrUrl) {
-  if (typeof bookOrUrl === 'string') {
-    return normalizeMediaUrl(bookOrUrl) || FALLBACK_THUMBNAIL
-  }
-  return (
-    normalizeMediaUrl(bookOrUrl?.thumbnail || '') ||
-    FALLBACK_THUMBNAIL
-  )
+  const rawUrl = typeof bookOrUrl === 'string'
+    ? bookOrUrl
+    : bookOrUrl?.thumbnail || ''
+  const normalizedUrl = normalizeMediaUrl(rawUrl)
+  if (normalizedUrl) return optimizeCloudinaryThumbnail(normalizedUrl)
+  return FALLBACK_THUMBNAIL
 }
 
 export function applyThumbnailFallback(event) {
