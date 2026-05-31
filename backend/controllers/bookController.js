@@ -66,7 +66,7 @@ const uploadOrLocalFilename = async (file, folder) => {
     }
 };
 
-const extractCloudinaryPublicId = (urlValue = '') => {
+const extractCloudinaryPublicId = (urlValue = '', options = {}) => {
     const raw = asTrimmedString(urlValue);
     if (!raw || !raw.includes('cloudinary.com')) return null;
 
@@ -74,7 +74,8 @@ const extractCloudinaryPublicId = (urlValue = '') => {
         const parsed = new URL(raw);
         const match = parsed.pathname.match(/\/upload\/(?:[^/]+\/)*v\d+\/(.+)$/);
         if (!match?.[1]) return null;
-        return decodeURIComponent(match[1]).replace(/\.[^/.]+$/, '');
+        const publicId = decodeURIComponent(match[1]);
+        return options.resource_type === 'raw' ? publicId : publicId.replace(/\.[^/.]+$/, '');
     } catch {
         return null;
     }
@@ -83,7 +84,7 @@ const extractCloudinaryPublicId = (urlValue = '') => {
 const destroyCloudinaryAsset = async (urlValue, options = {}) => {
     if (!isCloudinaryConfigured) return;
 
-    const publicId = extractCloudinaryPublicId(urlValue);
+    const publicId = extractCloudinaryPublicId(urlValue, options);
     if (!publicId) return;
 
     try {
@@ -419,7 +420,7 @@ const updateBook = async (req, res, next) => {
 
         let nextFileUrl = cleanFileUrl || book.fileUrl || book.pdf;
         if (uploadFile) {
-            const destroyOptions = shouldDestroyAsRaw(book.fileUrl || book.pdf, book.fileType) ? { resource_type: 'raw' } : {};
+            const destroyOptions = getCloudinaryDestroyOptions(book.fileUrl || book.pdf, book.fileType);
             await destroyCloudinaryAsset(book.fileUrl || book.pdf, destroyOptions);
             nextFileUrl = await uploadOrLocalFilename(uploadFile, 'readifyai/books');
         }
