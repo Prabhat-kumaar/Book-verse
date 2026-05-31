@@ -97,6 +97,13 @@ const shouldDestroyAsRaw = (urlValue = '', fileType = '') => (
     fileType === 'epub' || getFileTypeFromPathOrMime(urlValue) === 'epub'
 );
 
+const getCloudinaryDestroyOptions = (urlValue = '', fileType = '') => {
+    const raw = asTrimmedString(urlValue);
+    if (raw.includes('/raw/upload/')) return { resource_type: 'raw' };
+    if (raw.includes('/image/upload/')) return { resource_type: 'image' };
+    return shouldDestroyAsRaw(raw, fileType) ? { resource_type: 'raw' } : {};
+};
+
 const normalizeBackendOrigin = (value = '') => {
     const raw = asTrimmedString(value).replace(/\/+$/, '');
     if (!raw) return '';
@@ -466,8 +473,11 @@ const deleteBook = async (req, res, next) => {
 
         await Book.findByIdAndDelete(bookId);
 
-        const fileDestroyOptions = shouldDestroyAsRaw(book.fileUrl || book.pdf, book.fileType) ? { resource_type: 'raw' } : {};
-        await destroyCloudinaryAsset(book.fileUrl || book.pdf, fileDestroyOptions);
+        console.log('[Cloudinary] deleteBook fileUrl:', book.fileUrl || book.pdf || '');
+        await destroyCloudinaryAsset(
+            book.fileUrl || book.pdf,
+            getCloudinaryDestroyOptions(book.fileUrl || book.pdf, book.fileType)
+        );
         await destroyCloudinaryAsset(book.thumbnail);
         
         // Auto-cleanup orphaned progress records for the deleted book
