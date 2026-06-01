@@ -14,6 +14,9 @@ const protect = async (req, res, next) => {
 
             const user = await User.findById(decoded.id).select('-password');
             if (user) {
+                if (user.isBanned) {
+                    return res.status(403).json({ message: 'Account banned' });
+                }
                 req.user = user;
                 return next();
             }

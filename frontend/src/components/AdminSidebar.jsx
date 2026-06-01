@@ -7,6 +7,7 @@ const navItems = [
   { label: 'Add Book', to: '/admin/add-book' },
   { label: 'Manage Books', to: '/admin/manage-books' },
   { label: 'Analytics', to: '/admin/analytics' },
+  { label: 'Manage Users', to: '/admin/users' },
 ]
 
 export default function AdminSidebar() {

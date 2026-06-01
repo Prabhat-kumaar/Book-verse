@@ -24,6 +24,7 @@ const streakRoutes = require('./routes/streakRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const goalRoutes = require('./routes/goalRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 // ================= CHECK ENV =================
 if (!process.env.JWT_SECRET || !process.env.JWT_SECRET.trim()) {
@@ -281,6 +282,7 @@ app.use('/api/streak', streakRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/goals', goalRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api', savedRoutes);
 
 // ================= API 404 =================

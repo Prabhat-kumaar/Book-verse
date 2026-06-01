@@ -166,7 +166,7 @@ const getCalendarAnalytics = async (req, res, next) => {
 
 const recordVisit = async (req, res, next) => {
     try {
-        if (req.headers['x-user-role'] === 'admin') {
+        if (req.body.userRole === 'admin') {
             return res.json({ success: true, skipped: true });
         }
 
@@ -262,6 +262,25 @@ const escapeCsvValue = (value) => {
 
 const toCsvRow = (values) => `${values.map(escapeCsvValue).join(',')}\n`;
 
+const getTodayAnalytics = async (_req, res, next) => {
+    try {
+        const today = atDayStart(new Date());
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
+
+        const visit = await SiteVisit.findOne({
+            date: { $gte: today, $lt: tomorrow }
+        }).lean();
+
+        return res.json({
+            totalVisits: visit?.count || 0,
+            uniqueVisitors: visit?.uniqueCount || 0
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 const exportAnalyticsCSV = async (_req, res, next) => {
     try {
         const today = atDayStart(new Date());
@@ -294,16 +313,13 @@ const exportAnalyticsCSV = async (_req, res, next) => {
         });
 
         res.setHeader('Content-Type', 'text/csv');
-        res.setHeader('Content-Disposition', 'attachment; filename="analytics.csv"');
+        res.setHeader('Content-Disposition', 'attachment; filename="analytics-export.csv"');
         res.write(toCsvRow([
             'date',
             'totalVisits',
             'uniqueVisitors',
             'avgSessionSeconds',
-            'bounceRate',
-            'topCountry',
-            'desktopPct',
-            'mobilePct'
+            'bounceRate'
         ]));
 
         for (let i = 0; i < 30; i += 1) {
@@ -312,21 +328,11 @@ const exportAnalyticsCSV = async (_req, res, next) => {
             const key = date.toISOString().slice(0, 10);
             const visit = visitByDate.get(key) || {};
             const logs = logsByDate.get(key) || [];
-            const totalLogs = logs.length || 0;
-
             const sessionMap = new Map();
-            const countryCounts = new Map();
-            const deviceCounts = { Desktop: 0, Mobile: 0 };
 
             logs.forEach((log) => {
                 if (!sessionMap.has(log.sessionId)) sessionMap.set(log.sessionId, []);
                 sessionMap.get(log.sessionId).push(log);
-
-                const country = log.country || 'Unknown';
-                countryCounts.set(country, (countryCounts.get(country) || 0) + 1);
-
-                if (log.deviceType === 'Desktop') deviceCounts.Desktop += 1;
-                if (log.deviceType === 'Mobile') deviceCounts.Mobile += 1;
             });
 
             const sessions = Array.from(sessionMap.values());
@@ -343,20 +349,13 @@ const exportAnalyticsCSV = async (_req, res, next) => {
                 : 0;
             const bouncedSessions = sessions.filter((sessionLogs) => sessionLogs.length === 1).length;
             const bounceRate = sessions.length ? Math.round((bouncedSessions / sessions.length) * 100) : 0;
-            const topCountry = Array.from(countryCounts.entries())
-                .sort((a, b) => b[1] - a[1])[0]?.[0] || 'Unknown';
-            const desktopPct = totalLogs ? Math.round((deviceCounts.Desktop / totalLogs) * 100) : 0;
-            const mobilePct = totalLogs ? Math.round((deviceCounts.Mobile / totalLogs) * 100) : 0;
 
             res.write(toCsvRow([
                 key,
                 visit.count || 0,
                 visit.uniqueCount || 0,
                 avgSessionSeconds,
-                bounceRate,
-                topCountry,
-                desktopPct,
-                mobilePct
+                bounceRate
             ]));
         }
 
@@ -777,6 +776,7 @@ module.exports = {
     getOverallAnalytics,
     getCalendarAnalytics,
     recordVisit,
+    getTodayAnalytics,
     exportAnalyticsCSV,
     getAdminAnalytics,
     getAdminDetails,

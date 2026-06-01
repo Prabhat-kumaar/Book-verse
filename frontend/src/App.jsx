@@ -41,6 +41,7 @@ const AdminDashboardPage = lazyWithRetry(() => import('./pages/AdminDashboardPag
 const AdminAddBookPage = lazyWithRetry(() => import('./pages/AdminAddBookPage'))
 const AdminManageBooksPage = lazyWithRetry(() => import('./pages/AdminManageBooksPage'))
 const AdminAnalyticsPage = lazyWithRetry(() => import('./pages/AdminAnalyticsPage'))
+const AdminUsersPage = lazyWithRetry(() => import('./pages/AdminUsersPage'))
 const LoginPage = lazyWithRetry(() => import('./pages/LoginPage'))
 const SignUpPage = lazyWithRetry(() => import('./pages/SignUpPage'))
 const BooksPage = lazyWithRetry(() => import('./pages/BooksPage'))
@@ -185,14 +186,12 @@ function App() {
 
       try {
         const authUser = readAuthUser()
-        const config = authUser?.role === 'admin'
-          ? { headers: { 'x-user-role': 'admin' } }
-          : undefined
 
         await apiClient.post('/analytics/visit', {
           path: location.pathname,
-          sessionId
-        }, config)
+          sessionId,
+          userRole: authUser?.role || 'guest',
+        })
       } catch (err) {
         if (isDev) console.error('Failed to record page visit:', err)
       }
@@ -207,6 +206,7 @@ function App() {
       '#admin/add-book': '/admin/add-book',
       '#admin/manage-books': '/admin/manage-books',
       '#admin/analytics': '/admin/analytics',
+      '#admin/users': '/admin/users',
     }
 
     const targetPath = hashToPath[hash]
@@ -240,6 +240,7 @@ function App() {
               <Route path="add-book" element={<AdminAddBookPage />} />
               <Route path="manage-books" element={<AdminManageBooksPage />} />
               <Route path="analytics" element={<AdminAnalyticsPage />} />
+              <Route path="users" element={<AdminUsersPage />} />
               <Route index element={<Navigate to="/admin/dashboard" replace />} />
               <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
             </Route>

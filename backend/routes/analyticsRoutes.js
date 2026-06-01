@@ -5,6 +5,7 @@ const {
     getOverallAnalytics,
     getCalendarAnalytics,
     recordVisit,
+    getTodayAnalytics,
     exportAnalyticsCSV,
     getAdminAnalytics,
     getAdminDetails,
@@ -18,6 +19,7 @@ router.get('/weekly', protect, getWeeklyAnalytics);
 router.get('/overall', protect, getOverallAnalytics);
 router.get('/calendar', protect, getCalendarAnalytics);
 router.post('/visit', recordVisit);
+router.get('/admin/today', protect, admin, getTodayAnalytics);
 router.get('/admin/export', protect, admin, exportAnalyticsCSV);
 router.get('/admin/details', protect, admin, getAdminDetails);
 router.get('/admin', protect, admin, getAdminAnalytics);

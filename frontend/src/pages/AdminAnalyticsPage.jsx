@@ -28,6 +28,30 @@ function AnalyticsCard({ title, value, hint, loading }) {
   )
 }
 
+function TodayStatCard({ icon, title, value, label, loading }) {
+  return (
+    <motion.article
+      whileHover={{ y: -3, scale: 1.01 }}
+      className="rounded-2xl border border-white/10 bg-gradient-to-b from-[#111827]/80 to-[#0b0f19]/85 p-5 shadow-lg backdrop-blur-xl"
+    >
+      <div className="flex items-center gap-4">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-300/25 bg-blue-500/15 text-2xl">
+          {icon}
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{title}</p>
+          {loading ? (
+            <div className="mt-2 h-8 w-20 animate-pulse rounded bg-white/10" />
+          ) : (
+            <p className="mt-1 text-3xl font-extrabold text-white tracking-tight">{value}</p>
+          )}
+          <p className="mt-1 text-xs font-medium text-indigo-300">{label}</p>
+        </div>
+      </div>
+    </motion.article>
+  )
+}
+
 function RadialMetric({ label, pct, color }) {
   const r = 36;
   const circ = 2 * Math.PI * r;
@@ -52,7 +76,9 @@ function RadialMetric({ label, pct, color }) {
 
 export default function AdminAnalyticsPage() {
   const [data, setData] = useState(null)
+  const [todayData, setTodayData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [todayLoading, setTodayLoading] = useState(true)
   const [error, setError] = useState('')
   const [exporting, setExporting] = useState(false)
   const [timeFrame, setTimeFrame] = useState('day') // 'day' | 'month' | 'year'
@@ -78,6 +104,21 @@ export default function AdminAnalyticsPage() {
     fetchAnalyticsDetails()
   }, [])
 
+  useEffect(() => {
+    const fetchTodayAnalytics = async () => {
+      try {
+        setTodayLoading(true)
+        const response = await apiClient.get('/api/analytics/admin/today')
+        setTodayData(response.data || null)
+      } catch (err) {
+        if (isDev) console.error('Error fetching today analytics:', err)
+      } finally {
+        setTodayLoading(false)
+      }
+    }
+    fetchTodayAnalytics()
+  }, [])
+
   const chartData = data?.charts?.[timeFrame] || []
 
   const handleExportCSV = async () => {
@@ -90,7 +131,7 @@ export default function AdminAnalyticsPage() {
       const blobUrl = window.URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }))
       const link = document.createElement('a')
       link.href = blobUrl
-      link.download = 'analytics.csv'
+      link.download = 'analytics-export.csv'
       document.body.appendChild(link)
       link.click()
       link.remove()
@@ -187,6 +228,23 @@ export default function AdminAnalyticsPage() {
               {error}
             </div>
           )}
+
+          <section className="mb-5 grid gap-4 md:grid-cols-2">
+            <TodayStatCard
+              icon="👁️"
+              title="Today's Visits"
+              value={todayData?.totalVisits ?? 0}
+              label="Pageviews today"
+              loading={todayLoading}
+            />
+            <TodayStatCard
+              icon="👤"
+              title="Today's Unique Visitors"
+              value={todayData?.uniqueVisitors ?? 0}
+              label="Distinct IPs today"
+              loading={todayLoading}
+            />
+          </section>
 
           {/* Real Metrics Cards */}
           <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">

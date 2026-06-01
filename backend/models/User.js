@@ -25,6 +25,10 @@ const userSchema = new mongoose.Schema(
             enum: ['admin', 'user'],
             default: 'user',
         },
+        isBanned: {
+            type: Boolean,
+            default: false,
+        },
         streak: {
             currentStreak: {
                 type: Number,
