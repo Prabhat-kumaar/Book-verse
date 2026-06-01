@@ -54,6 +54,7 @@ export default function AdminAnalyticsPage() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [exporting, setExporting] = useState(false)
   const [timeFrame, setTimeFrame] = useState('day') // 'day' | 'month' | 'year'
   const [hoveredPoint, setHoveredPoint] = useState(null)
 
@@ -78,6 +79,29 @@ export default function AdminAnalyticsPage() {
   }, [])
 
   const chartData = data?.charts?.[timeFrame] || []
+
+  const handleExportCSV = async () => {
+    try {
+      setExporting(true)
+      const response = await apiClient.get('/api/analytics/admin/export', {
+        responseType: 'blob',
+        dedupe: false,
+      })
+      const blobUrl = window.URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }))
+      const link = document.createElement('a')
+      link.href = blobUrl
+      link.download = 'analytics.csv'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(blobUrl)
+    } catch (err) {
+      if (isDev) console.error('Error exporting analytics CSV:', err)
+      setError(err.response?.data?.message || 'Error exporting analytics CSV.')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   // Custom SVG Chart Math
   const maxVisits = chartData.length > 0 ? Math.max(...chartData.map(d => Math.max(d.visits || 0, d.unique || 0)), 10) : 100
@@ -142,10 +166,20 @@ export default function AdminAnalyticsPage() {
 
         <main className="rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-white/[0.02] p-5 backdrop-blur-2xl lg:p-8">
           
-          <div className="mb-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-indigo-400">Insights & Metrics</p>
-            <h2 className="mt-1 text-3xl font-black text-white sm:text-4xl tracking-tight">System Analytics</h2>
-            <p className="mt-2 text-sm text-slate-300">Track platform performance, user completions, and page traffic.</p>
+          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-indigo-400">Insights & Metrics</p>
+              <h2 className="mt-1 text-3xl font-black text-white sm:text-4xl tracking-tight">System Analytics</h2>
+              <p className="mt-2 text-sm text-slate-300">Track platform performance, user completions, and page traffic.</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              disabled={exporting}
+              className="inline-flex h-11 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] px-4 text-sm font-bold text-white transition hover:bg-white/[0.1] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {exporting ? 'Exporting...' : 'Export CSV'}
+            </button>
           </div>
 
           {error && (

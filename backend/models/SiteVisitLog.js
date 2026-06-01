@@ -44,6 +44,11 @@ const siteVisitLogSchema = new mongoose.Schema(
             type: Date,
             default: Date.now,
             index: true,
+        },
+        visitedAt: {
+            type: Date,
+            default: Date.now,
+            index: true,
         }
     },
     {

@@ -166,6 +166,10 @@ const getCalendarAnalytics = async (req, res, next) => {
 
 const recordVisit = async (req, res, next) => {
     try {
+        if (req.headers['x-user-role'] === 'admin') {
+            return res.json({ success: true, skipped: true });
+        }
+
         const userAgent = req.get('user-agent') || '';
 
         if (isBotUserAgent(userAgent)) {
@@ -187,6 +191,15 @@ const recordVisit = async (req, res, next) => {
         const deviceType = getDeviceType(userAgent);
         
         const { path = '/', sessionId = 'sess_unknown' } = req.body;
+        const recentVisit = await SiteVisitLog.findOne({
+            hashedIp,
+            sessionId: req.body.sessionId,
+            visitedAt: { $gte: new Date(Date.now() - 30 * 60 * 1000) }
+        });
+        if (recentVisit) {
+            return res.json({ success: true, skipped: true, reason: 'session_active' });
+        }
+
         const hour = new Date().getHours();
 
         const today = atDayStart(new Date());
@@ -210,7 +223,8 @@ const recordVisit = async (req, res, next) => {
             deviceType,
             sessionId,
             hour,
-            isNewVisitor: isAllTimeUnique
+            isNewVisitor: isAllTimeUnique,
+            visitedAt: new Date()
         });
 
         // Increment global stats
@@ -236,6 +250,117 @@ const recordVisit = async (req, res, next) => {
         );
 
         res.json({ success: true, visits: stats.visits, uniqueVisitors: stats.uniqueVisitors });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const escapeCsvValue = (value) => {
+    const text = value === null || value === undefined ? '' : String(value);
+    return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+};
+
+const toCsvRow = (values) => `${values.map(escapeCsvValue).join(',')}\n`;
+
+const exportAnalyticsCSV = async (_req, res, next) => {
+    try {
+        const today = atDayStart(new Date());
+        const from = new Date(today);
+        from.setDate(today.getDate() - 29);
+        const to = new Date(today);
+        to.setDate(today.getDate() + 1);
+
+        const [dailyVisits, visitLogs] = await Promise.all([
+            SiteVisit.find({
+                date: { $gte: from, $lt: to }
+            }).sort({ date: 1 }).lean(),
+            SiteVisitLog.find({
+                visitedAt: { $gte: from, $lt: to }
+            }).select('country deviceType sessionId visitedAt createdAt').lean()
+        ]);
+
+        const visitByDate = new Map(
+            dailyVisits.map((visit) => [
+                atDayStart(visit.date).toISOString().slice(0, 10),
+                visit
+            ])
+        );
+
+        const logsByDate = new Map();
+        visitLogs.forEach((log) => {
+            const visitDate = atDayStart(log.visitedAt || log.createdAt).toISOString().slice(0, 10);
+            if (!logsByDate.has(visitDate)) logsByDate.set(visitDate, []);
+            logsByDate.get(visitDate).push(log);
+        });
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename="analytics.csv"');
+        res.write(toCsvRow([
+            'date',
+            'totalVisits',
+            'uniqueVisitors',
+            'avgSessionSeconds',
+            'bounceRate',
+            'topCountry',
+            'desktopPct',
+            'mobilePct'
+        ]));
+
+        for (let i = 0; i < 30; i += 1) {
+            const date = new Date(from);
+            date.setDate(from.getDate() + i);
+            const key = date.toISOString().slice(0, 10);
+            const visit = visitByDate.get(key) || {};
+            const logs = logsByDate.get(key) || [];
+            const totalLogs = logs.length || 0;
+
+            const sessionMap = new Map();
+            const countryCounts = new Map();
+            const deviceCounts = { Desktop: 0, Mobile: 0 };
+
+            logs.forEach((log) => {
+                if (!sessionMap.has(log.sessionId)) sessionMap.set(log.sessionId, []);
+                sessionMap.get(log.sessionId).push(log);
+
+                const country = log.country || 'Unknown';
+                countryCounts.set(country, (countryCounts.get(country) || 0) + 1);
+
+                if (log.deviceType === 'Desktop') deviceCounts.Desktop += 1;
+                if (log.deviceType === 'Mobile') deviceCounts.Mobile += 1;
+            });
+
+            const sessions = Array.from(sessionMap.values());
+            const sessionDurations = sessions.map((sessionLogs) => {
+                if (sessionLogs.length < 2) return 0;
+                const times = sessionLogs
+                    .map((log) => new Date(log.visitedAt || log.createdAt).getTime())
+                    .filter((time) => Number.isFinite(time));
+                if (times.length < 2) return 0;
+                return Math.round((Math.max(...times) - Math.min(...times)) / 1000);
+            });
+            const avgSessionSeconds = sessionDurations.length
+                ? Math.round(sessionDurations.reduce((sum, seconds) => sum + seconds, 0) / sessionDurations.length)
+                : 0;
+            const bouncedSessions = sessions.filter((sessionLogs) => sessionLogs.length === 1).length;
+            const bounceRate = sessions.length ? Math.round((bouncedSessions / sessions.length) * 100) : 0;
+            const topCountry = Array.from(countryCounts.entries())
+                .sort((a, b) => b[1] - a[1])[0]?.[0] || 'Unknown';
+            const desktopPct = totalLogs ? Math.round((deviceCounts.Desktop / totalLogs) * 100) : 0;
+            const mobilePct = totalLogs ? Math.round((deviceCounts.Mobile / totalLogs) * 100) : 0;
+
+            res.write(toCsvRow([
+                key,
+                visit.count || 0,
+                visit.uniqueCount || 0,
+                avgSessionSeconds,
+                bounceRate,
+                topCountry,
+                desktopPct,
+                mobilePct
+            ]));
+        }
+
+        res.end();
     } catch (error) {
         next(error);
     }
@@ -652,6 +777,7 @@ module.exports = {
     getOverallAnalytics,
     getCalendarAnalytics,
     recordVisit,
+    exportAnalyticsCSV,
     getAdminAnalytics,
     getAdminDetails,
 };

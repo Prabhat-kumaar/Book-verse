@@ -184,10 +184,15 @@ function App() {
       recentVisitRequests.set(visitKey, Date.now())
 
       try {
+        const authUser = readAuthUser()
+        const config = authUser?.role === 'admin'
+          ? { headers: { 'x-user-role': 'admin' } }
+          : undefined
+
         await apiClient.post('/analytics/visit', {
           path: location.pathname,
           sessionId
-        })
+        }, config)
       } catch (err) {
         if (isDev) console.error('Failed to record page visit:', err)
       }
