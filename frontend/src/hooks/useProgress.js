@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { fetchAllProgress } from '../lib/progressApi'
 import { getProgressBookId, normalizeProgressItem } from '../lib/readingProgress'
 
-const REFRESH_INTERVAL_MS = 60000
 const REFRESH_TTL_MS = 15000
 
 const sharedStore = {
@@ -15,10 +14,8 @@ const sharedStore = {
 }
 
 const listeners = new Set()
-let intervalId = null
 let listenersBound = false
 let onProgressUpdatedHandler = null
-let onVisibilityChangeHandler = null
 
 function notify() {
   const snapshot = {
@@ -134,43 +131,18 @@ function startGlobalListeners() {
     const incoming = event?.detail?.item ? normalizeProgressItem(event.detail.item) : null
     if (incoming) {
       mergeProgressItem(incoming)
-      return
     }
-    if (!sharedStore.userId) return
-    refreshSharedProgress(sharedStore.userId, { silent: true, force: true }).catch(() => {})
-  }
-
-  onVisibilityChangeHandler = () => {
-    if (document.visibilityState !== 'visible') return
-    if (!sharedStore.userId) return
-    refreshSharedProgress(sharedStore.userId, { silent: true, force: true }).catch(() => {})
   }
 
   window.addEventListener('progressUpdated', onProgressUpdatedHandler)
-  window.addEventListener('focus', onVisibilityChangeHandler)
-  document.addEventListener('visibilitychange', onVisibilityChangeHandler)
-
-  intervalId = window.setInterval(() => {
-    if (!sharedStore.userId) return
-    refreshSharedProgress(sharedStore.userId, { silent: true, force: true }).catch(() => {})
-  }, REFRESH_INTERVAL_MS)
 }
 
 function stopGlobalListeners() {
   if (!listenersBound) return
   listenersBound = false
-  if (intervalId) {
-    window.clearInterval(intervalId)
-    intervalId = null
-  }
   if (onProgressUpdatedHandler) {
     window.removeEventListener('progressUpdated', onProgressUpdatedHandler)
     onProgressUpdatedHandler = null
-  }
-  if (onVisibilityChangeHandler) {
-    window.removeEventListener('focus', onVisibilityChangeHandler)
-    document.removeEventListener('visibilitychange', onVisibilityChangeHandler)
-    onVisibilityChangeHandler = null
   }
 }
 

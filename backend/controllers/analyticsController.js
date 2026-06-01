@@ -42,6 +42,12 @@ const getDeviceType = (userAgent = '') => {
     return 'Desktop';
 };
 
+const isBotUserAgent = (userAgent) => {
+    if (!userAgent || !String(userAgent).trim()) return true;
+
+    return /bot|crawler|spider|googlebot|bingbot|slurp|facebookexternalhit/i.test(userAgent);
+};
+
 const atDayStart = (dateLike) => {
     const d = new Date(dateLike);
     d.setHours(0, 0, 0, 0);
@@ -160,6 +166,12 @@ const getCalendarAnalytics = async (req, res, next) => {
 
 const recordVisit = async (req, res, next) => {
     try {
+        const userAgent = req.get('user-agent') || '';
+
+        if (isBotUserAgent(userAgent)) {
+            return res.status(200).json({ success: true });
+        }
+
         const ip = getClientIp(req);
 
         if (isLocalhost(ip) || isAdminIp(ip)) {
@@ -172,7 +184,7 @@ const recordVisit = async (req, res, next) => {
         const hashedIp = hashIp(ip);
         const geo = geoip.lookup(ip);
         const country = geo ? (geo.country || 'Unknown') : 'Unknown';
-        const deviceType = getDeviceType(req.headers['user-agent']);
+        const deviceType = getDeviceType(userAgent);
         
         const { path = '/', sessionId = 'sess_unknown' } = req.body;
         const hour = new Date().getHours();

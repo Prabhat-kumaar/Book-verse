@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import apiClient from '../lib/apiClient'
 
-const DEBOUNCE_DELAY_MS = 5000;
-const THROTTLE_DELAY_MS = 2000;
+const SAVE_DEBOUNCE_DELAY_MS = 30000;
+const MIN_SAVE_INTERVAL_MS = 30000;
 
 export default function useReadingProgress(bookId, userId, fileType = 'pdf') {
   const [progress, setProgress] = useState({
@@ -30,6 +30,7 @@ export default function useReadingProgress(bookId, userId, fileType = 'pdf') {
   const saveTimerRef = useRef(null)
   const isSavingRef = useRef(false)
   const readingStartRef = useRef(Date.now())
+  const fetchedProgressKeyRef = useRef('')
   
   // Refs to prevent duplicate saves and throttle API spam
   const lastSavedPageRef = useRef(null)
@@ -44,7 +45,7 @@ export default function useReadingProgress(bookId, userId, fileType = 'pdf') {
     latestProgressRef.current.fileType = fileType
   }, [bookId, userId, fileType])
 
-  // Fetch progress on load
+  // Fetch progress once per mounted reader/book.
   const loadProgress = useCallback(async () => {
     if (!bookId || !userId) {
       setProgress((prev) => ({ ...prev, loading: false }))
@@ -116,8 +117,15 @@ export default function useReadingProgress(bookId, userId, fileType = 'pdf') {
   }, [bookId, userId])
 
   useEffect(() => {
+    const fetchKey = bookId && userId ? `${userId}:${bookId}` : ''
+    if (!fetchKey) {
+      loadProgress()
+      return
+    }
+    if (fetchedProgressKeyRef.current === fetchKey) return
+    fetchedProgressKeyRef.current = fetchKey
     loadProgress()
-  }, [loadProgress])
+  }, [bookId, loadProgress, userId])
 
   // Explicit, direct save function
   const triggerSave = useCallback(async (isFinal = false) => {
@@ -134,7 +142,7 @@ export default function useReadingProgress(bookId, userId, fileType = 'pdf') {
 
     // 2. Throttling Protection: Enforce minimum delay between saves
     const now = Date.now()
-    if (!isFinal && now - lastSaveCallTimestampRef.current < THROTTLE_DELAY_MS) {
+    if (lastSaveCallTimestampRef.current && now - lastSaveCallTimestampRef.current < MIN_SAVE_INTERVAL_MS) {
       console.log('[useReadingProgress] Save throttled')
       return
     }
@@ -243,14 +251,14 @@ export default function useReadingProgress(bookId, userId, fileType = 'pdf') {
         }))
       }
 
-      // Debounce the backend save API with a clean 5-second inactivity timeout
+      // Debounce backend saves so frequent page/CFI changes do not spam the API.
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current)
       }
 
       saveTimerRef.current = setTimeout(() => {
         triggerSave()
-      }, DEBOUNCE_DELAY_MS)
+      }, SAVE_DEBOUNCE_DELAY_MS)
 
       return nextState
     })
@@ -316,6 +324,10 @@ export default function useReadingProgress(bookId, userId, fileType = 'pdf') {
       }
 
       const now = Date.now()
+      if (lastSaveCallTimestampRef.current && now - lastSaveCallTimestampRef.current < MIN_SAVE_INTERVAL_MS) {
+        return
+      }
+
       const elapsedSeconds = Math.max(0, Math.floor((now - readingStartRef.current) / 1000))
       
       const payload = {

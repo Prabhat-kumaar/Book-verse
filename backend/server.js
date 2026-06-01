@@ -135,7 +135,15 @@ app.use(
 // ================= RATE LIMIT =================
 const generalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 2000,
+    max: 200,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (_req, res) => apiResponse.error(res, 'Too many requests', 429),
+});
+
+const strictLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
     standardHeaders: true,
     legacyHeaders: false,
     handler: (_req, res) => apiResponse.error(res, 'Too many requests', 429),
@@ -150,12 +158,15 @@ const authLimiter = rateLimit({
 });
 
 app.use('/api', generalLimiter);
+app.post('/api/analytics/visit', strictLimiter);
+app.get(/^\/api\/books\/[0-9a-fA-F]{24}$/, strictLimiter);
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 
 // ================= STATIC FILES =================
 app.use(
     '/uploads',
+    strictLimiter,
     express.static(uploadsDir, {
         index: false,
         fallthrough: true,
