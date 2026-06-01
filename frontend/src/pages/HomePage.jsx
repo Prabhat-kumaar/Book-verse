@@ -22,26 +22,30 @@ const goalCache = {
 
 const SIGNUP_POPUP_DISMISSED_KEY = 'readify_popup_dismissed'
 const SIGNUP_POPUP_DELAY_MS = 8000
-const SIGNUP_POPUP_COOLDOWN_MS = 24 * 60 * 60 * 1000
+const SIGNUP_POPUP_COOLDOWN_MS = 600000
 
 const signupPopupFeatures = [
   {
-    icon: '📊',
+    imageSrc: '/screenshots/dashboard.png',
+    imageAlt: 'Reading Dashboard',
     title: 'Reading Dashboard',
     description: 'Track started, completed books, total pages read, and reading time — all in one place.',
   },
   {
-    icon: '🔥',
+    imageSrc: '/screenshots/goals.png',
+    imageAlt: 'Streaks and Goals',
     title: 'Streaks & Goals',
     description: 'Set your 2026 reading goal, track daily streaks, and stay motivated all year.',
   },
   {
-    icon: '📚',
+    imageSrc: '/screenshots/library.png',
+    imageAlt: 'Personal Library',
     title: 'Personal Library',
     description: 'See all your completed books with covers, dates, and progress history saved forever.',
   },
   {
-    icon: '🏆',
+    imageSrc: '/screenshots/achievements.png',
+    imageAlt: 'Achievements',
     title: 'Achievements & Badges',
     description: 'Unlock badges like First Book Read, Night Owl, Speed Reader, and 10 Books Completed.',
   },
@@ -603,7 +607,7 @@ export default function HomePage() {
             <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
               {signupPopupFeatures.map((feature) => (
                 <div key={feature.title} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-                  <div className="text-2xl" aria-hidden="true">{feature.icon}</div>
+                  <img src={feature.imageSrc} alt={feature.imageAlt} className="w-full h-24 object-cover object-top rounded-lg mb-2" />
                   <h3 className="mt-2 text-sm font-bold text-white">{feature.title}</h3>
                   <p className="mt-1 text-xs leading-relaxed text-slate-400">{feature.description}</p>
                 </div>
