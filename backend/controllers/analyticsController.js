@@ -260,7 +260,8 @@ const escapeCsvValue = (value) => {
     return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 };
 
-const toCsvRow = (values) => `${values.map(escapeCsvValue).join(',')}\n`;
+const toCsvRow = (values) => `${values.map(escapeCsvValue).join(',')}\r\n`;
+const toExcelText = (value) => `="${String(value).replace(/"/g, '""')}"`;
 
 const getTodayAnalytics = async (_req, res, next) => {
     try {
@@ -312,8 +313,9 @@ const exportAnalyticsCSV = async (_req, res, next) => {
             logsByDate.get(visitDate).push(log);
         });
 
-        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.setHeader('Content-Disposition', 'attachment; filename="analytics-export.csv"');
+        res.write('\uFEFFsep=,\r\n');
         res.write(toCsvRow([
             'date',
             'totalVisits',
@@ -351,7 +353,7 @@ const exportAnalyticsCSV = async (_req, res, next) => {
             const bounceRate = sessions.length ? Math.round((bouncedSessions / sessions.length) * 100) : 0;
 
             res.write(toCsvRow([
-                key,
+                toExcelText(key),
                 visit.count || 0,
                 visit.uniqueCount || 0,
                 avgSessionSeconds,
