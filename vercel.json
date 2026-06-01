@@ -1,15 +1,7 @@
 {
   "rewrites": [
     {
-      "source": "/sitemap.xml",
-      "destination": "/sitemap.xml"
-    },
-    {
-      "source": "/robots.txt",
-      "destination": "/robots.txt"
-    },
-    {
-      "source": "/((?!api/|assets/|favicon.svg|icons.svg).*)",
+      "source": "/((?!api/|assets/|favicon.svg|icons.svg|sitemap.xml|robots.txt).*)",
       "destination": "/index.html"
     }
   ],
