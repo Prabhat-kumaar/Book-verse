@@ -60,7 +60,7 @@ async function refreshSharedBooks({ force = false } = {}) {
     console.info('[useBooks] Final request:', requestUrl)
   }
 
-  const request = apiClient.get('/api/books')
+  const request = apiClient.get('/api/books?limit=100')
     .then((response) => {
       const normalizedBooks = normalizeBooks(response?.data)
       setSharedBooksState({

@@ -273,7 +273,7 @@ const addBook = async (req, res, next) => {
 
 const parsePagination = (query) => {
     const page = Math.max(1, parseInt(query.page, 10) || 1);
-    const limit = Math.min(50, parseInt(query.limit, 10) || 12);
+    const limit = Math.min(200, parseInt(query.limit, 10) || 100);
     const skip = (page - 1) * limit;
     return { page, limit, skip };
 };
