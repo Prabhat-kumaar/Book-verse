@@ -1,10 +1,12 @@
 import { motion } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
+import { MdAdd, MdCancel, MdCheckCircle, MdClose, MdHourglassEmpty, MdRefresh } from 'react-icons/md'
 import apiClient from '../lib/apiClient'
 import AdminSidebar from '../components/AdminSidebar'
 import CategoryCombobox from '../components/CategoryCombobox'
 
 const difficulties = ['Beginner', 'Intermediate', 'Advanced']
+const maxBulkSlots = 5
 
 const initialForm = {
   title: '',
@@ -16,6 +18,18 @@ const initialForm = {
   tags: '',
   language: '',
   difficulty: 'Beginner',
+}
+
+const initialBulkBook = {
+  title: '',
+  author: '',
+  category: 'Programming',
+  description: '',
+  tags: '',
+  language: 'English',
+  difficulty: 'Beginner',
+  bookFile: null,
+  thumbnailFile: null,
 }
 
 const initialMediaMode = {
@@ -38,7 +52,89 @@ function Field({ label, error, children }) {
 const inputClass =
   'w-full rounded-xl border border-white/15 bg-slate-950/50 px-4 py-3 text-sm text-white outline-none transition duration-300 placeholder:text-slate-400 focus:border-blue-300/55 focus:bg-slate-900/70 focus:shadow-[0_0_0_4px_rgba(98,108,255,0.2)]'
 
+const createBulkSlot = () => ({
+  id: crypto.randomUUID(),
+  ...initialBulkBook,
+})
+
+const getBookFileError = (bookFile) => {
+  if (!bookFile) return 'Upload a PDF or EPUB file'
+
+  const name = (bookFile.name || '').toLowerCase()
+  const type = (bookFile.type || '').toLowerCase()
+  const isPdf = type === 'application/pdf' || name.endsWith('.pdf')
+  const isEpub = type === 'application/epub+zip' || name.endsWith('.epub')
+
+  return isPdf || isEpub ? '' : 'Only PDF or EPUB files are allowed'
+}
+
+const getThumbnailFileError = (thumbnailFile) => {
+  if (!thumbnailFile) return 'Upload a thumbnail image'
+  return thumbnailFile.type.startsWith('image/') ? '' : 'Only image files are allowed'
+}
+
+const validateBookFields = ({ book, requireFiles = false }) => {
+  const nextErrors = {}
+
+  if (!book.title.trim()) nextErrors.title = 'Title is required'
+  if (!book.author.trim()) nextErrors.author = 'Author is required'
+  if (!book.category.trim()) nextErrors.category = 'Category is required'
+  if (!book.description.trim() || book.description.trim().length < 20) {
+    nextErrors.description = 'Description should be at least 20 characters'
+  }
+  if (!book.language.trim()) nextErrors.language = 'Language is required'
+  if (!book.difficulty.trim()) nextErrors.difficulty = 'Difficulty is required'
+
+  if (requireFiles) {
+    const bookFileError = getBookFileError(book.bookFile)
+    const thumbnailFileError = getThumbnailFileError(book.thumbnailFile)
+    if (bookFileError) nextErrors.bookFile = bookFileError
+    if (thumbnailFileError) nextErrors.thumbnailFile = thumbnailFileError
+  }
+
+  return nextErrors
+}
+
+function ProgressBadge({ state }) {
+  const status = state?.status || 'pending'
+
+  if (status === 'uploading') {
+    return (
+      <span className="inline-flex items-center gap-2 rounded-full border border-blue-300/30 bg-blue-500/15 px-3 py-1.5 text-xs font-semibold text-blue-100">
+        <MdRefresh className="h-4 w-4 animate-spin" />
+        Uploading
+      </span>
+    )
+  }
+
+  if (status === 'done') {
+    return (
+      <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/30 bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold text-emerald-100">
+        <MdCheckCircle className="h-4 w-4" />
+        Done
+      </span>
+    )
+  }
+
+  if (status === 'failed') {
+    return (
+      <span className="inline-flex items-center gap-2 rounded-full border border-rose-300/30 bg-rose-500/15 px-3 py-1.5 text-xs font-semibold text-rose-100">
+        <MdCancel className="h-4 w-4" />
+        Failed
+      </span>
+    )
+  }
+
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full border border-slate-300/20 bg-slate-500/10 px-3 py-1.5 text-xs font-semibold text-slate-300">
+      <MdHourglassEmpty className="h-4 w-4" />
+      Pending
+    </span>
+  )
+}
+
 export default function AdminAddBookPage() {
+  const [activeTab, setActiveTab] = useState('single')
   const [form, setForm] = useState(initialForm)
   const [mediaMode, setMediaMode] = useState(initialMediaMode)
   const [thumbnailFile, setThumbnailFile] = useState(null)
@@ -48,6 +144,12 @@ export default function AdminAddBookPage() {
   const [toast, setToast] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [thumbnailObjectUrl, setThumbnailObjectUrl] = useState('')
+  const [bulkSlots, setBulkSlots] = useState(() => [createBulkSlot()])
+  const [bulkErrors, setBulkErrors] = useState({})
+  const [bulkProgress, setBulkProgress] = useState({})
+  const [bulkStatus, setBulkStatus] = useState('')
+  const [bulkSummary, setBulkSummary] = useState('')
+  const [bulkUploading, setBulkUploading] = useState(false)
 
   const thumbnailPreview = useMemo(() => {
     if (mediaMode.thumbnail === 'url' && form.thumbnailUrl.trim()) {
@@ -78,7 +180,7 @@ export default function AdminAddBookPage() {
   }
 
   const validate = () => {
-    const nextErrors = {}
+    const nextErrors = validateBookFields({ book: { ...form, bookFile, thumbnailFile } })
     const fileUrl = form.fileUrl.trim()
     const thumbnailUrl = form.thumbnailUrl.trim()
     const hasFileUrl = Boolean(fileUrl)
@@ -86,40 +188,67 @@ export default function AdminAddBookPage() {
     const hasBookFile = Boolean(bookFile)
     const hasThumbnailFile = Boolean(thumbnailFile)
 
-    if (!form.title.trim()) nextErrors.title = 'Title is required'
-    if (!form.author.trim()) nextErrors.author = 'Author is required'
-    if (!form.category.trim()) nextErrors.category = 'Category is required'
-    if (!form.description.trim() || form.description.trim().length < 20) {
-      nextErrors.description = 'Description should be at least 20 characters'
-    }
-
     if (!hasFileUrl && !hasBookFile) {
       nextErrors.fileUrl = 'Provide a file URL or upload a PDF/EPUB file'
     } else if (hasFileUrl && !urlPattern.test(fileUrl)) {
       nextErrors.fileUrl = 'Enter a valid file URL'
     } else if (hasBookFile) {
-      const name = (bookFile?.name || '').toLowerCase()
-      const type = (bookFile?.type || '').toLowerCase()
-      const isPdf = type === 'application/pdf' || name.endsWith('.pdf')
-      const isEpub = type === 'application/epub+zip' || name.endsWith('.epub')
-      if (!isPdf && !isEpub) nextErrors.fileUrl = 'Only PDF or EPUB files are allowed'
+      const bookFileError = getBookFileError(bookFile)
+      if (bookFileError) nextErrors.fileUrl = bookFileError
     }
 
     if (!hasThumbnailUrl && !hasThumbnailFile) {
       nextErrors.thumbnailUrl = 'Provide a thumbnail URL or upload an image file'
     } else if (hasThumbnailUrl && !urlPattern.test(thumbnailUrl)) {
       nextErrors.thumbnailUrl = 'Enter a valid thumbnail URL'
-    } else if (hasThumbnailFile && !thumbnailFile.type.startsWith('image/')) {
-      nextErrors.thumbnailUrl = 'Only image files are allowed'
+    } else if (hasThumbnailFile) {
+      const thumbnailFileError = getThumbnailFileError(thumbnailFile)
+      if (thumbnailFileError) nextErrors.thumbnailUrl = thumbnailFileError
     }
 
     if (!form.tags.trim()) nextErrors.tags = 'Add at least one tag'
-    if (!form.language.trim()) nextErrors.language = 'Language is required'
-    if (!form.difficulty.trim()) nextErrors.difficulty = 'Difficulty is required'
 
     setErrors(nextErrors)
     return Object.keys(nextErrors).length === 0
   }
+
+  const buildBookFormData = (book) => {
+    const formData = new FormData()
+    formData.append('title', book.title.trim())
+    formData.append('author', book.author.trim())
+    formData.append('category', book.category.trim())
+    formData.append('description', book.description.trim())
+    formData.append('tags', JSON.stringify(
+      book.tags
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter(Boolean),
+    ))
+    formData.append('language', book.language.trim())
+    formData.append('difficulty', book.difficulty.trim())
+
+    if (book.thumbnailUrl?.trim()) {
+      formData.append('thumbnail', book.thumbnailUrl.trim())
+    } else if (book.thumbnailFile) {
+      formData.append('thumbnail', book.thumbnailFile)
+    }
+
+    if (book.fileUrl?.trim()) {
+      formData.append('fileUrl', book.fileUrl.trim())
+    } else if (book.bookFile) {
+      formData.append('file', book.bookFile)
+    }
+
+    return formData
+  }
+
+  const uploadBook = async ({ book, token }) => apiClient.post('/api/books', buildBookFormData(book), {
+    maxBodyLength: Infinity,
+    maxContentLength: Infinity,
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -138,39 +267,7 @@ export default function AdminAddBookPage() {
         throw new Error('Please login first')
       }
 
-      const formData = new FormData()
-      formData.append('title', form.title.trim())
-      formData.append('author', form.author.trim())
-      formData.append('category', form.category.trim())
-      formData.append('description', form.description.trim())
-      formData.append('tags', JSON.stringify(
-        form.tags
-          .split(',')
-          .map((tag) => tag.trim())
-          .filter(Boolean),
-      ))
-      formData.append('language', form.language.trim())
-      formData.append('difficulty', form.difficulty.trim())
-
-      if (form.thumbnailUrl.trim()) {
-        formData.append('thumbnail', form.thumbnailUrl.trim())
-      } else if (thumbnailFile) {
-        formData.append('thumbnail', thumbnailFile)
-      }
-
-      if (form.fileUrl.trim()) {
-        formData.append('fileUrl', form.fileUrl.trim())
-      } else if (bookFile) {
-        formData.append('file', bookFile)
-      }
-
-      await apiClient.post('/api/books', formData, {
-        maxBodyLength: Infinity,
-        maxContentLength: Infinity,
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
+      await uploadBook({ book: { ...form, bookFile, thumbnailFile }, token })
 
       setStatus('')
       setToast('Book uploaded successfully.')
@@ -196,6 +293,101 @@ export default function AdminAddBookPage() {
     setStatus('')
   }
 
+  const updateBulkSlot = (id, key, value) => {
+    setBulkSlots((prev) => prev.map((slot) => (slot.id === id ? { ...slot, [key]: value } : slot)))
+    setBulkErrors((prev) => ({ ...prev, [id]: { ...prev[id], [key]: '' } }))
+    setBulkProgress((prev) => {
+      if (prev[id]?.status !== 'failed') return prev
+      return { ...prev, [id]: { status: 'pending', error: '' } }
+    })
+  }
+
+  const addBulkSlot = () => {
+    setBulkSlots((prev) => (prev.length >= maxBulkSlots ? prev : [...prev, createBulkSlot()]))
+    setBulkSummary('')
+    setBulkStatus('')
+  }
+
+  const removeBulkSlot = (id) => {
+    setBulkSlots((prev) => (prev.length === 1 ? prev : prev.filter((slot) => slot.id !== id)))
+    setBulkErrors((prev) => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+    setBulkProgress((prev) => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+  }
+
+  const validateBulkSlots = (slotsToValidate) => {
+    const nextErrors = {}
+
+    slotsToValidate.forEach((slot) => {
+      const slotErrors = validateBookFields({ book: slot, requireFiles: true })
+      if (Object.keys(slotErrors).length) nextErrors[slot.id] = slotErrors
+    })
+
+    setBulkErrors(nextErrors)
+    return Object.keys(nextErrors).length === 0
+  }
+
+  const handleBulkUpload = async (event) => {
+    event.preventDefault()
+    setBulkStatus('')
+    setBulkSummary('')
+
+    const pendingSlots = bulkSlots.filter((slot) => bulkProgress[slot.id]?.status !== 'done')
+    if (!pendingSlots.length) {
+      setBulkSummary(`${bulkSlots.length} uploaded, 0 failed`)
+      return
+    }
+
+    if (!validateBulkSlots(pendingSlots)) {
+      setBulkStatus('Please fix the highlighted fields before uploading.')
+      return
+    }
+
+    try {
+      setBulkUploading(true)
+      const token = localStorage.getItem('authToken')
+      if (!token) throw new Error('Please login first')
+
+      let uploadedCount = bulkSlots.filter((slot) => bulkProgress[slot.id]?.status === 'done').length
+      let failedCount = 0
+      let attemptedCount = 0
+
+      for (const slot of pendingSlots) {
+        attemptedCount += 1
+        setBulkStatus(`Uploading ${attemptedCount} of ${pendingSlots.length}...`)
+        setBulkProgress((prev) => ({ ...prev, [slot.id]: { status: 'uploading', error: '' } }))
+
+        try {
+          await uploadBook({ book: slot, token })
+          uploadedCount += 1
+          setBulkProgress((prev) => ({ ...prev, [slot.id]: { status: 'done', error: '' } }))
+        } catch (uploadError) {
+          failedCount += 1
+          const message = uploadError.response?.data?.message || uploadError.message || 'Failed to upload this book.'
+          setBulkProgress((prev) => ({ ...prev, [slot.id]: { status: 'failed', error: message } }))
+        }
+      }
+
+      setBulkStatus('')
+      setBulkSummary(`${uploadedCount} uploaded, ${failedCount} failed`)
+      if (failedCount === 0) {
+        setToast('All books uploaded successfully.')
+        setTimeout(() => setToast(''), 2600)
+      }
+    } catch (bulkError) {
+      setBulkStatus(bulkError.message || 'Failed to start bulk upload.')
+    } finally {
+      setBulkUploading(false)
+    }
+  }
+
   return (
     <div className="relative min-h-screen overflow-x-clip bg-[#050914] text-slate-100">
       <div className="pointer-events-none absolute -left-24 top-16 h-72 w-72 rounded-full bg-blue-500/20 blur-[120px]" />
@@ -217,221 +409,283 @@ export default function AdminAddBookPage() {
             <p className="mt-2 text-sm text-slate-300">Publish new reading content with complete metadata and premium catalog quality.</p>
           </div>
 
-          <motion.form
-            onSubmit={handleSubmit}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="rounded-2xl border border-white/15 bg-white/[0.05] p-5 shadow-[0_18px_55px_rgba(7,10,32,0.35)] backdrop-blur-xl"
-          >
-            <div className="grid gap-5 md:grid-cols-2">
-              <Field label="Title" error={errors.title}>
-                <input
-                  type="text"
-                  value={form.title}
-                  onChange={(e) => onChange('title', e.target.value)}
-                  placeholder="The Pragmatic Programmer"
-                  className={inputClass}
-                />
-              </Field>
-
-              <Field label="Author" error={errors.author}>
-                <input
-                  type="text"
-                  value={form.author}
-                  onChange={(e) => onChange('author', e.target.value)}
-                  placeholder="Andrew Hunt"
-                  className={inputClass}
-                />
-              </Field>
-
-              <Field label="Category" error={errors.category}>
-                <CategoryCombobox
-                  value={form.category}
-                  onChange={(val) => onChange('category', val)}
-                  placeholder="e.g. Programming, Finance, Fiction"
-                />
-              </Field>
-
-              <Field label="Difficulty" error={errors.difficulty}>
-                <select
-                  value={form.difficulty}
-                  onChange={(e) => onChange('difficulty', e.target.value)}
-                  className={inputClass}
-                >
-                  {difficulties.map((difficulty) => (
-                    <option key={difficulty} value={difficulty} className="bg-slate-900">
-                      {difficulty}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-
-              <Field label="Book File (PDF/EPUB)" error={errors.fileUrl}>
-                <div className="rounded-xl border border-white/15 bg-slate-950/35 p-3">
-                  <div className="mb-3 inline-flex rounded-lg border border-white/15 bg-white/[0.04] p-1">
-                    <button
-                      type="button"
-                      onClick={() => onMediaModeChange('file', 'url')}
-                      className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                        mediaMode.file === 'url'
-                          ? 'bg-gradient-to-r from-blue-500/40 to-violet-500/40 text-white'
-                          : 'text-slate-300 hover:text-white'
-                      }`}
-                    >
-                      Use URL
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onMediaModeChange('file', 'file')}
-                      className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                        mediaMode.file === 'file'
-                          ? 'bg-gradient-to-r from-blue-500/40 to-violet-500/40 text-white'
-                          : 'text-slate-300 hover:text-white'
-                      }`}
-                    >
-                      Upload File
-                    </button>
-                  </div>
-
-                  {mediaMode.file === 'url' ? (
-                    <input
-                      type="url"
-                      value={form.fileUrl}
-                      onChange={(e) => onChange('fileUrl', e.target.value)}
-                      placeholder="https://example.com/book.epub"
-                      className={inputClass}
-                    />
-                  ) : (
-                    <div>
-                      <input
-                        type="file"
-                        accept=".pdf,.epub,application/pdf,application/epub+zip"
-                        onChange={(e) => setBookFile(e.target.files?.[0] || null)}
-                        className={`${inputClass} file:mr-3 file:rounded-md file:border-0 file:bg-blue-500/30 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-blue-100`}
-                      />
-                      <p className="mt-2 text-xs text-slate-300">{bookFile ? `Selected: ${bookFile.name}` : 'No file selected'}</p>
-                    </div>
-                  )}
-                </div>
-              </Field>
-
-              <Field label="Thumbnail Source" error={errors.thumbnailUrl}>
-                <div className="rounded-xl border border-white/15 bg-slate-950/35 p-3">
-                  <div className="mb-3 inline-flex rounded-lg border border-white/15 bg-white/[0.04] p-1">
-                    <button
-                      type="button"
-                      onClick={() => onMediaModeChange('thumbnail', 'url')}
-                      className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                        mediaMode.thumbnail === 'url'
-                          ? 'bg-gradient-to-r from-blue-500/40 to-violet-500/40 text-white'
-                          : 'text-slate-300 hover:text-white'
-                      }`}
-                    >
-                      Use URL
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onMediaModeChange('thumbnail', 'file')}
-                      className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                        mediaMode.thumbnail === 'file'
-                          ? 'bg-gradient-to-r from-blue-500/40 to-violet-500/40 text-white'
-                          : 'text-slate-300 hover:text-white'
-                      }`}
-                    >
-                      Upload File
-                    </button>
-                  </div>
-
-                  {mediaMode.thumbnail === 'url' ? (
-                    <input
-                      type="url"
-                      value={form.thumbnailUrl}
-                      onChange={(e) => onChange('thumbnailUrl', e.target.value)}
-                      placeholder="https://example.com/thumb.jpg"
-                      className={inputClass}
-                    />
-                  ) : (
-                    <div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)}
-                        className={`${inputClass} file:mr-3 file:rounded-md file:border-0 file:bg-blue-500/30 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-blue-100`}
-                      />
-                      <p className="mt-2 text-xs text-slate-300">
-                        {thumbnailFile ? `Selected: ${thumbnailFile.name}` : 'No file selected'}
-                      </p>
-                    </div>
-                  )}
-
-                  {thumbnailPreview ? (
-                    <div className="mt-3 overflow-hidden rounded-xl border border-white/15 bg-slate-900/40">
-                      <img loading="lazy" src={thumbnailPreview} alt="Thumbnail preview" className="h-32 w-full object-cover" />
-                    </div>
-                  ) : null}
-                </div>
-              </Field>
-
-              <Field label="Tags" error={errors.tags}>
-                <input
-                  type="text"
-                  value={form.tags}
-                  onChange={(e) => onChange('tags', e.target.value)}
-                  placeholder="programming, software, clean-code"
-                  className={inputClass}
-                />
-              </Field>
-
-              <Field label="Language" error={errors.language}>
-                <input
-                  type="text"
-                  value={form.language}
-                  onChange={(e) => onChange('language', e.target.value)}
-                  placeholder="English"
-                  className={inputClass}
-                />
-              </Field>
-            </div>
-
-            <div className="mt-5">
-              <Field label="Description" error={errors.description}>
-                <textarea
-                  value={form.description}
-                  onChange={(e) => onChange('description', e.target.value)}
-                  rows={5}
-                  placeholder="Write a clear and engaging description of this book..."
-                  className={`${inputClass} resize-none`}
-                />
-              </Field>
-            </div>
-
-            {status ? (
-              <p className={`mt-4 text-sm ${status.includes('ready') ? 'text-emerald-300' : 'text-rose-300'}`}>{status}</p>
-            ) : null}
-
-            <div className="mt-6 flex flex-wrap gap-3">
-              <motion.button
-                whileHover={{ y: -2, scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                type="submit"
-                disabled={submitting}
-                className="rounded-xl bg-gradient-to-r from-blue-500 to-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-[0_10px_34px_rgba(87,104,255,0.45)] transition hover:shadow-[0_0_30px_rgba(112,105,255,0.55)]"
-              >
-                {submitting ? 'Uploading...' : 'Upload Book'}
-              </motion.button>
-
-              <motion.button
-                whileHover={{ y: -2 }}
-                whileTap={{ scale: 0.98 }}
+          <div className="mb-5 inline-flex rounded-xl border border-white/15 bg-white/[0.04] p-1">
+            {[
+              ['single', 'Single Book'],
+              ['bulk', 'Bulk Upload'],
+            ].map(([tab, label]) => (
+              <button
+                key={tab}
                 type="button"
-                onClick={handleReset}
-                className="rounded-xl border border-white/20 bg-white/[0.07] px-6 py-3 text-sm font-semibold text-slate-100 transition hover:border-blue-300/35 hover:bg-white/[0.12]"
+                onClick={() => setActiveTab(tab)}
+                className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  activeTab === tab
+                    ? 'bg-gradient-to-r from-blue-500/40 to-violet-500/40 text-white shadow-[0_8px_24px_rgba(87,104,255,0.18)]'
+                    : 'text-slate-300 hover:text-white'
+                }`}
               >
-                Reset
-              </motion.button>
-            </div>
-          </motion.form>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {activeTab === 'single' ? (
+            <motion.form
+              onSubmit={handleSubmit}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="rounded-2xl border border-white/15 bg-white/[0.05] p-5 shadow-[0_18px_55px_rgba(7,10,32,0.35)] backdrop-blur-xl"
+            >
+              <div className="grid gap-5 md:grid-cols-2">
+                <Field label="Title" error={errors.title}>
+                  <input type="text" value={form.title} onChange={(e) => onChange('title', e.target.value)} placeholder="The Pragmatic Programmer" className={inputClass} />
+                </Field>
+
+                <Field label="Author" error={errors.author}>
+                  <input type="text" value={form.author} onChange={(e) => onChange('author', e.target.value)} placeholder="Andrew Hunt" className={inputClass} />
+                </Field>
+
+                <Field label="Category" error={errors.category}>
+                  <CategoryCombobox value={form.category} onChange={(val) => onChange('category', val)} placeholder="e.g. Programming, Finance, Fiction" />
+                </Field>
+
+                <Field label="Difficulty" error={errors.difficulty}>
+                  <select value={form.difficulty} onChange={(e) => onChange('difficulty', e.target.value)} className={inputClass}>
+                    {difficulties.map((difficulty) => (
+                      <option key={difficulty} value={difficulty} className="bg-slate-900">
+                        {difficulty}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+
+                <Field label="Book File (PDF/EPUB)" error={errors.fileUrl}>
+                  <div className="rounded-xl border border-white/15 bg-slate-950/35 p-3">
+                    <div className="mb-3 inline-flex rounded-lg border border-white/15 bg-white/[0.04] p-1">
+                      <button type="button" onClick={() => onMediaModeChange('file', 'url')} className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${mediaMode.file === 'url' ? 'bg-gradient-to-r from-blue-500/40 to-violet-500/40 text-white' : 'text-slate-300 hover:text-white'}`}>
+                        Use URL
+                      </button>
+                      <button type="button" onClick={() => onMediaModeChange('file', 'file')} className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${mediaMode.file === 'file' ? 'bg-gradient-to-r from-blue-500/40 to-violet-500/40 text-white' : 'text-slate-300 hover:text-white'}`}>
+                        Upload File
+                      </button>
+                    </div>
+
+                    {mediaMode.file === 'url' ? (
+                      <input type="url" value={form.fileUrl} onChange={(e) => onChange('fileUrl', e.target.value)} placeholder="https://example.com/book.epub" className={inputClass} />
+                    ) : (
+                      <div>
+                        <input
+                          type="file"
+                          accept=".pdf,.epub,application/pdf,application/epub+zip"
+                          onChange={(e) => {
+                            setBookFile(e.target.files?.[0] || null)
+                            setErrors((prev) => ({ ...prev, fileUrl: '' }))
+                          }}
+                          className={`${inputClass} file:mr-3 file:rounded-md file:border-0 file:bg-blue-500/30 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-blue-100`}
+                        />
+                        <p className="mt-2 text-xs text-slate-300">{bookFile ? `Selected: ${bookFile.name}` : 'No file selected'}</p>
+                      </div>
+                    )}
+                  </div>
+                </Field>
+
+                <Field label="Thumbnail Source" error={errors.thumbnailUrl}>
+                  <div className="rounded-xl border border-white/15 bg-slate-950/35 p-3">
+                    <div className="mb-3 inline-flex rounded-lg border border-white/15 bg-white/[0.04] p-1">
+                      <button type="button" onClick={() => onMediaModeChange('thumbnail', 'url')} className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${mediaMode.thumbnail === 'url' ? 'bg-gradient-to-r from-blue-500/40 to-violet-500/40 text-white' : 'text-slate-300 hover:text-white'}`}>
+                        Use URL
+                      </button>
+                      <button type="button" onClick={() => onMediaModeChange('thumbnail', 'file')} className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${mediaMode.thumbnail === 'file' ? 'bg-gradient-to-r from-blue-500/40 to-violet-500/40 text-white' : 'text-slate-300 hover:text-white'}`}>
+                        Upload File
+                      </button>
+                    </div>
+
+                    {mediaMode.thumbnail === 'url' ? (
+                      <input type="url" value={form.thumbnailUrl} onChange={(e) => onChange('thumbnailUrl', e.target.value)} placeholder="https://example.com/thumb.jpg" className={inputClass} />
+                    ) : (
+                      <div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            setThumbnailFile(e.target.files?.[0] || null)
+                            setErrors((prev) => ({ ...prev, thumbnailUrl: '' }))
+                          }}
+                          className={`${inputClass} file:mr-3 file:rounded-md file:border-0 file:bg-blue-500/30 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-blue-100`}
+                        />
+                        <p className="mt-2 text-xs text-slate-300">{thumbnailFile ? `Selected: ${thumbnailFile.name}` : 'No file selected'}</p>
+                      </div>
+                    )}
+
+                    {thumbnailPreview ? (
+                      <div className="mt-3 overflow-hidden rounded-xl border border-white/15 bg-slate-900/40">
+                        <img loading="lazy" src={thumbnailPreview} alt="Thumbnail preview" className="h-32 w-full object-cover" />
+                      </div>
+                    ) : null}
+                  </div>
+                </Field>
+
+                <Field label="Tags" error={errors.tags}>
+                  <input type="text" value={form.tags} onChange={(e) => onChange('tags', e.target.value)} placeholder="programming, software, clean-code" className={inputClass} />
+                </Field>
+
+                <Field label="Language" error={errors.language}>
+                  <input type="text" value={form.language} onChange={(e) => onChange('language', e.target.value)} placeholder="English" className={inputClass} />
+                </Field>
+              </div>
+
+              <div className="mt-5">
+                <Field label="Description" error={errors.description}>
+                  <textarea value={form.description} onChange={(e) => onChange('description', e.target.value)} rows={5} placeholder="Write a clear and engaging description of this book..." className={`${inputClass} resize-none`} />
+                </Field>
+              </div>
+
+              {status ? <p className="mt-4 text-sm text-rose-300">{status}</p> : null}
+
+              <div className="mt-6 flex flex-wrap gap-3">
+                <motion.button whileHover={{ y: -2, scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" disabled={submitting} className="rounded-xl bg-gradient-to-r from-blue-500 to-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-[0_10px_34px_rgba(87,104,255,0.45)] transition hover:shadow-[0_0_30px_rgba(112,105,255,0.55)] disabled:cursor-not-allowed disabled:opacity-60">
+                  {submitting ? 'Uploading...' : 'Upload Book'}
+                </motion.button>
+
+                <motion.button whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }} type="button" onClick={handleReset} className="rounded-xl border border-white/20 bg-white/[0.07] px-6 py-3 text-sm font-semibold text-slate-100 transition hover:border-blue-300/35 hover:bg-white/[0.12]">
+                  Reset
+                </motion.button>
+              </div>
+            </motion.form>
+          ) : (
+            <motion.form
+              onSubmit={handleBulkUpload}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="space-y-5"
+            >
+              {bulkSlots.map((slot, index) => {
+                const slotErrors = bulkErrors[slot.id] || {}
+                const progress = bulkProgress[slot.id] || { status: 'pending' }
+                const isDone = progress.status === 'done'
+
+                return (
+                  <section key={slot.id} className="rounded-2xl border border-white/15 bg-white/[0.05] p-5 shadow-[0_18px_55px_rgba(7,10,32,0.28)] backdrop-blur-xl">
+                    <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-100/70">Book Slot {index + 1}</p>
+                        <h3 className="mt-1 text-xl font-black text-white">{slot.title.trim() || 'Untitled book'}</h3>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <ProgressBadge state={progress} />
+                        <button
+                          type="button"
+                          onClick={() => removeBulkSlot(slot.id)}
+                          disabled={bulkSlots.length === 1 || bulkUploading}
+                          aria-label={`Remove book slot ${index + 1}`}
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/[0.06] text-slate-200 transition hover:border-rose-300/40 hover:bg-rose-500/15 hover:text-rose-100 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <MdClose className="h-5 w-5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className={`grid gap-5 md:grid-cols-2 ${isDone ? 'opacity-70' : ''}`}>
+                      <Field label="Title" error={slotErrors.title}>
+                        <input type="text" value={slot.title} onChange={(e) => updateBulkSlot(slot.id, 'title', e.target.value)} disabled={bulkUploading || isDone} placeholder="Clean Architecture" className={inputClass} />
+                      </Field>
+
+                      <Field label="Author" error={slotErrors.author}>
+                        <input type="text" value={slot.author} onChange={(e) => updateBulkSlot(slot.id, 'author', e.target.value)} disabled={bulkUploading || isDone} placeholder="Robert C. Martin" className={inputClass} />
+                      </Field>
+
+                      <Field label="Category" error={slotErrors.category}>
+                        <CategoryCombobox value={slot.category} onChange={(val) => updateBulkSlot(slot.id, 'category', val)} placeholder="e.g. Programming, Finance, Fiction" />
+                      </Field>
+
+                      <Field label="Difficulty" error={slotErrors.difficulty}>
+                        <select value={slot.difficulty} onChange={(e) => updateBulkSlot(slot.id, 'difficulty', e.target.value)} disabled={bulkUploading || isDone} className={inputClass}>
+                          {difficulties.map((difficulty) => (
+                            <option key={difficulty} value={difficulty} className="bg-slate-900">
+                              {difficulty}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+
+                      <Field label="Book File (PDF/EPUB)" error={slotErrors.bookFile}>
+                        <div className="rounded-xl border border-white/15 bg-slate-950/35 p-3">
+                          <input
+                            type="file"
+                            accept=".pdf,.epub,application/pdf,application/epub+zip"
+                            disabled={bulkUploading || isDone}
+                            onChange={(e) => updateBulkSlot(slot.id, 'bookFile', e.target.files?.[0] || null)}
+                            className={`${inputClass} file:mr-3 file:rounded-md file:border-0 file:bg-blue-500/30 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-blue-100`}
+                          />
+                          <p className="mt-2 text-xs text-slate-300">{slot.bookFile ? `Selected: ${slot.bookFile.name}` : 'No file selected'}</p>
+                        </div>
+                      </Field>
+
+                      <Field label="Thumbnail File" error={slotErrors.thumbnailFile}>
+                        <div className="rounded-xl border border-white/15 bg-slate-950/35 p-3">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            disabled={bulkUploading || isDone}
+                            onChange={(e) => updateBulkSlot(slot.id, 'thumbnailFile', e.target.files?.[0] || null)}
+                            className={`${inputClass} file:mr-3 file:rounded-md file:border-0 file:bg-blue-500/30 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-blue-100`}
+                          />
+                          <p className="mt-2 text-xs text-slate-300">{slot.thumbnailFile ? `Selected: ${slot.thumbnailFile.name}` : 'No file selected'}</p>
+                        </div>
+                      </Field>
+
+                      <Field label="Tags" error={slotErrors.tags}>
+                        <input type="text" value={slot.tags} onChange={(e) => updateBulkSlot(slot.id, 'tags', e.target.value)} disabled={bulkUploading || isDone} placeholder="software, engineering, systems" className={inputClass} />
+                      </Field>
+
+                      <Field label="Language" error={slotErrors.language}>
+                        <input type="text" value={slot.language} onChange={(e) => updateBulkSlot(slot.id, 'language', e.target.value)} disabled={bulkUploading || isDone} placeholder="English" className={inputClass} />
+                      </Field>
+                    </div>
+
+                    <div className={`mt-5 ${isDone ? 'opacity-70' : ''}`}>
+                      <Field label="Description" error={slotErrors.description}>
+                        <textarea value={slot.description} onChange={(e) => updateBulkSlot(slot.id, 'description', e.target.value)} disabled={bulkUploading || isDone} rows={4} placeholder="Write a clear and engaging description of this book..." className={`${inputClass} resize-none`} />
+                      </Field>
+                    </div>
+
+                    {progress.status === 'failed' && progress.error ? (
+                      <p className="mt-4 rounded-xl border border-rose-300/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{progress.error}</p>
+                    ) : null}
+                  </section>
+                )
+              })}
+
+              {bulkStatus ? <p className="text-sm text-rose-300">{bulkStatus}</p> : null}
+              {bulkSummary ? <p className="text-sm font-semibold text-emerald-300">{bulkSummary}</p> : null}
+
+              <div className="flex flex-wrap gap-3">
+                <motion.button
+                  whileHover={{ y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  type="button"
+                  onClick={addBulkSlot}
+                  disabled={bulkSlots.length >= maxBulkSlots || bulkUploading}
+                  className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/[0.07] px-5 py-3 text-sm font-semibold text-slate-100 transition hover:border-blue-300/35 hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <MdAdd className="h-5 w-5" />
+                  Add Another Book
+                </motion.button>
+
+                <motion.button
+                  whileHover={{ y: -2, scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  type="submit"
+                  disabled={bulkUploading}
+                  className="rounded-xl bg-gradient-to-r from-blue-500 to-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-[0_10px_34px_rgba(87,104,255,0.45)] transition hover:shadow-[0_0_30px_rgba(112,105,255,0.55)] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {bulkUploading ? 'Uploading Books...' : 'Upload All Books'}
+                </motion.button>
+              </div>
+            </motion.form>
+          )}
         </main>
       </div>
     </div>
