@@ -4,6 +4,7 @@ const PRODUCTION_DOMAIN = 'https://readifyai.vercel.app'
 
 export default function SEO({ title, description, image, path, schema }) {
   const canonicalUrl = `${PRODUCTION_DOMAIN}${path || ''}`
+  const robots = path?.startsWith('/admin') ? 'noindex, nofollow' : 'index, follow'
   const siteName = 'Readify AI'
   const defaultImage = `${PRODUCTION_DOMAIN}/favicon.svg`
 
@@ -12,6 +13,7 @@ export default function SEO({ title, description, image, path, schema }) {
       {/* Basic Meta Tags */}
       <title>{title ? `${title}` : 'Readify AI - Read Books Online Free'}</title>
       <link rel="canonical" href={canonicalUrl} />
+      <meta name="robots" content={robots} />
       {description && <meta name="description" content={description} />}
 
       {/* Open Graph Tags */}

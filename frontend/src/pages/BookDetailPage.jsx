@@ -5,9 +5,11 @@ import { MdChevronLeft, MdBook, MdTimer, MdLanguage, MdVisibility, MdFolderOpen 
 import apiClient from '../lib/apiClient'
 import { getBookThumbnailUrl, applyThumbnailFallback } from '../lib/mediaUrls'
 import { buildReaderHash } from '../lib/readerLink'
-import SEO from '../components/SEO'
 import SaveBookHeart from '../components/SaveBookHeart'
 import EmptyState from '../components/EmptyState'
+
+const BOOK_SEO_ATTR = 'data-book-detail-seo'
+const PRODUCTION_DOMAIN = 'https://readifyai.vercel.app'
 
 const getCategoryColorStyles = (category) => {
   const cat = (category || '').toString().trim().toLowerCase()
@@ -278,25 +280,67 @@ export default function BookDetailPage() {
   }, [pageCount])
 
   const seoDescription = useMemo(() => {
-    return (book?.description || '').slice(0, 155)
+    return (book?.description || '').slice(0, 160)
   }, [book])
 
   useEffect(() => {
     if (!book) return undefined
 
+    const previousTitle = document.title
+    const bookUrl = `${PRODUCTION_DOMAIN}/book/${book._id}`
+    const fullDescription = `${seoDescription} - Read ${book.title} free on Readify AI`
+    const taggedSelector = `[${BOOK_SEO_ATTR}="true"]`
+
+    document.querySelectorAll(taggedSelector).forEach((node) => node.remove())
+    document.title = `${book.title} by ${book.author} - Read Free on Readify AI`
+
+    const addMetaTag = (attribute, key, content) => {
+      const meta = document.createElement('meta')
+      meta.setAttribute(attribute, key)
+      meta.setAttribute('content', content || '')
+      meta.setAttribute(BOOK_SEO_ATTR, 'true')
+      document.head.appendChild(meta)
+    }
+
+    addMetaTag('name', 'description', fullDescription)
+    addMetaTag('name', 'keywords', `${book.title}, ${book.author}, ${book.category}, read online free, epub, ebook`)
+    addMetaTag('property', 'og:title', `${book.title} by ${book.author}`)
+    addMetaTag('property', 'og:description', seoDescription)
+    addMetaTag('property', 'og:image', book.thumbnail)
+    addMetaTag('property', 'og:url', bookUrl)
+    addMetaTag('property', 'og:type', 'book')
+    addMetaTag('name', 'twitter:card', 'summary_large_image')
+    addMetaTag('name', 'twitter:title', `${book.title} by ${book.author}`)
+    addMetaTag('name', 'twitter:image', book.thumbnail)
+
     const script = document.createElement('script')
     script.type = 'application/ld+json'
+    script.setAttribute(BOOK_SEO_ATTR, 'true')
     script.textContent = JSON.stringify({
       '@context': 'https://schema.org',
       '@type': 'Book',
       name: book.title,
-      author: book.author,
-      description: seoDescription
+      author: {
+        '@type': 'Person',
+        name: book.author
+      },
+      description: book.description,
+      image: book.thumbnail,
+      genre: book.category,
+      inLanguage: book.language || 'English',
+      url: bookUrl,
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'USD',
+        availability: 'https://schema.org/InStock'
+      }
     })
     document.head.appendChild(script)
 
     return () => {
-      script.remove()
+      document.querySelectorAll(taggedSelector).forEach((node) => node.remove())
+      document.title = previousTitle
     }
   }, [book, seoDescription])
 
@@ -328,13 +372,6 @@ export default function BookDetailPage() {
       transition={{ duration: 0.35 }}
       className="mx-auto w-full max-w-6xl text-slate-100 bg-slate-950"
     >
-      <SEO
-        title={`${book.title} by ${book.author} — Readify AI`}
-        description={seoDescription}
-        image={book.thumbnail}
-        path={`/book/${book._id}`}
-      />
-
       {/* Mobile Top Header Backdrop (Cover Image) */}
       <div className="relative md:hidden w-full aspect-[4/3] sm:aspect-[16/9] overflow-hidden bg-slate-950">
         <img

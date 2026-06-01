@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const API_URL = 'https://book-verse-production.up.railway.app/api/books';
+const API_URL = 'https://book-verse-production.up.railway.app/api/books?limit=50';
 const PRODUCTION_DOMAIN = 'https://readifyai.vercel.app';
 const TARGET_PATH = path.resolve(__dirname, 'public/sitemap.xml');
 
@@ -18,12 +18,49 @@ const sanitizeDate = (dateVal) => {
 };
 
 const staticRoutes = [
-  { loc: `${PRODUCTION_DOMAIN}/`, priority: '1.0' },
-  { loc: `${PRODUCTION_DOMAIN}/books`, priority: '0.6' },
-  { loc: `${PRODUCTION_DOMAIN}/categories`, priority: '0.6' },
-  { loc: `${PRODUCTION_DOMAIN}/recommended`, priority: '0.6' },
-  { loc: `${PRODUCTION_DOMAIN}/explore`, priority: '0.6' }
+  { loc: `${PRODUCTION_DOMAIN}/`, changefreq: 'weekly', priority: '1.0' },
+  { loc: `${PRODUCTION_DOMAIN}/books`, changefreq: 'weekly', priority: '1.0' },
+  { loc: `${PRODUCTION_DOMAIN}/categories`, changefreq: 'weekly', priority: '1.0' },
+  { loc: `${PRODUCTION_DOMAIN}/recommended`, changefreq: 'weekly', priority: '1.0' }
 ];
+
+const buildSitemapXml = (books = []) => {
+  const todayStr = sanitizeDate();
+  let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+  xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+
+  staticRoutes.forEach(route => {
+    xml += '  <url>\n';
+    xml += `    <loc>${route.loc}</loc>\n`;
+    xml += `    <lastmod>${todayStr}</lastmod>\n`;
+    xml += `    <changefreq>${route.changefreq}</changefreq>\n`;
+    xml += `    <priority>${route.priority}</priority>\n`;
+    xml += '  </url>\n';
+  });
+
+  books.forEach(book => {
+    if (!book?._id) return;
+
+    xml += '  <url>\n';
+    xml += `    <loc>${PRODUCTION_DOMAIN}/book/${book._id}</loc>\n`;
+    xml += `    <lastmod>${sanitizeDate(book.updatedAt)}</lastmod>\n`;
+    xml += '    <changefreq>monthly</changefreq>\n';
+    xml += '    <priority>0.8</priority>\n';
+    xml += '  </url>\n';
+  });
+
+  xml += '</urlset>\n';
+  return xml;
+};
+
+const writeSitemap = (xml) => {
+  const dir = path.dirname(TARGET_PATH);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+
+  fs.writeFileSync(TARGET_PATH, xml, 'utf8');
+};
 
 const fetchBooks = async () => {
   if (typeof fetch === 'function') {
@@ -52,7 +89,6 @@ const fetchBooks = async () => {
 };
 
 const main = async () => {
-  const todayStr = sanitizeDate();
   try {
     console.log(`Fetching books from ${API_URL}...`);
     const payload = await fetchBooks();
@@ -66,66 +102,12 @@ const main = async () => {
 
     console.log(`Successfully fetched ${books.length} books.`);
 
-    let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
-    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-
-    staticRoutes.forEach(route => {
-      xml += '  <url>\n';
-      xml += `    <loc>${route.loc}</loc>\n`;
-      xml += `    <lastmod>${todayStr}</lastmod>\n`;
-      xml += `    <changefreq>weekly</changefreq>\n`;
-      xml += `    <priority>${route.priority}</priority>\n`;
-      xml += '  </url>\n';
-    });
-
-    // 2. Dynamic Book Routes (Priority: 0.8)
-    books.forEach(book => {
-      const bookId = book._id || book.id;
-      if (!bookId) return;
-
-      const lastmod = sanitizeDate(book.updatedAt || book.createdAt);
-
-      xml += '  <url>\n';
-      xml += `    <loc>${PRODUCTION_DOMAIN}/book/${bookId}</loc>\n`;
-      xml += `    <lastmod>${lastmod}</lastmod>\n`;
-      xml += `    <changefreq>weekly</changefreq>\n`;
-      xml += `    <priority>0.8</priority>\n`;
-      xml += '  </url>\n';
-    });
-
-    xml += '</urlset>\n';
-
-    // Ensure containing directory exists
-    const dir = path.dirname(TARGET_PATH);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-
-    fs.writeFileSync(TARGET_PATH, xml, 'utf8');
+    writeSitemap(buildSitemapXml(books));
     console.log(`Sitemap written successfully to: ${TARGET_PATH}`);
   } catch (error) {
     console.warn(`Database/API fetch failed: ${error.message}. Generating static-only fallback sitemap...`);
 
-    let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
-    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-
-    staticRoutes.forEach(route => {
-      xml += '  <url>\n';
-      xml += `    <loc>${route.loc}</loc>\n`;
-      xml += `    <lastmod>${todayStr}</lastmod>\n`;
-      xml += `    <changefreq>weekly</changefreq>\n`;
-      xml += `    <priority>${route.priority}</priority>\n`;
-      xml += '  </url>\n';
-    });
-
-    xml += '</urlset>\n';
-
-    const dir = path.dirname(TARGET_PATH);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-
-    fs.writeFileSync(TARGET_PATH, xml, 'utf8');
+    writeSitemap(buildSitemapXml());
     console.log(`Static fallback sitemap written to: ${TARGET_PATH}`);
   }
 };
