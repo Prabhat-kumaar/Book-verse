@@ -580,7 +580,7 @@ export default function HomePage() {
           onClick={closeSignupPopup}
         >
           <div
-            className="relative w-full max-w-lg rounded-2xl border border-white/10 bg-slate-900/95 p-5 shadow-2xl backdrop-blur-xl sm:p-6"
+            className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-slate-900/95 p-4 shadow-2xl backdrop-blur-xl"
             onClick={(event) => event.stopPropagation()}
           >
             <button
@@ -596,7 +596,7 @@ export default function HomePage() {
               <p className="text-[11px] font-extrabold uppercase tracking-wider text-indigo-300">
                 FREE FOREVER • NO CREDIT CARD
               </p>
-              <h2 className="mt-3 text-2xl font-black leading-tight text-white sm:text-3xl">
+              <h2 className="mt-3 text-xl font-bold leading-tight text-white sm:text-2xl">
                 Everything a serious reader needs
               </h2>
               <p className="mt-2 text-sm leading-relaxed text-slate-300">
@@ -604,10 +604,10 @@ export default function HomePage() {
               </p>
             </div>
 
-            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="mt-5 grid grid-cols-2 gap-3">
               {signupPopupFeatures.map((feature) => (
-                <div key={feature.title} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-                  <img src={feature.imageSrc} alt={feature.imageAlt} className="w-full h-24 object-cover object-top rounded-lg mb-2" />
+                <div key={feature.title} className="rounded-2xl border border-white/10 bg-white/[0.04] p-2">
+                  <img src={feature.imageSrc} alt={feature.imageAlt} className="w-full h-16 object-cover object-top rounded-lg mb-2" />
                   <h3 className="mt-2 text-sm font-bold text-white">{feature.title}</h3>
                   <p className="mt-1 text-xs leading-relaxed text-slate-400">{feature.description}</p>
                 </div>
