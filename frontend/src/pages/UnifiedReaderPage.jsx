@@ -1,7 +1,36 @@
 import { Suspense, lazy, useMemo } from 'react'
 
-const PdfReaderPage = lazy(() => import('./PdfReaderPage'))
-const EpubReaderPage = lazy(() => import('./EpubReaderPage'))
+const CHUNK_RELOAD_KEY = 'readify_reader_chunk_reload_at'
+const CHUNK_RELOAD_TTL_MS = 30000
+
+function isChunkLoadError(error) {
+  const message = String(error?.message || error || '')
+  return /ChunkLoadError|Loading chunk|Failed to fetch dynamically imported module|Importing a module script failed/i.test(message)
+}
+
+function shouldReloadForChunkError() {
+  try {
+    const lastReloadAt = Number(sessionStorage.getItem(CHUNK_RELOAD_KEY) || 0)
+    if (lastReloadAt && Date.now() - lastReloadAt < CHUNK_RELOAD_TTL_MS) return false
+    sessionStorage.setItem(CHUNK_RELOAD_KEY, String(Date.now()))
+    return true
+  } catch {
+    return true
+  }
+}
+
+function lazyWithRetry(importer) {
+  return lazy(() => importer().catch((error) => {
+    if (isChunkLoadError(error) && shouldReloadForChunkError()) {
+      window.location.reload()
+      return new Promise(() => {})
+    }
+    throw error
+  }))
+}
+
+const PdfReaderPage = lazyWithRetry(() => import('./PdfReaderPage'))
+const EpubReaderPage = lazyWithRetry(() => import('./EpubReaderPage'))
 
 function getReaderTypeFromHash(hash) {
   const queryString = hash.includes('?') ? hash.split('?')[1] : ''
