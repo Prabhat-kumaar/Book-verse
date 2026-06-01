@@ -20,6 +20,33 @@ const goalCache = {
   lastFetchedAt: 0,
 }
 
+const SIGNUP_POPUP_DISMISSED_KEY = 'readify_popup_dismissed'
+const SIGNUP_POPUP_DELAY_MS = 8000
+const SIGNUP_POPUP_COOLDOWN_MS = 24 * 60 * 60 * 1000
+
+const signupPopupFeatures = [
+  {
+    icon: '📊',
+    title: 'Reading Dashboard',
+    description: 'Track started, completed books, total pages read, and reading time — all in one place.',
+  },
+  {
+    icon: '🔥',
+    title: 'Streaks & Goals',
+    description: 'Set your 2026 reading goal, track daily streaks, and stay motivated all year.',
+  },
+  {
+    icon: '📚',
+    title: 'Personal Library',
+    description: 'See all your completed books with covers, dates, and progress history saved forever.',
+  },
+  {
+    icon: '🏆',
+    title: 'Achievements & Badges',
+    description: 'Unlock badges like First Book Read, Night Owl, Speed Reader, and 10 Books Completed.',
+  },
+]
+
 async function fetchReadingGoal(userId) {
   if (!userId) return null
   if (goalCache.userId === userId && goalCache.inFlight) return goalCache.inFlight
@@ -193,6 +220,7 @@ function BookRow({ books, rowKey, loading, emptyTitle = 'No books available', vi
 export default function HomePage() {
   const navigate = useNavigate()
   const { books, loading, error } = useBooks()
+  const [isSignupPopupVisible, setIsSignupPopupVisible] = useState(false)
   const authUser = (() => {
     try {
       const raw = localStorage.getItem('authUser')
@@ -201,6 +229,40 @@ export default function HomePage() {
       return null
     }
   })()
+  const isGuestUser = !authUser
+
+  const closeSignupPopup = () => {
+    try {
+      localStorage.setItem(SIGNUP_POPUP_DISMISSED_KEY, String(Date.now()))
+    } catch {
+      // Ignore storage failures.
+    }
+    setIsSignupPopupVisible(false)
+  }
+
+  useEffect(() => {
+    if (!isGuestUser) {
+      setIsSignupPopupVisible(false)
+      return undefined
+    }
+
+    try {
+      const dismissedAt = Number(localStorage.getItem(SIGNUP_POPUP_DISMISSED_KEY) || 0)
+      if (dismissedAt && Date.now() - dismissedAt < SIGNUP_POPUP_COOLDOWN_MS) {
+        return undefined
+      }
+    } catch {
+      // If storage is unavailable, still allow the guest prompt for this session.
+    }
+
+    const timerId = window.setTimeout(() => {
+      setIsSignupPopupVisible(true)
+    }, SIGNUP_POPUP_DELAY_MS)
+
+    return () => {
+      window.clearTimeout(timerId)
+    }
+  }, [isGuestUser])
 
   // Reading Goal Motivator States
   const [goalData, setGoalData] = useState(null)
@@ -326,7 +388,8 @@ export default function HomePage() {
   }, [])
 
   return (
-    <motion.section
+    <>
+      <motion.section
       initial={{ opacity: 0, y: 28 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.85, ease: 'easeOut' }}
@@ -505,6 +568,76 @@ export default function HomePage() {
           </div>
         )}
       </div>
-    </motion.section>
+      </motion.section>
+
+      {isSignupPopupVisible && isGuestUser && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          onClick={closeSignupPopup}
+        >
+          <div
+            className="relative w-full max-w-lg rounded-2xl border border-white/10 bg-slate-900/95 p-5 shadow-2xl backdrop-blur-xl sm:p-6"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={closeSignupPopup}
+              className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-sm font-bold text-slate-300 transition hover:bg-white/10 hover:text-white"
+              aria-label="Close signup popup"
+            >
+              X
+            </button>
+
+            <div className="pr-10">
+              <p className="text-[11px] font-extrabold uppercase tracking-wider text-indigo-300">
+                FREE FOREVER • NO CREDIT CARD
+              </p>
+              <h2 className="mt-3 text-2xl font-black leading-tight text-white sm:text-3xl">
+                Everything a serious reader needs
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                Join readers already tracking their progress on Readify AI
+              </p>
+            </div>
+
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {signupPopupFeatures.map((feature) => (
+                <div key={feature.title} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+                  <div className="text-2xl" aria-hidden="true">{feature.icon}</div>
+                  <h3 className="mt-2 text-sm font-bold text-white">{feature.title}</h3>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-400">{feature.description}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-5">
+              <button
+                type="button"
+                onClick={() => {
+                  closeSignupPopup()
+                  navigate('/signup')
+                }}
+                className="inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 px-4 py-3 text-sm font-extrabold text-white shadow-lg shadow-indigo-950/30 transition hover:from-indigo-400 hover:to-violet-500"
+              >
+                Create Free Account &rarr;
+              </button>
+              <p className="mt-3 text-center text-xs text-slate-400">
+                Already have an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeSignupPopup()
+                    navigate('/login')
+                  }}
+                  className="font-bold text-indigo-300 transition hover:text-indigo-200"
+                >
+                  Sign in
+                </button>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
