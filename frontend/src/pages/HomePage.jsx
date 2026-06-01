@@ -580,7 +580,7 @@ export default function HomePage() {
           onClick={closeSignupPopup}
         >
           <div
-            className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-slate-900/95 p-4 shadow-2xl backdrop-blur-xl"
+            className="relative max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-slate-900/95 p-4 shadow-2xl backdrop-blur-xl"
             onClick={(event) => event.stopPropagation()}
           >
             <button
@@ -593,39 +593,39 @@ export default function HomePage() {
             </button>
 
             <div className="pr-10">
-              <p className="text-[11px] font-extrabold uppercase tracking-wider text-indigo-300">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-300 sm:text-[11px]">
                 FREE FOREVER • NO CREDIT CARD
               </p>
-              <h2 className="mt-3 text-xl font-bold leading-tight text-white sm:text-2xl">
+              <h2 className="mt-2 text-lg font-bold leading-tight text-white sm:mt-3 sm:text-2xl">
                 Everything a serious reader needs
               </h2>
-              <p className="mt-2 text-sm leading-relaxed text-slate-300">
+              <p className="mt-1.5 text-xs leading-relaxed text-slate-300 sm:mt-2 sm:text-sm">
                 Join readers already tracking their progress on Readify AI
               </p>
             </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-3">
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-5 sm:gap-3">
               {signupPopupFeatures.map((feature) => (
-                <div key={feature.title} className="rounded-2xl border border-white/10 bg-white/[0.04] p-2">
-                  <img src={feature.imageSrc} alt={feature.imageAlt} className="w-full h-16 object-cover object-top rounded-lg mb-2" />
-                  <h3 className="mt-2 text-sm font-bold text-white">{feature.title}</h3>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-400">{feature.description}</p>
+                <div key={feature.title} className="rounded-xl border border-white/10 bg-white/[0.04] p-2 sm:rounded-2xl">
+                  <img src={feature.imageSrc} alt={feature.imageAlt} className="mb-1.5 h-12 w-full rounded-lg object-cover object-top sm:mb-2 sm:h-16" />
+                  <h3 className="text-[11px] font-bold leading-tight text-white sm:text-sm">{feature.title}</h3>
+                  <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-slate-400 sm:text-xs sm:leading-relaxed">{feature.description}</p>
                 </div>
               ))}
             </div>
 
-            <div className="mt-5">
+            <div className="sticky bottom-0 -mx-4 mt-3 border-t border-white/10 bg-slate-900/95 px-4 pb-1 pt-3 backdrop-blur-xl sm:mt-5 sm:border-t-0 sm:pt-0">
               <button
                 type="button"
                 onClick={() => {
                   closeSignupPopup()
                   navigate('/signup')
                 }}
-                className="inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 px-4 py-3 text-sm font-extrabold text-white shadow-lg shadow-indigo-950/30 transition hover:from-indigo-400 hover:to-violet-500"
+                className="inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 px-4 py-2.5 text-sm font-extrabold text-white shadow-lg shadow-indigo-950/30 transition hover:from-indigo-400 hover:to-violet-500 sm:py-3"
               >
                 Create Free Account &rarr;
               </button>
-              <p className="mt-3 text-center text-xs text-slate-400">
+              <p className="mt-2 text-center text-xs text-slate-400 sm:mt-3">
                 Already have an account?{' '}
                 <button
                   type="button"
