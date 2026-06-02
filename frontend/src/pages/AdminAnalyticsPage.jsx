@@ -76,9 +76,7 @@ function RadialMetric({ label, pct, color }) {
 
 export default function AdminAnalyticsPage() {
   const [data, setData] = useState(null)
-  const [todayData, setTodayData] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [todayLoading, setTodayLoading] = useState(true)
   const [error, setError] = useState('')
   const [exporting, setExporting] = useState(false)
   const [timeFrame, setTimeFrame] = useState('day') // 'day' | 'month' | 'year'
@@ -102,21 +100,6 @@ export default function AdminAnalyticsPage() {
       }
     }
     fetchAnalyticsDetails()
-  }, [])
-
-  useEffect(() => {
-    const fetchTodayAnalytics = async () => {
-      try {
-        setTodayLoading(true)
-        const response = await apiClient.get('/api/analytics/admin/today')
-        setTodayData(response.data || null)
-      } catch (err) {
-        if (isDev) console.error('Error fetching today analytics:', err)
-      } finally {
-        setTodayLoading(false)
-      }
-    }
-    fetchTodayAnalytics()
   }, [])
 
   const chartData = data?.charts?.[timeFrame] || []
@@ -233,16 +216,16 @@ export default function AdminAnalyticsPage() {
             <TodayStatCard
               icon="👁️"
               title="Today's Visits"
-              value={todayData?.totalVisits ?? 0}
+              value={data?.todayVisits ?? 0}
               label="Pageviews today"
-              loading={todayLoading}
+              loading={loading}
             />
             <TodayStatCard
               icon="👤"
               title="Today's Unique Visitors"
-              value={todayData?.uniqueVisitors ?? 0}
+              value={data?.todayUniqueVisitors ?? 0}
               label="Distinct IPs today"
-              loading={todayLoading}
+              loading={loading}
             />
           </section>
 

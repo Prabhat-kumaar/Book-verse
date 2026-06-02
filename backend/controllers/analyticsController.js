@@ -509,6 +509,14 @@ const getAdminDetails = async (req, res, next) => {
         const websiteVisits = stats ? stats.visits : 0;
         const uniqueVisitors = stats ? stats.uniqueVisitors : 0;
 
+        const todayStart = atDayStart(new Date());
+        const tomorrow = new Date(todayStart);
+        tomorrow.setDate(todayStart.getDate() + 1);
+
+        const todayVisitDoc = await SiteVisit.findOne({ date: todayStart });
+        const todayVisits = todayVisitDoc?.count || 0;
+        const todayUniqueVisitors = todayVisitDoc?.uniqueCount || 0;
+
         // 1. Monthly Reads (total pages read this calendar month)
         const startOfMonth = atDayStart(new Date());
         startOfMonth.setDate(1);
@@ -744,6 +752,8 @@ const getAdminDetails = async (req, res, next) => {
             success: true,
             websiteVisits,
             uniqueVisitors,
+            todayVisits,
+            todayUniqueVisitors,
             overview: {
                 monthlyReads: { value: monthlyPages.toLocaleString(), hint: monthlyReadsDiff },
                 completionRate: { value: `${completionRate}%`, hint: completionHint },
