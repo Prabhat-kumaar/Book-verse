@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
-import { useEffect, useMemo, useState } from 'react'
+import Papa from 'papaparse'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { MdAdd, MdCancel, MdCheckCircle, MdClose, MdHourglassEmpty, MdRefresh } from 'react-icons/md'
 import apiClient from '../lib/apiClient'
 import AdminSidebar from '../components/AdminSidebar'
@@ -7,6 +8,11 @@ import CategoryCombobox from '../components/CategoryCombobox'
 
 const difficulties = ['Beginner', 'Intermediate', 'Advanced']
 const maxBulkSlots = 5
+const csvColumns = ['title', 'author', 'category', 'difficulty', 'language', 'tags', 'description']
+const csvTemplateRows = [
+  ['Think and Grow Rich', 'Napoleon Hill', 'Business', 'Beginner', 'English', 'wealth,mindset,success', 'A timeless classic about wealth creation'],
+  ['The Art of War', 'Sun Tzu', 'Business', 'Intermediate', 'English', 'strategy,leadership', 'Ancient masterpiece on strategy and tactics'],
+]
 
 const initialForm = {
   title: '',
@@ -38,6 +44,25 @@ const initialMediaMode = {
 }
 
 const urlPattern = /^https?:\/\/.+/i
+
+const escapeCsvValue = (value) => {
+  const text = String(value ?? '')
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
+}
+
+const slugifyFilename = (value) => value
+  .trim()
+  .toLowerCase()
+  .replace(/['’]/g, '')
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-+|-+$/g, '')
+
+const fileKey = (fileName) => slugifyFilename(fileName.replace(/\.[^.]+$/, ''))
+
+const getCsvTemplate = () => [
+  csvColumns.join(','),
+  ...csvTemplateRows.map((row) => row.map(escapeCsvValue).join(',')),
+].join('\r\n')
 
 function Field({ label, error, children }) {
   return (
@@ -150,6 +175,14 @@ export default function AdminAddBookPage() {
   const [bulkStatus, setBulkStatus] = useState('')
   const [bulkSummary, setBulkSummary] = useState('')
   const [bulkUploading, setBulkUploading] = useState(false)
+  const [csvBooks, setCsvBooks] = useState([])
+  const [csvErrors, setCsvErrors] = useState({})
+  const [csvStatus, setCsvStatus] = useState('')
+  const [csvSummary, setCsvSummary] = useState('')
+  const [csvProgress, setCsvProgress] = useState({})
+  const [csvUploading, setCsvUploading] = useState(false)
+  const epubInputRef = useRef(null)
+  const thumbnailInputRef = useRef(null)
 
   const thumbnailPreview = useMemo(() => {
     if (mediaMode.thumbnail === 'url' && form.thumbnailUrl.trim()) {
@@ -249,6 +282,155 @@ export default function AdminAddBookPage() {
       Authorization: `Bearer ${token}`,
     },
   })
+
+  const downloadCsvTemplate = () => {
+    const blobUrl = URL.createObjectURL(new Blob([getCsvTemplate()], { type: 'text/csv;charset=utf-8' }))
+    const link = document.createElement('a')
+    link.href = blobUrl
+    link.download = 'book-import-template.csv'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(blobUrl)
+  }
+
+  const handleCsvUpload = (event) => {
+    const file = event.target.files?.[0]
+    setCsvStatus('')
+    setCsvSummary('')
+    setCsvErrors({})
+    setCsvProgress({})
+
+    if (!file) return
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: (header) => header.trim().toLowerCase(),
+      complete: ({ data, errors: parseErrors, meta }) => {
+        if (parseErrors.length) {
+          setCsvBooks([])
+          setCsvStatus(parseErrors[0]?.message || 'Unable to parse CSV file.')
+          return
+        }
+
+        const missingColumns = csvColumns.filter((column) => !meta.fields?.includes(column))
+        if (missingColumns.length) {
+          setCsvBooks([])
+          setCsvStatus(`Missing columns: ${missingColumns.join(', ')}`)
+          return
+        }
+
+        const nextBooks = data
+          .filter((row) => csvColumns.some((column) => String(row[column] ?? '').trim()))
+          .map((row) => ({
+            id: crypto.randomUUID(),
+            title: String(row.title ?? '').trim(),
+            author: String(row.author ?? '').trim(),
+            category: String(row.category ?? '').trim(),
+            difficulty: String(row.difficulty ?? '').trim(),
+            language: String(row.language ?? '').trim(),
+            tags: String(row.tags ?? '').trim(),
+            description: String(row.description ?? '').trim(),
+            bookFile: null,
+            thumbnailFile: null,
+          }))
+
+        setCsvBooks(nextBooks)
+        setCsvStatus(nextBooks.length ? '' : 'No book rows found in the CSV file.')
+      },
+      error: (parseError) => {
+        setCsvBooks([])
+        setCsvStatus(parseError.message || 'Unable to parse CSV file.')
+      },
+    })
+  }
+
+  const matchCsvFiles = ({ files, key }) => {
+    const fileMap = new Map(Array.from(files).map((file) => [fileKey(file.name), file]))
+
+    setCsvBooks((prev) => prev.map((book) => ({
+      ...book,
+      [key]: fileMap.get(slugifyFilename(book.title)) || book[key],
+    })))
+    setCsvProgress((prev) => {
+      const next = { ...prev }
+      csvBooks.forEach((book) => {
+        if (next[book.id]?.status === 'failed') next[book.id] = { status: 'pending', error: '' }
+      })
+      return next
+    })
+    setCsvStatus('')
+    setCsvSummary('')
+  }
+
+  const validateCsvBooks = (booksToValidate) => {
+    const nextErrors = {}
+
+    booksToValidate.forEach((book) => {
+      const bookErrors = validateBookFields({ book, requireFiles: true })
+      const bookFileError = book.bookFile?.name?.toLowerCase().endsWith('.epub') ? '' : 'Match an EPUB file'
+      if (bookFileError) bookErrors.bookFile = bookFileError
+      if (Object.keys(bookErrors).length) nextErrors[book.id] = bookErrors
+    })
+
+    setCsvErrors(nextErrors)
+    return Object.keys(nextErrors).length === 0
+  }
+
+  const handleCsvImport = async (event) => {
+    event.preventDefault()
+    setCsvStatus('')
+    setCsvSummary('')
+
+    const pendingBooks = csvBooks.filter((book) => csvProgress[book.id]?.status !== 'done')
+    if (!pendingBooks.length) {
+      setCsvSummary(`${csvBooks.length} uploaded, 0 failed`)
+      return
+    }
+
+    if (!validateCsvBooks(pendingBooks)) {
+      setCsvStatus('Please fix missing CSV details and file matches before importing.')
+      return
+    }
+
+    try {
+      setCsvUploading(true)
+      const token = localStorage.getItem('authToken')
+      if (!token) throw new Error('Please login first')
+
+      let uploadedCount = csvBooks.filter((book) => csvProgress[book.id]?.status === 'done').length
+      let failedCount = 0
+      let attemptedCount = 0
+
+      for (const book of pendingBooks) {
+        attemptedCount += 1
+        setCsvStatus(`Uploading ${attemptedCount} of ${pendingBooks.length}...`)
+        setCsvProgress((prev) => ({ ...prev, [book.id]: { status: 'uploading', error: '' } }))
+
+        try {
+          await uploadBook({ book, token })
+          uploadedCount += 1
+          setCsvProgress((prev) => ({ ...prev, [book.id]: { status: 'done', error: '' } }))
+        } catch (uploadError) {
+          failedCount += 1
+          const message = uploadError.response?.data?.message || uploadError.message || 'Failed to upload this book.'
+          setCsvProgress((prev) => ({ ...prev, [book.id]: { status: 'failed', error: message } }))
+        }
+      }
+
+      setCsvStatus('')
+      setCsvSummary(`${uploadedCount} uploaded, ${failedCount} failed`)
+      if (failedCount === 0) {
+        setToast('All CSV books uploaded successfully.')
+        setTimeout(() => setToast(''), 2600)
+      }
+    } catch (csvError) {
+      setCsvStatus(csvError.message || 'Failed to start CSV import.')
+    } finally {
+      setCsvUploading(false)
+    }
+  }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -413,6 +595,7 @@ export default function AdminAddBookPage() {
             {[
               ['single', 'Single Book'],
               ['bulk', 'Bulk Upload'],
+              ['csv', 'CSV Import'],
             ].map(([tab, label]) => (
               <button
                 key={tab}
@@ -553,7 +736,7 @@ export default function AdminAddBookPage() {
                 </motion.button>
               </div>
             </motion.form>
-          ) : (
+          ) : activeTab === 'bulk' ? (
             <motion.form
               onSubmit={handleBulkUpload}
               initial={{ opacity: 0, y: 12 }}
@@ -682,6 +865,182 @@ export default function AdminAddBookPage() {
                   className="rounded-xl bg-gradient-to-r from-blue-500 to-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-[0_10px_34px_rgba(87,104,255,0.45)] transition hover:shadow-[0_0_30px_rgba(112,105,255,0.55)] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {bulkUploading ? 'Uploading Books...' : 'Upload All Books'}
+                </motion.button>
+              </div>
+            </motion.form>
+          ) : (
+            <motion.form
+              onSubmit={handleCsvImport}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="space-y-5"
+            >
+              <section className="rounded-2xl border border-white/15 bg-white/[0.05] p-5 shadow-[0_18px_55px_rgba(7,10,32,0.28)] backdrop-blur-xl">
+                <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+                  <Field label="CSV File" error={csvStatus && !csvBooks.length ? csvStatus : ''}>
+                    <input
+                      type="file"
+                      accept=".csv,text/csv"
+                      disabled={csvUploading}
+                      onChange={handleCsvUpload}
+                      className={`${inputClass} file:mr-3 file:rounded-md file:border-0 file:bg-blue-500/30 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-blue-100`}
+                    />
+                  </Field>
+
+                  <motion.button
+                    whileHover={{ y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    type="button"
+                    onClick={downloadCsvTemplate}
+                    disabled={csvUploading}
+                    className="rounded-xl border border-white/20 bg-white/[0.07] px-5 py-3 text-sm font-semibold text-slate-100 transition hover:border-blue-300/35 hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Download CSV Template
+                  </motion.button>
+                </div>
+
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <input
+                    ref={epubInputRef}
+                    type="file"
+                    accept=".epub,application/epub+zip"
+                    multiple
+                    disabled={csvUploading || !csvBooks.length}
+                    onChange={(e) => matchCsvFiles({ files: e.target.files || [], key: 'bookFile' })}
+                    className="hidden"
+                  />
+                  <input
+                    ref={thumbnailInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    disabled={csvUploading || !csvBooks.length}
+                    onChange={(e) => matchCsvFiles({ files: e.target.files || [], key: 'thumbnailFile' })}
+                    className="hidden"
+                  />
+
+                  <motion.button
+                    whileHover={{ y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    type="button"
+                    onClick={() => epubInputRef.current?.click()}
+                    disabled={csvUploading || !csvBooks.length}
+                    className="rounded-xl border border-white/20 bg-white/[0.07] px-5 py-3 text-sm font-semibold text-slate-100 transition hover:border-blue-300/35 hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Select EPUB Files
+                  </motion.button>
+
+                  <motion.button
+                    whileHover={{ y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    type="button"
+                    onClick={() => thumbnailInputRef.current?.click()}
+                    disabled={csvUploading || !csvBooks.length}
+                    className="rounded-xl border border-white/20 bg-white/[0.07] px-5 py-3 text-sm font-semibold text-slate-100 transition hover:border-blue-300/35 hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Select Thumbnail Files
+                  </motion.button>
+                </div>
+              </section>
+
+              {csvBooks.length ? (
+                <section className="rounded-2xl border border-white/15 bg-white/[0.05] p-5 shadow-[0_18px_55px_rgba(7,10,32,0.28)] backdrop-blur-xl">
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-100/70">CSV Preview</p>
+                      <h3 className="mt-1 text-xl font-black text-white">{csvBooks.length} books ready to review</h3>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[1180px] text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-white/10 text-slate-400">
+                          <th className="px-3 py-3 font-semibold uppercase tracking-wider">Book</th>
+                          <th className="px-3 py-3 font-semibold uppercase tracking-wider">Category</th>
+                          <th className="px-3 py-3 font-semibold uppercase tracking-wider">Difficulty</th>
+                          <th className="px-3 py-3 font-semibold uppercase tracking-wider">Language</th>
+                          <th className="px-3 py-3 font-semibold uppercase tracking-wider">Tags</th>
+                          <th className="px-3 py-3 font-semibold uppercase tracking-wider">Description</th>
+                          <th className="px-3 py-3 font-semibold uppercase tracking-wider">Expected File</th>
+                          <th className="px-3 py-3 font-semibold uppercase tracking-wider">EPUB</th>
+                          <th className="px-3 py-3 font-semibold uppercase tracking-wider">Thumbnail</th>
+                          <th className="px-3 py-3 font-semibold uppercase tracking-wider">Progress</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {csvBooks.map((book) => {
+                          const bookErrors = csvErrors[book.id] || {}
+                          const progress = csvProgress[book.id] || { status: 'pending' }
+                          const expectedName = `${slugifyFilename(book.title)}.epub`
+
+                          return (
+                            <tr key={book.id} className="border-b border-white/5 align-top">
+                              <td className="px-3 py-4">
+                                <p className="font-bold text-white">{book.title || 'Missing title'}</p>
+                                <p className="mt-1 text-slate-400">{book.author || 'Missing author'}</p>
+                                {bookErrors.title || bookErrors.author ? (
+                                  <p className="mt-1 text-rose-300">{bookErrors.title || bookErrors.author}</p>
+                                ) : null}
+                              </td>
+                              <td className="px-3 py-4 text-slate-200">
+                                {book.category || 'Missing'}
+                                {bookErrors.category ? <p className="mt-1 text-rose-300">{bookErrors.category}</p> : null}
+                              </td>
+                              <td className="px-3 py-4 text-slate-200">
+                                {book.difficulty || 'Missing'}
+                                {bookErrors.difficulty ? <p className="mt-1 text-rose-300">{bookErrors.difficulty}</p> : null}
+                              </td>
+                              <td className="px-3 py-4 text-slate-200">
+                                {book.language || 'Missing'}
+                                {bookErrors.language ? <p className="mt-1 text-rose-300">{bookErrors.language}</p> : null}
+                              </td>
+                              <td className="px-3 py-4 text-slate-300">{book.tags || 'Missing'}</td>
+                              <td className="max-w-[260px] px-3 py-4 text-slate-300">
+                                <p className="line-clamp-3">{book.description || 'Missing description'}</p>
+                                {bookErrors.description ? <p className="mt-1 text-rose-300">{bookErrors.description}</p> : null}
+                              </td>
+                              <td className="px-3 py-4 font-mono text-slate-300">{expectedName}</td>
+                              <td className="px-3 py-4">
+                                <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-semibold ${book.bookFile ? 'border-emerald-300/30 bg-emerald-500/15 text-emerald-100' : 'border-rose-300/30 bg-rose-500/15 text-rose-100'}`}>
+                                  {book.bookFile ? <MdCheckCircle className="h-4 w-4" /> : <MdCancel className="h-4 w-4" />}
+                                  {book.bookFile ? book.bookFile.name : 'Not matched'}
+                                </span>
+                              </td>
+                              <td className="px-3 py-4">
+                                <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-semibold ${book.thumbnailFile ? 'border-emerald-300/30 bg-emerald-500/15 text-emerald-100' : 'border-rose-300/30 bg-rose-500/15 text-rose-100'}`}>
+                                  {book.thumbnailFile ? <MdCheckCircle className="h-4 w-4" /> : <MdCancel className="h-4 w-4" />}
+                                  {book.thumbnailFile ? book.thumbnailFile.name : 'Not matched'}
+                                </span>
+                              </td>
+                              <td className="px-3 py-4">
+                                <ProgressBadge state={progress} />
+                                {progress.status === 'failed' && progress.error ? (
+                                  <p className="mt-2 text-rose-300">{progress.error}</p>
+                                ) : null}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              ) : null}
+
+              {csvStatus && csvBooks.length ? <p className="text-sm text-rose-300">{csvStatus}</p> : null}
+              {csvSummary ? <p className="text-sm font-semibold text-emerald-300">{csvSummary}</p> : null}
+
+              <div className="flex flex-wrap gap-3">
+                <motion.button
+                  whileHover={{ y: -2, scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  type="submit"
+                  disabled={csvUploading || !csvBooks.length}
+                  className="rounded-xl bg-gradient-to-r from-blue-500 to-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-[0_10px_34px_rgba(87,104,255,0.45)] transition hover:shadow-[0_0_30px_rgba(112,105,255,0.55)] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {csvUploading ? 'Importing Books...' : 'Import All Books'}
                 </motion.button>
               </div>
             </motion.form>
