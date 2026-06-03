@@ -77,6 +77,10 @@ function getActiveHref(locationHref = '') {
   return normalizeHref(locationHref)
 }
 
+function getReaderPadding(isDesktop = false) {
+  return isDesktop ? 80 : 20
+}
+
 function flattenToc(items = [], depth = 0) {
   return items.reduce((acc, item) => {
     acc.push({
@@ -104,16 +108,16 @@ function buildThemeStyles(theme, fontSize = 18, isDesktop = false) {
 
   return {
     body: {
-      padding: `${isDesktop ? 48 : 24}px !important`,
+      margin: '0 !important',
+      padding: `${getReaderPadding(isDesktop)}px !important`,
       color: textColor,
       background: bgColor,
       'line-height': '1.8 !important',
       'font-size': `${fontSize}px !important`,
       '-webkit-font-smoothing': 'antialiased',
       'box-sizing': 'border-box',
-      'max-width': '680px !important',
+      'max-width': 'none !important',
       width: '100% !important',
-      margin: '0 auto !important',
     },
     html: {
       background: `${bgColor} !important`,
@@ -123,14 +127,14 @@ function buildThemeStyles(theme, fontSize = 18, isDesktop = false) {
       'line-height': '1.8',
     },
     ul: {
-      'max-width': '600px',
-      margin: '0 auto 1.5em auto',
+      'max-width': 'none',
+      margin: '0 0 1.5em 0',
       padding: '0 20px',
       'list-style-type': 'none',
     },
     ol: {
-      'max-width': '600px',
-      margin: '0 auto 1.5em auto',
+      'max-width': 'none',
+      margin: '0 0 1.5em 0',
       padding: '0 20px',
       'list-style-type': 'none',
     },
@@ -160,6 +164,31 @@ function buildThemeStyles(theme, fontSize = 18, isDesktop = false) {
       opacity: '0.95',
     },
   }
+}
+
+function applyReaderStyles(rendition, theme, fontSize, isDesktop) {
+  if (!rendition) return
+  rendition.themes.register('app-theme', buildThemeStyles(theme, fontSize, isDesktop))
+  rendition.themes.select('app-theme')
+  rendition.themes.fontSize(`${fontSize}px`)
+  rendition.themes.override('*', {
+    'max-width': '100% !important',
+    'overflow-x': 'hidden !important',
+    'overflow-anchor': 'none !important',
+  })
+  rendition.themes.override('html', {
+    background: 'transparent !important',
+  })
+  rendition.themes.override('body', {
+    margin: '0 !important',
+    padding: `${getReaderPadding(isDesktop)}px !important`,
+    'max-width': 'none !important',
+    width: '100% !important',
+    'font-size': `${fontSize}px !important`,
+    'line-height': '1.8 !important',
+    'box-sizing': 'border-box !important',
+    'overflow-anchor': 'none !important',
+  })
 }
 
 async function loadEpubBook(fileUrl) {
@@ -198,14 +227,13 @@ export default function EpubReaderPage() {
   const [tocItems, setTocItems] = useState([])
   const [activeFilename, setActiveFilename] = useState('')
   const [currentChapterLabel, setCurrentChapterLabel] = useState('')
-  const [currentSpineIndex, setCurrentSpineIndex] = useState(0)
-  const [spineCount, setSpineCount] = useState(0)
 
   const [currentCfi, setCurrentCfi] = useState('')
   const [showChrome, setShowChrome] = useState(true)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchMatches, setSearchMatches] = useState(0)
+  const [searchResults, setSearchResults] = useState([])
   const [menuOpen, setMenuOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
 
@@ -265,7 +293,6 @@ export default function EpubReaderPage() {
   const updateSpineIndex = (idx) => {
     if (!Number.isFinite(idx) || idx < 0) return
     spineIndexRef.current = idx
-    setCurrentSpineIndex(idx)
   }
 
   const findSpineIndexForHref = (href = '') => {
@@ -375,8 +402,7 @@ export default function EpubReaderPage() {
         color: `${textColor} !important`,
       },
     })
-    renditionRef.current.themes.register('app-theme', buildThemeStyles(theme, fontSize, isDesktopRef.current))
-    renditionRef.current.themes.select('app-theme')
+    applyReaderStyles(renditionRef.current, theme, fontSize, isDesktopRef.current)
   }, [theme, fontSize])
 
   useEffect(() => {
@@ -391,8 +417,7 @@ export default function EpubReaderPage() {
       if (nextIsDesktop === isDesktopRef.current) return
       isDesktopRef.current = nextIsDesktop
       if (!renditionRef.current) return
-      renditionRef.current.themes.register('app-theme', buildThemeStyles(theme, fontSize, nextIsDesktop))
-      renditionRef.current.themes.select('app-theme')
+      applyReaderStyles(renditionRef.current, theme, fontSize, nextIsDesktop)
     }
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
@@ -460,23 +485,7 @@ export default function EpubReaderPage() {
         if (isDestroyed) return
         renditionRef.current = rendition
 
-        rendition.themes.register('app-theme', buildThemeStyles(theme, fontSize, isDesktopRef.current))
-        rendition.themes.select('app-theme')
-        rendition.themes.override('*', {
-          'max-width': '100% !important',
-          'overflow-x': 'hidden !important',
-          'overflow-anchor': 'none !important',
-        })
-        rendition.themes.override('body', {
-          margin: '0 !important',
-          padding: `${isDesktopRef.current ? 48 : 24}px !important`,
-          'max-width': '680px !important',
-          width: '100% !important',
-          'font-size': `${fontSize}px !important`,
-          'line-height': '1.8 !important',
-          'box-sizing': 'border-box !important',
-          'overflow-anchor': 'none !important',
-        })
+        applyReaderStyles(rendition, theme, fontSize, isDesktopRef.current)
         rendition.themes.override('div', {
           'max-width': '100% !important',
           width: '100% !important',
@@ -509,6 +518,10 @@ export default function EpubReaderPage() {
           },
         })
 
+        rendition.on('rendered', () => {
+          applyReaderStyles(rendition, theme, savedFontSize, isDesktopRef.current)
+        })
+
         await book.loaded.navigation
         if (isDestroyed) return
         const nav = await book.loaded.navigation
@@ -518,7 +531,6 @@ export default function EpubReaderPage() {
         await book.spine.ready
         if (isDestroyed) return
         spineItemsRef.current = book.spine?.spineItems || []
-        setSpineCount(spineItemsRef.current.length)
 
         await book.ready
 
@@ -650,6 +662,14 @@ export default function EpubReaderPage() {
       if (e.key === 'Escape' && searchOpen) {
         setSearchOpen(false)
         setSearchQuery('')
+        setSearchMatches(0)
+        setSearchResults([])
+        return
+      }
+      if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && window.innerWidth >= 768) {
+        if (searchOpen && document.activeElement === searchInputRef.current) return
+        if (e.key === 'ArrowLeft') goPrevChapter()
+        if (e.key === 'ArrowRight') goNextChapter()
       }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -699,72 +719,56 @@ export default function EpubReaderPage() {
     }
   }, [])
 
-  const clearSearchHighlights = () => {
-    const contents = renditionRef.current?.getContents?.() || []
-    contents.forEach((content) => {
-      const doc = content?.document
-      if (!doc) return
-      const marks = doc.querySelectorAll('mark[data-reader-highlight="1"]')
-      marks.forEach((mark) => {
-        const text = doc.createTextNode(mark.textContent || '')
-        mark.replaceWith(text)
-      })
-      doc.body?.normalize?.()
-    })
-    setSearchMatches(0)
+  const searchSpineFallback = async (query) => {
+    const book = bookRef.current
+    const items = spineItemsRef.current || []
+    if (!book || !items.length) return []
+
+    const resultGroups = await Promise.all(items.map(async (item) => {
+      if (typeof item?.load !== 'function' || typeof item?.find !== 'function') return []
+      try {
+        await item.load(book.load.bind(book))
+        return item.find(query) || []
+      } catch (err) {
+        debugError('EPUB search fallback failed:', err)
+        return []
+      } finally {
+        item.unload?.()
+      }
+    }))
+    return resultGroups.flat()
   }
 
-  const applySearchHighlights = (query) => {
-    if (!query.trim()) {
-      clearSearchHighlights()
+  const runBookSearch = async (navigateToFirst = false) => {
+    const query = searchQuery.trim()
+    const rendition = renditionRef.current
+    const book = rendition?.book || bookRef.current
+
+    if (!query || !book) {
+      setSearchResults([])
+      setSearchMatches(0)
       return
     }
-    clearSearchHighlights()
-    const q = query.toLowerCase()
-    let count = 0
-    const contents = renditionRef.current?.getContents?.() || []
-    contents.forEach((content) => {
-      const doc = content?.document
-      if (!doc?.body) return
-      const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT)
-      const toReplace = []
-      let textNode = walker.nextNode()
-      while (textNode) {
-        const text = textNode.nodeValue || ''
-        if (text.trim() && text.toLowerCase().includes(q) && textNode.parentElement?.tagName !== 'MARK') {
-          toReplace.push(textNode)
-        }
-        textNode = walker.nextNode()
-      }
-      toReplace.forEach((node) => {
-        const text = node.nodeValue || ''
-        const lower = text.toLowerCase()
-        let from = 0
-        let idx = lower.indexOf(q, from)
-        if (idx < 0) return
-        const frag = doc.createDocumentFragment()
-        while (idx >= 0) {
-          if (idx > from) frag.appendChild(doc.createTextNode(text.slice(from, idx)))
-          const mark = doc.createElement('mark')
-          mark.setAttribute('data-reader-highlight', '1')
-          mark.style.background = '#fde047'
-          mark.style.color = '#111827'
-          mark.textContent = text.slice(idx, idx + q.length)
-          frag.appendChild(mark)
-          count += 1
-          from = idx + q.length
-          idx = lower.indexOf(q, from)
-        }
-        if (from < text.length) frag.appendChild(doc.createTextNode(text.slice(from)))
-        node.parentNode?.replaceChild(frag, node)
-      })
-    })
-    setSearchMatches(count)
-  }
 
-  useEffect(() => {
-    applySearchHighlights(searchQuery)
-  }, [searchQuery, currentCfi])
+    try {
+      const searcher = typeof rendition?.book?.search === 'function'
+        ? rendition.book.search.bind(rendition.book)
+        : typeof book.search === 'function'
+          ? book.search.bind(book)
+          : null
+      const results = searcher ? await searcher(query) : await searchSpineFallback(query)
+      const list = Array.isArray(results) ? results : []
+      setSearchResults(list)
+      setSearchMatches(list.length)
+      if (navigateToFirst && list[0]?.cfi) {
+        await rendition.display(list[0].cfi)
+      }
+    } catch (err) {
+      debugError('EPUB search failed:', err)
+      setSearchResults([])
+      setSearchMatches(0)
+    }
+  }
 
   const handleChapterClick = async (item) => {
     const rendition = renditionRef.current
@@ -807,10 +811,12 @@ export default function EpubReaderPage() {
     if (!bookId) return
     try {
       if (isBookSaved) {
-        await apiClient.delete(`/api/saved-books/${encodeURIComponent(bookId)}`)
+        const response = await apiClient.delete(`/api/saved-books/${encodeURIComponent(savedEntry._id)}`)
+        console.log('[SavedBooks] Remove response:', response)
         showToast('Removed from Library')
       } else {
-        await apiClient.post(`/api/saved-books/${encodeURIComponent(bookId)}`)
+        const response = await apiClient.post('/api/saved-books', { bookId })
+        console.log('[SavedBooks] Save response:', response)
         showToast('Saved to Library ❤️')
       }
       await refreshSavedBooks()
@@ -822,8 +828,6 @@ export default function EpubReaderPage() {
 
   const chapterEstimatePages = Math.max(1, Math.round(totalPages / Math.max(1, tocItems.length)))
   const coverUrl = toAbsoluteUrl(params.cover)
-  const isFirstChapter = currentSpineIndex <= 0
-  const isLastChapter = spineCount > 0 && currentSpineIndex >= spineCount - 1
 
   const bookmarkCurrentLocation = async () => {
     if (!currentCfi) return
@@ -940,17 +944,32 @@ export default function EpubReaderPage() {
               <input
                 ref={searchInputRef}
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search in this chapter…"
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                  if (!e.target.value.trim()) {
+                    setSearchMatches(0)
+                    setSearchResults([])
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') runBookSearch(true)
+                }}
+                placeholder="Search this book..."
                 className="h-10 w-full bg-transparent text-sm outline-none placeholder:opacity-40"
               />
-              {searchMatches > 0 && (
+              {searchQuery.trim() && (
                 <span className="shrink-0 rounded-full bg-yellow-400/20 px-2 py-0.5 text-xs text-yellow-500">
-                  {searchMatches} found
+                  {searchResults.length || searchMatches} results found
                 </span>
               )}
               <button type="button"
-                onClick={() => { setSearchOpen(false); setSearchQuery('') }}
+                onClick={() => runBookSearch(true)}
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-full hover:bg-white/10"
+                aria-label="Search book">
+                <MdSearch />
+              </button>
+              <button type="button"
+                onClick={() => { setSearchOpen(false); setSearchQuery(''); setSearchMatches(0); setSearchResults([]) }}
                 className="grid h-8 w-8 shrink-0 place-items-center rounded-full hover:bg-white/10"
                 aria-label="Close search">
                 <MdClose />
@@ -1114,11 +1133,11 @@ export default function EpubReaderPage() {
                 </div>
               )}
 
-              <div className="flex-1 h-full w-full overflow-hidden px-6 md:px-12">
+              <div className="flex-1 h-full w-full overflow-hidden">
                 <div
                   id="viewer"
                   ref={viewerRef}
-                  className="mx-auto h-full w-full max-w-[680px] flex-1 text-[18px] leading-[1.8] md:text-[16px]"
+                  className="h-full w-full flex-1 text-[18px] leading-[1.8] md:text-[16px]"
                   style={{ visibility: loadingState === 'ready' ? 'visible' : 'hidden' }}
                   onTouchStart={handleTouchStart}
                   onTouchEnd={handleTouchEnd}
@@ -1142,6 +1161,19 @@ export default function EpubReaderPage() {
             {toastMessage}
           </div>
         )}
+
+        <button
+          type="button"
+          onClick={goPrevChapter}
+          className={`fixed bottom-20 left-0 top-14 z-20 w-[20vw] bg-transparent ${sidebarOpen || menuOpen ? 'pointer-events-none' : ''}`}
+          aria-label="Previous chapter"
+        />
+        <button
+          type="button"
+          onClick={goNextChapter}
+          className={`fixed bottom-20 right-0 top-14 z-20 w-[20vw] bg-transparent ${sidebarOpen || menuOpen ? 'pointer-events-none' : ''}`}
+          aria-label="Next chapter"
+        />
 
         <div
           ref={toolbarMenuRef}
@@ -1199,7 +1231,7 @@ export default function EpubReaderPage() {
           )}
 
           <div
-            className={`grid h-14 w-full max-w-[680px] grid-cols-[1fr_56px_1fr] items-center gap-2 rounded-lg border p-1.5 shadow-2xl backdrop-blur-xl
+            className={`grid h-14 w-14 place-items-center rounded-lg border p-1.5 shadow-2xl backdrop-blur-xl
               ${theme === 'dark'
                 ? 'border-white/10 bg-[#171717]/95 text-slate-100'
                 : theme === 'sepia'
@@ -1209,28 +1241,12 @@ export default function EpubReaderPage() {
           >
             <button
               type="button"
-              onClick={goPrevChapter}
-              disabled={isFirstChapter}
-              className="h-full rounded-md px-3 text-xs font-extrabold uppercase transition hover:bg-current/10 disabled:cursor-not-allowed disabled:opacity-35 md:text-sm"
-            >
-              ← Prev Chapter
-            </button>
-            <button
-              type="button"
               onClick={() => setMenuOpen((value) => !value)}
-              className="grid h-full place-items-center rounded-md text-2xl transition hover:bg-current/10"
+              className="grid h-full w-full place-items-center rounded-md text-2xl transition hover:bg-current/10"
               aria-label="Open reader menu"
               aria-expanded={menuOpen}
             >
               <MdMoreVert />
-            </button>
-            <button
-              type="button"
-              onClick={goNextChapter}
-              disabled={isLastChapter}
-              className="h-full rounded-md px-3 text-xs font-extrabold uppercase transition hover:bg-current/10 disabled:cursor-not-allowed disabled:opacity-35 md:text-sm"
-            >
-              Next Chapter →
             </button>
           </div>
         </div>
