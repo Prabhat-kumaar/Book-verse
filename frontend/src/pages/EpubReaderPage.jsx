@@ -3,10 +3,12 @@ import ePub from 'epubjs'
 import {
   MdBookmarkBorder,
   MdClose,
+  MdDarkMode,
   MdFullscreen,
   MdFullscreenExit,
   MdFavorite,
   MdFavoriteBorder,
+  MdLightMode,
   MdMenu,
   MdMoreVert,
   MdSearch,
@@ -215,6 +217,10 @@ export default function EpubReaderPage() {
     return 'light'
   })
   const isDarkMode = theme === 'dark'
+  const setIsDarkMode = (val) => {
+    const nextVal = typeof val === 'function' ? val(theme === 'dark') : val
+    setTheme(nextVal ? 'dark' : 'light')
+  }
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [fontSize, setFontSize] = useState(() => {
@@ -227,6 +233,7 @@ export default function EpubReaderPage() {
   const [activeFilename, setActiveFilename] = useState('')
   const [currentChapterLabel, setCurrentChapterLabel] = useState('')
 
+  const [currentCfi, setCurrentCfi] = useState('')
   const [showChrome, setShowChrome] = useState(true)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -253,6 +260,15 @@ export default function EpubReaderPage() {
   const locationsReadyRef = useRef(false)
   const isDesktopRef = useRef(window.innerWidth >= 768)
 
+  const getAuthUser = () => {
+    try {
+      const raw = localStorage.getItem('authUser')
+      return raw ? JSON.parse(raw) : null
+    } catch {
+      return null
+    }
+  }
+
   const resolvedFileUrl = useMemo(() => toAbsoluteUrl(params.fileUrl), [params.fileUrl])
   const fileUrl = resolvedFileUrl
   const bookId = params?.bookId || ''
@@ -276,6 +292,7 @@ export default function EpubReaderPage() {
     locationCfi: savedLocationCfi,
     loading: progressLoading,
     updateProgress,
+    triggerSave,
   } = useReadingProgress(bookId, userId, 'epub')
 
   const updateSpineIndex = (idx) => {
@@ -555,6 +572,7 @@ export default function EpubReaderPage() {
             const idx = Number.isFinite(loc?.start?.index) ? loc.start.index : findSpineIndexForHref(locationHref)
             if (idx >= 0) updateSpineIndex(idx)
 
+            setCurrentCfi(currentCfiVal)
             currentCfiRef.current = currentCfiVal
             setEpubSavedCfi({ bookId, fileUrl, cfi: currentCfiVal })
 
@@ -817,6 +835,17 @@ export default function EpubReaderPage() {
   const coverUrl = toAbsoluteUrl(params.cover)
   const mobileHeaderTitle = truncateMobileTitle(params.title)
 
+  const bookmarkCurrentLocation = async () => {
+    if (!currentCfi) return
+    const authUser = getAuthUser()
+    if (!authUser?._id || !bookId) return
+    try {
+      await triggerSave(true)
+    } catch (err) {
+      debugError('Bookmark save failed:', err)
+    }
+  }
+
   useEffect(() => {
     const prevBodyOverflow = document.body.style.overflow
     const prevHtmlOverflow = document.documentElement.style.overflow
@@ -862,7 +891,7 @@ export default function EpubReaderPage() {
             ${showChrome ? 'translate-y-0' : '-translate-y-full'}
             ${theme === 'dark' ? 'border-white/10' : theme === 'sepia' ? 'border-[#5c4a1e]/15' : 'border-black/[8%]'}`}
         >
-          <div className="flex h-full w-full items-center gap-3 px-3 md:px-6">
+          <div className="flex h-full w-full items-center gap-2 px-2 md:gap-3 md:px-6">
             <button
               type="button"
               onClick={() => setSidebarOpen((v) => !v)}
@@ -883,7 +912,67 @@ export default function EpubReaderPage() {
                 {params.title}
               </p>
             </div>
-            <div className="h-9 w-9 shrink-0 md:hidden" aria-hidden="true" />
+            <div className="flex shrink-0 items-center gap-0.5">
+              <button type="button" onClick={() => setSearchOpen((v) => !v)}
+                className="grid h-8 w-8 place-items-center rounded-full hover:bg-white/10 transition md:h-9 md:w-9"
+                aria-label="Search">
+                <MdSearch className="text-lg" />
+              </button>
+              <button type="button" onClick={bookmarkCurrentLocation}
+                className="grid h-8 w-8 place-items-center rounded-full hover:bg-white/10 transition md:h-9 md:w-9"
+                aria-label="Bookmark">
+                <MdBookmarkBorder className="text-lg" />
+              </button>
+              <button type="button" onClick={() => setIsDarkMode((v) => !v)}
+                className="grid h-8 w-8 place-items-center rounded-full hover:bg-white/10 transition md:h-9 md:w-9"
+                aria-label="Toggle theme">
+                {isDarkMode ? <MdLightMode className="text-lg" /> : <MdDarkMode className="text-lg" />}
+              </button>
+              <div ref={toolbarMenuRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen((value) => !value)}
+                  className="grid h-8 w-8 place-items-center rounded-full text-xl transition hover:bg-white/10 md:h-9 md:w-9"
+                  aria-label="Open reader menu"
+                  aria-expanded={menuOpen}
+                >
+                  <MdMoreVert />
+                </button>
+                {menuOpen && (
+                  <div
+                    className={`absolute right-0 top-11 w-[260px] animate-reader-fade-in rounded-lg border p-3 shadow-2xl backdrop-blur-xl
+                      ${theme === 'dark'
+                        ? 'border-white/10 bg-[#171717]/95 text-slate-100'
+                        : theme === 'sepia'
+                          ? 'border-[#5c4a1e]/15 bg-[#f1e3c2]/95 text-[#5c4a1e]'
+                          : 'border-black/10 bg-white/95 text-slate-900'
+                      }`}
+                  >
+                    <div className="flex items-center justify-between gap-2 border-b border-current/10 pb-3">
+                      <span className="text-xs font-bold uppercase opacity-55">Font size</span>
+                      <div className="flex items-center gap-2">
+                        <button type="button" onClick={decreaseFontSize} className="h-9 rounded-md px-4 text-sm font-bold hover:bg-current/10" aria-label="Decrease font size">
+                          A-
+                        </button>
+                        <button type="button" onClick={increaseFontSize} className="h-9 rounded-md px-4 text-base font-bold hover:bg-current/10" aria-label="Increase font size">
+                          A+
+                        </button>
+                      </div>
+                    </div>
+
+                    <button type="button" onClick={toggleSaveToLibrary} className="mt-1 flex h-10 w-full items-center justify-center gap-2 rounded-md text-sm font-bold hover:bg-current/10" aria-pressed={isBookSaved}>
+                      {isBookSaved ? <MdFavorite className="text-lg text-rose-500" /> : <MdFavoriteBorder className="text-lg" />}
+                      Save to Library
+                    </button>
+                  </div>
+                )}
+              </div>
+              <button type="button" onClick={toggleFullscreen}
+                className="grid h-8 w-8 place-items-center rounded-full hover:bg-white/10 transition md:h-9 md:w-9"
+                aria-label="Fullscreen">
+                {isFullscreen ? <MdFullscreenExit className="text-lg" /> : <MdFullscreen className="text-lg" />}
+              </button>
+            </div>
           </div>
           <div className={`h-px w-full ${isDarkMode ? 'bg-white/10' : 'bg-black/10'}`}>
             <div
@@ -1122,91 +1211,15 @@ export default function EpubReaderPage() {
         <button
           type="button"
           onClick={goPrevChapter}
-          className={`fixed bottom-20 left-0 top-14 z-20 w-[20vw] bg-transparent ${sidebarOpen || menuOpen ? 'pointer-events-none' : ''}`}
+          className={`fixed bottom-0 left-0 top-14 z-20 w-[30vw] bg-transparent md:hidden ${sidebarOpen || menuOpen ? 'pointer-events-none' : ''}`}
           aria-label="Previous chapter"
         />
         <button
           type="button"
           onClick={goNextChapter}
-          className={`fixed bottom-20 right-0 top-14 z-20 w-[20vw] bg-transparent ${sidebarOpen || menuOpen ? 'pointer-events-none' : ''}`}
+          className={`fixed bottom-0 right-0 top-14 z-20 w-[30vw] bg-transparent md:hidden ${sidebarOpen || menuOpen ? 'pointer-events-none' : ''}`}
           aria-label="Next chapter"
         />
-
-        <div
-          ref={toolbarMenuRef}
-          className={`fixed inset-x-0 bottom-5 z-50 flex flex-col items-center px-4 transition-transform duration-300
-            ${showChrome ? 'translate-y-0' : 'translate-y-0 md:translate-y-32'}`}
-        >
-          {menuOpen && (
-            <div
-              className={`mb-3 w-full max-w-[340px] animate-reader-fade-in rounded-lg border p-3 shadow-2xl backdrop-blur-xl
-                ${theme === 'dark'
-                  ? 'border-white/10 bg-[#171717]/95 text-slate-100'
-                  : theme === 'sepia'
-                    ? 'border-[#5c4a1e]/15 bg-[#f1e3c2]/95 text-[#5c4a1e]'
-                    : 'border-black/10 bg-white/95 text-slate-900'
-                }`}
-            >
-              <div className="flex items-center justify-between gap-2 border-b border-current/10 pb-3">
-                <span className="text-xs font-bold uppercase opacity-55">Font size</span>
-                <div className="flex items-center gap-2">
-                  <button type="button" onClick={decreaseFontSize} className="h-9 rounded-md px-4 text-sm font-bold hover:bg-current/10" aria-label="Decrease font size">
-                    A-
-                  </button>
-                  <button type="button" onClick={increaseFontSize} className="h-9 rounded-md px-4 text-base font-bold hover:bg-current/10" aria-label="Increase font size">
-                    A+
-                  </button>
-                </div>
-              </div>
-
-              <div className="hidden items-center justify-between gap-2 border-b border-current/10 py-3 md:flex">
-                <span className="text-xs font-bold uppercase opacity-55">Theme</span>
-                <div className="grid grid-cols-3 gap-1 rounded-md bg-current/5 p-1">
-                  {['dark', 'light', 'sepia'].map((option) => (
-                    <button
-                      key={option}
-                      type="button"
-                      onClick={() => setTheme(option)}
-                      className={`h-9 rounded px-3 text-xs font-bold capitalize transition ${theme === option ? 'bg-primary text-white shadow' : 'hover:bg-current/10'}`}
-                    >
-                      {option}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <button type="button" onClick={toggleFullscreen} className="mt-3 hidden h-10 w-full items-center justify-center gap-2 rounded-md text-sm font-bold hover:bg-current/10 md:flex">
-                {isFullscreen ? <MdFullscreenExit className="text-lg" /> : <MdFullscreen className="text-lg" />}
-                {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-              </button>
-
-              <button type="button" onClick={toggleSaveToLibrary} className="mt-1 flex h-10 w-full items-center justify-center gap-2 rounded-md text-sm font-bold hover:bg-current/10" aria-pressed={isBookSaved}>
-                {isBookSaved ? <MdFavorite className="text-lg text-rose-500" /> : <MdFavoriteBorder className="text-lg" />}
-                Save to Library
-              </button>
-            </div>
-          )}
-
-          <div
-            className={`grid h-14 w-14 place-items-center rounded-lg border p-1.5 shadow-2xl backdrop-blur-xl
-              ${theme === 'dark'
-                ? 'border-white/10 bg-[#171717]/95 text-slate-100'
-                : theme === 'sepia'
-                  ? 'border-[#5c4a1e]/15 bg-[#f1e3c2]/95 text-[#5c4a1e]'
-                  : 'border-black/10 bg-white/95 text-slate-900'
-              }`}
-          >
-            <button
-              type="button"
-              onClick={() => setMenuOpen((value) => !value)}
-              className="grid h-full w-full place-items-center rounded-md text-2xl transition hover:bg-current/10"
-              aria-label="Open reader menu"
-              aria-expanded={menuOpen}
-            >
-              <MdMoreVert />
-            </button>
-          </div>
-        </div>
       </div>
     </section>
   )
