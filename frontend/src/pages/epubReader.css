@@ -127,6 +127,16 @@
   overflow-anchor: none !important;
 }
 
+#viewer {
+  background: transparent !important;
+}
+
+#viewer iframe,
+#viewer .epub-view,
+#viewer .epub-container {
+  background: transparent !important;
+}
+
 .reader-nav {
   position: fixed;
   bottom: 0;
@@ -173,6 +183,22 @@
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+@keyframes reader-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-reader-fade-in {
+  animation: reader-fade-in 160ms ease-out both;
 }
 
 .reader-error {

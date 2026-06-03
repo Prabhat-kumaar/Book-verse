@@ -2,19 +2,22 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import ePub from 'epubjs'
 import {
   MdBookmarkBorder,
-  MdChevronLeft,
-  MdChevronRight,
   MdClose,
   MdDarkMode,
   MdFullscreen,
   MdFullscreenExit,
+  MdFavorite,
+  MdFavoriteBorder,
   MdLightMode,
   MdMenu,
+  MdMoreVert,
   MdSearch,
 } from 'react-icons/md'
 import { API_ORIGIN } from '../lib/apiConfig'
+import apiClient from '../lib/apiClient'
 import { getEpubSavedCfi, setEpubSavedCfi } from '../lib/readingProgress'
 import useReadingProgress from '../hooks/useReadingProgress'
+import useSavedBooks from '../hooks/useSavedBooks'
 import './epubReader.css'
 
 const API = API_ORIGIN
@@ -60,8 +63,18 @@ function toAbsoluteUrl(value) {
 
 
 
+function normalizeId(value) {
+  if (value == null) return ''
+  if (typeof value === 'object') return String(value._id || value.id || value.toString() || '')
+  return String(value)
+}
+
+function normalizeHref(value = '') {
+  return decodeURIComponent(String(value).split('#')[0].split('?')[0].split('/').pop() || '')
+}
+
 function getActiveHref(locationHref = '') {
-  return locationHref.split('#')[0].split('/').pop() || ''
+  return normalizeHref(locationHref)
 }
 
 function flattenToc(items = [], depth = 0) {
@@ -77,7 +90,7 @@ function flattenToc(items = [], depth = 0) {
   }, [])
 }
 
-function buildThemeStyles(theme) {
+function buildThemeStyles(theme, fontSize = 18, isDesktop = false) {
   let bgColor = '#faf8f4'
   let textColor = '#111827'
   
@@ -91,16 +104,19 @@ function buildThemeStyles(theme) {
 
   return {
     body: {
-      margin: '0 !important',
-      padding: '24px 20px !important',
+      padding: `${isDesktop ? 48 : 24}px !important`,
       color: textColor,
       background: bgColor,
       'line-height': '1.8 !important',
-      'font-size': '18px !important',
+      'font-size': `${fontSize}px !important`,
       '-webkit-font-smoothing': 'antialiased',
       'box-sizing': 'border-box',
-      'max-width': '100% !important',
+      'max-width': '680px !important',
       width: '100% !important',
+      margin: '0 auto !important',
+    },
+    html: {
+      background: `${bgColor} !important`,
     },
     p: { 
       'margin-bottom': '1.5em',
@@ -173,19 +189,29 @@ export default function EpubReaderPage() {
   }
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [fontSize, setFontSize] = useState(() => parseInt(localStorage.getItem('reader-font-size') || '100', 10))
+  const [fontSize, setFontSize] = useState(() => {
+    const saved = parseInt(localStorage.getItem('reader-font-size') || '', 10)
+    if (Number.isFinite(saved) && saved >= 12 && saved <= 28) return saved
+    if (Number.isFinite(saved) && saved > 40) return Math.max(12, Math.min(28, Math.round((saved / 100) * 18)))
+    return window.innerWidth >= 768 ? 16 : 18
+  })
   const [tocItems, setTocItems] = useState([])
   const [activeFilename, setActiveFilename] = useState('')
   const [currentChapterLabel, setCurrentChapterLabel] = useState('')
+  const [currentSpineIndex, setCurrentSpineIndex] = useState(0)
+  const [spineCount, setSpineCount] = useState(0)
 
   const [currentCfi, setCurrentCfi] = useState('')
   const [showChrome, setShowChrome] = useState(true)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchMatches, setSearchMatches] = useState(0)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [toastMessage, setToastMessage] = useState('')
 
   const viewerRef = useRef(null)
   const frameRef = useRef(null)
+  const toolbarMenuRef = useRef(null)
   const searchInputRef = useRef(null)
   const bookRef = useRef(null)
   const renditionRef = useRef(null)
@@ -199,6 +225,7 @@ export default function EpubReaderPage() {
   const currentChapterRef = useRef('')
   const bookIdRef = useRef('')
   const locationsReadyRef = useRef(false)
+  const isDesktopRef = useRef(window.innerWidth >= 768)
 
   const getAuthUser = () => {
     try {
@@ -212,6 +239,9 @@ export default function EpubReaderPage() {
   const resolvedFileUrl = useMemo(() => toAbsoluteUrl(params.fileUrl), [params.fileUrl])
   const fileUrl = resolvedFileUrl
   const bookId = params?.bookId || ''
+  const { savedStatus, refresh: refreshSavedBooks } = useSavedBooks()
+  const savedEntry = useMemo(() => savedStatus.find((item) => normalizeId(item.book) === normalizeId(bookId)), [bookId, savedStatus])
+  const isBookSaved = Boolean(savedEntry)
   const authUser = useMemo(() => {
     try {
       const raw = localStorage.getItem('authUser')
@@ -233,20 +263,31 @@ export default function EpubReaderPage() {
   } = useReadingProgress(bookId, userId, 'epub')
 
   const updateSpineIndex = (idx) => {
+    if (!Number.isFinite(idx) || idx < 0) return
     spineIndexRef.current = idx
+    setCurrentSpineIndex(idx)
+  }
+
+  const findSpineIndexForHref = (href = '') => {
+    const active = normalizeHref(href)
+    if (!active) return -1
+    return spineItemsRef.current.findIndex((item) => {
+      const itemHref = normalizeHref(item?.href || item?.url || '')
+      return itemHref === active
+    })
   }
 
   const increaseFontSize = () => {
-    const newSize = Math.min(fontSize + 10, 200)
+    const newSize = Math.min(fontSize + 2, 28)
     setFontSize(newSize)
-    renditionRef.current?.themes.fontSize(`${newSize}%`)
+    renditionRef.current?.themes.fontSize(`${newSize}px`)
     localStorage.setItem('reader-font-size', String(newSize))
   }
 
   const decreaseFontSize = () => {
-    const newSize = Math.max(fontSize - 10, 60)
+    const newSize = Math.max(fontSize - 2, 12)
     setFontSize(newSize)
-    renditionRef.current?.themes.fontSize(`${newSize}%`)
+    renditionRef.current?.themes.fontSize(`${newSize}px`)
     localStorage.setItem('reader-font-size', String(newSize))
   }
 
@@ -257,6 +298,8 @@ export default function EpubReaderPage() {
     try {
       await renditionRef.current.display(items[nextIdx].href)
       updateSpineIndex(nextIdx)
+      forceScrollReset(renditionRef.current)
+      setMenuOpen(false)
     } catch (e) {
       debugError('Next chapter error:', e)
     }
@@ -269,6 +312,8 @@ export default function EpubReaderPage() {
     try {
       await renditionRef.current.display(items[prevIdx].href)
       updateSpineIndex(prevIdx)
+      forceScrollReset(renditionRef.current)
+      setMenuOpen(false)
     } catch (e) {
       debugError('Prev chapter error:', e)
     }
@@ -322,20 +367,36 @@ export default function EpubReaderPage() {
     }
 
     renditionRef.current.themes.default({
+      html: {
+        background: `${bgColor} !important`,
+      },
       body: {
         background: `${bgColor} !important`,
         color: `${textColor} !important`,
       },
     })
-    renditionRef.current.themes.register('app-theme', buildThemeStyles(theme))
+    renditionRef.current.themes.register('app-theme', buildThemeStyles(theme, fontSize, isDesktopRef.current))
     renditionRef.current.themes.select('app-theme')
-  }, [theme])
+  }, [theme, fontSize])
 
   useEffect(() => {
     if (!renditionRef.current) return
-    renditionRef.current.themes.fontSize(`${fontSize}%`)
+    renditionRef.current.themes.fontSize(`${fontSize}px`)
     localStorage.setItem('reader-font-size', String(fontSize))
   }, [fontSize])
+
+  useEffect(() => {
+    const onResize = () => {
+      const nextIsDesktop = window.innerWidth >= 768
+      if (nextIsDesktop === isDesktopRef.current) return
+      isDesktopRef.current = nextIsDesktop
+      if (!renditionRef.current) return
+      renditionRef.current.themes.register('app-theme', buildThemeStyles(theme, fontSize, nextIsDesktop))
+      renditionRef.current.themes.select('app-theme')
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [fontSize, theme])
 
   useEffect(() => {
     const onFullscreenChange = () => {
@@ -399,7 +460,7 @@ export default function EpubReaderPage() {
         if (isDestroyed) return
         renditionRef.current = rendition
 
-        rendition.themes.register('app-theme', buildThemeStyles(theme))
+        rendition.themes.register('app-theme', buildThemeStyles(theme, fontSize, isDesktopRef.current))
         rendition.themes.select('app-theme')
         rendition.themes.override('*', {
           'max-width': '100% !important',
@@ -408,9 +469,11 @@ export default function EpubReaderPage() {
         })
         rendition.themes.override('body', {
           margin: '0 !important',
-          padding: '24px 20px !important',
-          'max-width': '100% !important',
+          padding: `${isDesktopRef.current ? 48 : 24}px !important`,
+          'max-width': '680px !important',
           width: '100% !important',
+          'font-size': `${fontSize}px !important`,
+          'line-height': '1.8 !important',
           'box-sizing': 'border-box !important',
           'overflow-anchor': 'none !important',
         })
@@ -419,8 +482,11 @@ export default function EpubReaderPage() {
           width: '100% !important',
         })
 
-        const savedFontSize = parseInt(localStorage.getItem('reader-font-size') || '100', 10) || 100
-        rendition.themes.fontSize(`${savedFontSize}%`)
+        const rawSavedFontSize = parseInt(localStorage.getItem('reader-font-size') || '', 10)
+        const savedFontSize = Number.isFinite(rawSavedFontSize) && rawSavedFontSize >= 12 && rawSavedFontSize <= 28
+          ? rawSavedFontSize
+          : fontSize
+        rendition.themes.fontSize(`${savedFontSize}px`)
         setFontSize(savedFontSize)
 
         let initialBg = '#faf8f4'
@@ -434,6 +500,9 @@ export default function EpubReaderPage() {
         }
 
         rendition.themes.default({
+          html: {
+            background: `${initialBg} !important`,
+          },
           body: {
             background: `${initialBg} !important`,
             color: `${initialText} !important`,
@@ -449,6 +518,7 @@ export default function EpubReaderPage() {
         await book.spine.ready
         if (isDestroyed) return
         spineItemsRef.current = book.spine?.spineItems || []
+        setSpineCount(spineItemsRef.current.length)
 
         await book.ready
 
@@ -476,11 +546,13 @@ export default function EpubReaderPage() {
             if (match) {
               setCurrentChapterLabel(match.label || '')
               currentChapterRef.current = match.label || ''
+            } else {
+              const spineLabel = spineItemsRef.current[spineIndexRef.current]?.idref || params.title
+              setCurrentChapterLabel(spineLabel)
+              currentChapterRef.current = spineLabel
             }
 
-            const idx = spineItemsRef.current.findIndex((item) => (
-              locationHref.includes(item?.href || '') || (item?.href || '').includes(locationHref)
-            ))
+            const idx = Number.isFinite(loc?.start?.index) ? loc.start.index : findSpineIndexForHref(locationHref)
             if (idx >= 0) updateSpineIndex(idx)
 
             setCurrentCfi(currentCfiVal)
@@ -694,15 +766,14 @@ export default function EpubReaderPage() {
     applySearchHighlights(searchQuery)
   }, [searchQuery, currentCfi])
 
-  const handleChapterClick = async (item, index) => {
+  const handleChapterClick = async (item) => {
     const rendition = renditionRef.current
     if (!rendition || !item?.href) return
 
     try {
       await rendition.display(item.href)
-      if (typeof index === 'number') {
-        updateSpineIndex(index)
-      }
+      const spineIndex = findSpineIndexForHref(item.href)
+      if (spineIndex >= 0) updateSpineIndex(spineIndex)
       
       // If navigating to a section without a specific hash anchor, force container scroll to 0 to prevent dynamic loading jumps
       if (!item.href.includes('#')) {
@@ -727,8 +798,32 @@ export default function EpubReaderPage() {
     else await frameRef.current.requestFullscreen()
   }
 
+  const showToast = (message) => {
+    setToastMessage(message)
+    window.setTimeout(() => setToastMessage(''), 2200)
+  }
+
+  const toggleSaveToLibrary = async () => {
+    if (!bookId) return
+    try {
+      if (isBookSaved) {
+        await apiClient.delete(`/api/saved-books/${encodeURIComponent(bookId)}`)
+        showToast('Removed from Library')
+      } else {
+        await apiClient.post(`/api/saved-books/${encodeURIComponent(bookId)}`)
+        showToast('Saved to Library ❤️')
+      }
+      await refreshSavedBooks()
+    } catch (err) {
+      debugError('Save to library failed:', err)
+      showToast('Could not update Library')
+    }
+  }
+
   const chapterEstimatePages = Math.max(1, Math.round(totalPages / Math.max(1, tocItems.length)))
   const coverUrl = toAbsoluteUrl(params.cover)
+  const isFirstChapter = currentSpineIndex <= 0
+  const isLastChapter = spineCount > 0 && currentSpineIndex >= spineCount - 1
 
   const bookmarkCurrentLocation = async () => {
     if (!currentCfi) return
@@ -751,6 +846,16 @@ export default function EpubReaderPage() {
       document.documentElement.style.overflow = prevHtmlOverflow
     }
   }, [])
+
+  useEffect(() => {
+    if (!menuOpen) return undefined
+    const onPointerDown = (event) => {
+      if (toolbarMenuRef.current?.contains(event.target)) return
+      setMenuOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [menuOpen])
 
   return (
     <section
@@ -787,13 +892,13 @@ export default function EpubReaderPage() {
             </button>
             <div className="min-w-0 flex-1 text-center">
               <h1 className="truncate text-sm md:text-base font-extrabold uppercase tracking-[0.06em] opacity-95">
-                {params.title}
+                {currentChapterLabel || params.title}
                 <span className="ml-2 inline-flex items-center rounded-full bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 text-[10px] font-bold text-indigo-400">
                   {progressPercent}% complete
                 </span>
               </h1>
               <p className="truncate text-[11px] md:text-xs font-semibold tracking-wider opacity-50">
-                {currentChapterLabel || 'Reading View'}
+                {params.title}
               </p>
             </div>
             <div className="flex items-center gap-0.5">
@@ -1009,11 +1114,11 @@ export default function EpubReaderPage() {
                 </div>
               )}
 
-              <div className="flex-1 w-full mx-auto overflow-hidden h-full flex flex-col max-w-[96%] px-4 sm:px-8 md:px-12 lg:px-16">
+              <div className="flex-1 h-full w-full overflow-hidden px-6 md:px-12">
                 <div
                   id="viewer"
                   ref={viewerRef}
-                  className="h-full w-full flex-1 leading-relaxed"
+                  className="mx-auto h-full w-full max-w-[680px] flex-1 text-[18px] leading-[1.8] md:text-[16px]"
                   style={{ visibility: loadingState === 'ready' ? 'visible' : 'hidden' }}
                   onTouchStart={handleTouchStart}
                   onTouchEnd={handleTouchEnd}
@@ -1032,112 +1137,100 @@ export default function EpubReaderPage() {
           </main>
         </div>
 
+        {toastMessage && (
+          <div className="fixed bottom-24 left-1/2 z-[70] -translate-x-1/2 rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-xl">
+            {toastMessage}
+          </div>
+        )}
+
         <div
-          className={`fixed inset-x-0 z-50 flex flex-col items-center gap-2 px-3 transition-transform duration-300
-            ${showChrome ? 'translate-y-0' : 'translate-y-28 md:translate-y-full'}
-            bottom-6
-            md:bottom-0 md:border-t md:py-4 md:px-6 md:shadow-[0_-4px_16px_rgba(0,0,0,0.1)]
-            ${theme === 'dark'
-              ? 'md:bg-[#121212]/95 md:border-white/10'
-              : theme === 'sepia'
-                ? 'md:bg-[#eddcb4]/95 md:border-[#5c4a1e]/15'
-                : 'md:bg-[#faf8f4]/95 md:border-black/[8%]'
-            }`}
+          ref={toolbarMenuRef}
+          className={`fixed inset-x-0 bottom-5 z-50 flex flex-col items-center px-4 transition-transform duration-300
+            ${showChrome ? 'translate-y-0' : 'translate-y-28 md:translate-y-32'}`}
         >
+          {menuOpen && (
+            <div
+              className={`mb-3 w-full max-w-[340px] animate-reader-fade-in rounded-lg border p-3 shadow-2xl backdrop-blur-xl
+                ${theme === 'dark'
+                  ? 'border-white/10 bg-[#171717]/95 text-slate-100'
+                  : theme === 'sepia'
+                    ? 'border-[#5c4a1e]/15 bg-[#f1e3c2]/95 text-[#5c4a1e]'
+                    : 'border-black/10 bg-white/95 text-slate-900'
+                }`}
+            >
+              <div className="flex items-center justify-between gap-2 border-b border-current/10 pb-3">
+                <span className="text-xs font-bold uppercase opacity-55">Font size</span>
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={decreaseFontSize} className="h-9 rounded-md px-4 text-sm font-bold hover:bg-current/10" aria-label="Decrease font size">
+                    A-
+                  </button>
+                  <button type="button" onClick={increaseFontSize} className="h-9 rounded-md px-4 text-base font-bold hover:bg-current/10" aria-label="Increase font size">
+                    A+
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 border-b border-current/10 py-3">
+                <span className="text-xs font-bold uppercase opacity-55">Theme</span>
+                <div className="grid grid-cols-3 gap-1 rounded-md bg-current/5 p-1">
+                  {['dark', 'light', 'sepia'].map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setTheme(option)}
+                      className={`h-9 rounded px-3 text-xs font-bold capitalize transition ${theme === option ? 'bg-primary text-white shadow' : 'hover:bg-current/10'}`}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button type="button" onClick={toggleFullscreen} className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-md text-sm font-bold hover:bg-current/10">
+                {isFullscreen ? <MdFullscreenExit className="text-lg" /> : <MdFullscreen className="text-lg" />}
+                {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+              </button>
+
+              <button type="button" onClick={toggleSaveToLibrary} className="mt-1 flex h-10 w-full items-center justify-center gap-2 rounded-md text-sm font-bold hover:bg-current/10">
+                {isBookSaved ? <MdFavorite className="text-lg text-rose-500" /> : <MdFavoriteBorder className="text-lg" />}
+                {isBookSaved ? 'Saved to Library' : 'Save to Library'}
+              </button>
+            </div>
+          )}
+
           <div
-            className={`flex items-center justify-between w-full max-w-[680px] transition-all px-2
-              rounded-full p-1.5 shadow-2xl border backdrop-blur-xl
-              md:rounded-none md:p-0 md:shadow-none md:border-none md:bg-transparent
+            className={`grid h-14 w-full max-w-[680px] grid-cols-[1fr_56px_1fr] items-center gap-2 rounded-lg border p-1.5 shadow-2xl backdrop-blur-xl
               ${theme === 'dark'
-                ? 'bg-[#121212]/95 border-white/10 text-slate-100'
+                ? 'border-white/10 bg-[#171717]/95 text-slate-100'
                 : theme === 'sepia'
-                  ? 'bg-[#eddcb4]/95 border-[#5c4a1e]/15 text-[#5c4a1e]'
-                  : 'bg-[#faf8f4]/95 border-black/[8%] text-slate-800'
+                  ? 'border-[#5c4a1e]/15 bg-[#f1e3c2]/95 text-[#5c4a1e]'
+                  : 'border-black/10 bg-white/95 text-slate-900'
               }`}
           >
-            {/* Prev Chapter */}
             <button
               type="button"
               onClick={goPrevChapter}
-              className="flex flex-col items-center justify-center min-h-[48px] min-w-[48px] rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition"
-              aria-label="Previous chapter"
+              disabled={isFirstChapter}
+              className="h-full rounded-md px-3 text-xs font-extrabold uppercase transition hover:bg-current/10 disabled:cursor-not-allowed disabled:opacity-35 md:text-sm"
             >
-              <MdChevronLeft className="text-2xl md:text-xl" />
-              <span className="hidden md:inline text-[10px] mt-0.5 uppercase tracking-wider font-semibold opacity-60">PREV</span>
+              ← Prev Chapter
             </button>
-
-            {/* Decrease Font Size */}
             <button
               type="button"
-              onClick={decreaseFontSize}
-              className="flex flex-col items-center justify-center min-h-[48px] min-w-[48px] px-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition"
-              aria-label="Decrease font size"
+              onClick={() => setMenuOpen((value) => !value)}
+              className="grid h-full place-items-center rounded-md text-2xl transition hover:bg-current/10"
+              aria-label="Open reader menu"
+              aria-expanded={menuOpen}
             >
-              <span className="text-base font-semibold leading-none">A-</span>
-              <span className="hidden md:inline text-[10px] mt-1.5 uppercase tracking-wider font-semibold opacity-60">FONT-</span>
+              <MdMoreVert />
             </button>
-
-            {/* Increase Font Size */}
-            <button
-              type="button"
-              onClick={increaseFontSize}
-              className="flex flex-col items-center justify-center min-h-[48px] min-w-[48px] px-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition"
-              aria-label="Increase font size"
-            >
-              <span className="text-lg font-bold leading-none">A+</span>
-              <span className="hidden md:inline text-[10px] mt-1 uppercase tracking-wider font-semibold opacity-60">FONT+</span>
-            </button>
-
-            {/* Bookmark Current Location */}
-            <button
-              type="button"
-              onClick={bookmarkCurrentLocation}
-              className="flex flex-col items-center justify-center min-h-[48px] min-w-[48px] rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition"
-              aria-label="Bookmark"
-            >
-              <MdBookmarkBorder className="text-2xl md:text-xl" />
-              <span className="hidden md:inline text-[10px] mt-0.5 uppercase tracking-wider font-semibold opacity-60">SAVE</span>
-            </button>
-
-            {/* Old theme toggle (Dark/Light) */}
-            <button
-              type="button"
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className="flex flex-col items-center justify-center min-h-[48px] min-w-[48px] px-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition"
-              aria-label="Toggle theme"
-            >
-              {isDarkMode ? (
-                <MdLightMode className="text-2xl md:text-xl text-amber-500" />
-              ) : (
-                <MdDarkMode className="text-2xl md:text-xl text-indigo-400" />
-              )}
-              <span className="hidden md:inline text-[10px] mt-0.5 uppercase tracking-wider font-semibold opacity-60">
-                {isDarkMode ? 'LIGHT' : 'DARK'}
-              </span>
-            </button>
-
-            {/* Fullscreen Toggle */}
-            <button
-              type="button"
-              onClick={toggleFullscreen}
-              className="flex flex-col items-center justify-center min-h-[48px] min-w-[48px] rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition"
-              aria-label="Toggle fullscreen"
-            >
-              {isFullscreen ? <MdFullscreenExit className="text-2xl md:text-xl" /> : <MdFullscreen className="text-2xl md:text-xl" />}
-              <span className="hidden md:inline text-[10px] mt-0.5 uppercase tracking-wider font-semibold opacity-60">
-                {isFullscreen ? 'EXIT' : 'FULL'}
-              </span>
-            </button>
-
-            {/* Next Chapter */}
             <button
               type="button"
               onClick={goNextChapter}
-              className="flex flex-col items-center justify-center min-h-[48px] min-w-[48px] rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition"
-              aria-label="Next chapter"
+              disabled={isLastChapter}
+              className="h-full rounded-md px-3 text-xs font-extrabold uppercase transition hover:bg-current/10 disabled:cursor-not-allowed disabled:opacity-35 md:text-sm"
             >
-              <MdChevronRight className="text-2xl md:text-xl" />
-              <span className="hidden md:inline text-[10px] mt-0.5 uppercase tracking-wider font-semibold opacity-60">NEXT</span>
+              Next Chapter →
             </button>
           </div>
         </div>
