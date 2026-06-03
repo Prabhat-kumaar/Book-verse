@@ -3,12 +3,10 @@ import ePub from 'epubjs'
 import {
   MdBookmarkBorder,
   MdClose,
-  MdDarkMode,
   MdFullscreen,
   MdFullscreenExit,
   MdFavorite,
   MdFavoriteBorder,
-  MdLightMode,
   MdMenu,
   MdMoreVert,
   MdSearch,
@@ -79,6 +77,11 @@ function getActiveHref(locationHref = '') {
 
 function getReaderPadding(isDesktop = false) {
   return isDesktop ? 80 : 20
+}
+
+function truncateMobileTitle(value = '') {
+  const title = value || 'Untitled Book'
+  return title.length > 20 ? `${title.slice(0, 20)}...` : title
 }
 
 function flattenToc(items = [], depth = 0) {
@@ -212,10 +215,6 @@ export default function EpubReaderPage() {
     return 'light'
   })
   const isDarkMode = theme === 'dark'
-  const setIsDarkMode = (val) => {
-    const nextVal = typeof val === 'function' ? val(theme === 'dark') : val
-    setTheme(nextVal ? 'dark' : 'light')
-  }
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [fontSize, setFontSize] = useState(() => {
@@ -228,7 +227,6 @@ export default function EpubReaderPage() {
   const [activeFilename, setActiveFilename] = useState('')
   const [currentChapterLabel, setCurrentChapterLabel] = useState('')
 
-  const [currentCfi, setCurrentCfi] = useState('')
   const [showChrome, setShowChrome] = useState(true)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -255,15 +253,6 @@ export default function EpubReaderPage() {
   const locationsReadyRef = useRef(false)
   const isDesktopRef = useRef(window.innerWidth >= 768)
 
-  const getAuthUser = () => {
-    try {
-      const raw = localStorage.getItem('authUser')
-      return raw ? JSON.parse(raw) : null
-    } catch {
-      return null
-    }
-  }
-
   const resolvedFileUrl = useMemo(() => toAbsoluteUrl(params.fileUrl), [params.fileUrl])
   const fileUrl = resolvedFileUrl
   const bookId = params?.bookId || ''
@@ -287,7 +276,6 @@ export default function EpubReaderPage() {
     locationCfi: savedLocationCfi,
     loading: progressLoading,
     updateProgress,
-    triggerSave,
   } = useReadingProgress(bookId, userId, 'epub')
 
   const updateSpineIndex = (idx) => {
@@ -567,7 +555,6 @@ export default function EpubReaderPage() {
             const idx = Number.isFinite(loc?.start?.index) ? loc.start.index : findSpineIndexForHref(locationHref)
             if (idx >= 0) updateSpineIndex(idx)
 
-            setCurrentCfi(currentCfiVal)
             currentCfiRef.current = currentCfiVal
             setEpubSavedCfi({ bookId, fileUrl, cfi: currentCfiVal })
 
@@ -828,17 +815,7 @@ export default function EpubReaderPage() {
 
   const chapterEstimatePages = Math.max(1, Math.round(totalPages / Math.max(1, tocItems.length)))
   const coverUrl = toAbsoluteUrl(params.cover)
-
-  const bookmarkCurrentLocation = async () => {
-    if (!currentCfi) return
-    const authUser = getAuthUser()
-    if (!authUser?._id || !bookId) return
-    try {
-      await triggerSave(true)
-    } catch (err) {
-      debugError('Bookmark save failed:', err)
-    }
-  }
+  const mobileHeaderTitle = truncateMobileTitle(params.title)
 
   useEffect(() => {
     const prevBodyOverflow = document.body.style.overflow
@@ -885,48 +862,28 @@ export default function EpubReaderPage() {
             ${showChrome ? 'translate-y-0' : '-translate-y-full'}
             ${theme === 'dark' ? 'border-white/10' : theme === 'sepia' ? 'border-[#5c4a1e]/15' : 'border-black/[8%]'}`}
         >
-          <div className="flex h-full w-full items-center gap-3 px-6">
+          <div className="flex h-full w-full items-center gap-3 px-3 md:px-6">
             <button
               type="button"
               onClick={() => setSidebarOpen((v) => !v)}
-              className="grid h-9 w-9 place-items-center rounded-full hover:bg-white/10 transition"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full hover:bg-white/10 transition"
               aria-label="Toggle table of contents"
             >
               <MdMenu className="text-xl" />
             </button>
             <div className="min-w-0 flex-1 text-center">
-              <h1 className="truncate text-sm md:text-base font-extrabold uppercase tracking-[0.06em] opacity-95">
-                {currentChapterLabel || params.title}
-                <span className="ml-2 inline-flex items-center rounded-full bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 text-[10px] font-bold text-indigo-400">
+              <h1 className="truncate text-sm font-extrabold uppercase tracking-[0.03em] opacity-95 md:text-base md:tracking-[0.06em]">
+                <span className="md:hidden">{mobileHeaderTitle}</span>
+                <span className="hidden md:inline">{currentChapterLabel || params.title}</span>
+                <span className="ml-2 hidden items-center rounded-full bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 text-[10px] font-bold text-indigo-400 md:inline-flex">
                   {progressPercent}% complete
                 </span>
               </h1>
-              <p className="truncate text-[11px] md:text-xs font-semibold tracking-wider opacity-50">
+              <p className="hidden truncate text-[11px] font-semibold tracking-wider opacity-50 md:block md:text-xs">
                 {params.title}
               </p>
             </div>
-            <div className="flex items-center gap-0.5">
-              <button type="button" onClick={() => setSearchOpen((v) => !v)}
-                className="grid h-9 w-9 place-items-center rounded-full hover:bg-white/10 transition"
-                aria-label="Search">
-                <MdSearch className="text-lg" />
-              </button>
-              <button type="button" onClick={bookmarkCurrentLocation}
-                className="grid h-9 w-9 place-items-center rounded-full hover:bg-white/10 transition"
-                aria-label="Bookmark">
-                <MdBookmarkBorder className="text-lg" />
-              </button>
-              <button type="button" onClick={() => setIsDarkMode((v) => !v)}
-                className="grid h-9 w-9 place-items-center rounded-full hover:bg-white/10 transition"
-                aria-label="Toggle theme">
-                {isDarkMode ? <MdLightMode className="text-lg" /> : <MdDarkMode className="text-lg" />}
-              </button>
-              <button type="button" onClick={toggleFullscreen}
-                className="grid h-9 w-9 place-items-center rounded-full hover:bg-white/10 transition"
-                aria-label="Fullscreen">
-                {isFullscreen ? <MdFullscreenExit className="text-lg" /> : <MdFullscreen className="text-lg" />}
-              </button>
-            </div>
+            <div className="h-9 w-9 shrink-0 md:hidden" aria-hidden="true" />
           </div>
           <div className={`h-px w-full ${isDarkMode ? 'bg-white/10' : 'bg-black/10'}`}>
             <div
@@ -1178,7 +1135,7 @@ export default function EpubReaderPage() {
         <div
           ref={toolbarMenuRef}
           className={`fixed inset-x-0 bottom-5 z-50 flex flex-col items-center px-4 transition-transform duration-300
-            ${showChrome ? 'translate-y-0' : 'translate-y-28 md:translate-y-32'}`}
+            ${showChrome ? 'translate-y-0' : 'translate-y-0 md:translate-y-32'}`}
         >
           {menuOpen && (
             <div
@@ -1202,7 +1159,7 @@ export default function EpubReaderPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-2 border-b border-current/10 py-3">
+              <div className="hidden items-center justify-between gap-2 border-b border-current/10 py-3 md:flex">
                 <span className="text-xs font-bold uppercase opacity-55">Theme</span>
                 <div className="grid grid-cols-3 gap-1 rounded-md bg-current/5 p-1">
                   {['dark', 'light', 'sepia'].map((option) => (
@@ -1218,14 +1175,14 @@ export default function EpubReaderPage() {
                 </div>
               </div>
 
-              <button type="button" onClick={toggleFullscreen} className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-md text-sm font-bold hover:bg-current/10">
+              <button type="button" onClick={toggleFullscreen} className="mt-3 hidden h-10 w-full items-center justify-center gap-2 rounded-md text-sm font-bold hover:bg-current/10 md:flex">
                 {isFullscreen ? <MdFullscreenExit className="text-lg" /> : <MdFullscreen className="text-lg" />}
                 {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
               </button>
 
-              <button type="button" onClick={toggleSaveToLibrary} className="mt-1 flex h-10 w-full items-center justify-center gap-2 rounded-md text-sm font-bold hover:bg-current/10">
+              <button type="button" onClick={toggleSaveToLibrary} className="mt-1 flex h-10 w-full items-center justify-center gap-2 rounded-md text-sm font-bold hover:bg-current/10" aria-pressed={isBookSaved}>
                 {isBookSaved ? <MdFavorite className="text-lg text-rose-500" /> : <MdFavoriteBorder className="text-lg" />}
-                {isBookSaved ? 'Saved to Library' : 'Save to Library'}
+                Save to Library
               </button>
             </div>
           )}
