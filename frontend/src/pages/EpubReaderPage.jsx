@@ -39,7 +39,18 @@ const debugError = (...args) => {
   if (isDev) console.error(...args)
 }
 
-function parseReaderParams() {
+function parseReaderParams(book = null) {
+  if (book) {
+    return {
+      bookId: book._id || book.id || '',
+      fileUrl: book.fileUrl || book.pdf || '',
+      title: book.title || 'Untitled Book',
+      author: book.author || 'Unknown Author',
+      cover: book.coverImage || book.thumbnail || '',
+      cfi: '',
+    }
+  }
+
   const hash = window.location.hash || ''
   const queryString = hash.includes('?') ? hash.split('?')[1] : ''
   const params = new URLSearchParams(queryString)
@@ -207,8 +218,8 @@ async function loadEpubBook(fileUrl) {
   }
 }
 
-export default function EpubReaderPage() {
-  const [params, setParams] = useState(parseReaderParams)
+export default function EpubReaderPage({ book = null }) {
+  const [params, setParams] = useState(() => parseReaderParams(book))
   const [loadingState, setLoadingState] = useState('idle')
   const [errorMessage, setErrorMessage] = useState('')
   const [theme, setTheme] = useState(() => {
@@ -365,10 +376,15 @@ export default function EpubReaderPage() {
   }
 
   useEffect(() => {
+    if (book) {
+      setParams(parseReaderParams(book))
+      return undefined
+    }
+
     const onHashChange = () => setParams(parseReaderParams())
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
-  }, [])
+  }, [book])
 
   useEffect(() => {
     if (!activeFilename) return

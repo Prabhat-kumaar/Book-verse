@@ -50,6 +50,7 @@ const RecommendedPage = lazyWithRetry(() => import('./pages/RecommendedPage'))
 const SavedBooksPage = lazyWithRetry(() => import('./pages/SavedBooksPage'))
 const ProfileDashboardPage = lazyWithRetry(() => import('./pages/ProfileDashboardPage'))
 const BookDetailPage = lazyWithRetry(() => import('./pages/BookDetailPage'))
+const BookReadPage = lazyWithRetry(() => import('./pages/BookReadPage'))
 
 class AppErrorBoundary extends React.Component {
   constructor(props) {
@@ -230,6 +231,8 @@ function App() {
             <Route path="/" element={<MainLayout><HomePage /></MainLayout>} />
             <Route path="/books" element={<MainLayout><BooksPage /></MainLayout>} />
             <Route path="/book/:id" element={<MainLayout><BookDetailPage /></MainLayout>} />
+            <Route path="/read/:bookSlug" element={<RequireAuth><MainLayout hideChrome fullBleed><BookReadPage /></MainLayout></RequireAuth>} />
+            <Route path="/reader" element={<Navigate to="/read" replace />} />
             <Route path="/categories" element={<MainLayout><CategoriesPage /></MainLayout>} />
             <Route path="/recommended" element={<MainLayout><RecommendedPage /></MainLayout>} />
             <Route path="/login" element={<LoginPage />} />

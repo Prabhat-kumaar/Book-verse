@@ -5,6 +5,7 @@ const {
     getAllBooks,
     getBooksByCategory,
     getBookById,
+    getBookBySlug,
     updateBook,
     deleteBook,
     getRecommendations,
@@ -28,6 +29,7 @@ router.post(
 router.get('/', getAllBooks);
 router.get('/recommendations', getRecommendations);
 router.get('/category/:category', getBooksByCategory);
+router.get('/slug/:slug', getBookBySlug);
 router.get('/:id', getBookById);
 router.put(
     '/:id',

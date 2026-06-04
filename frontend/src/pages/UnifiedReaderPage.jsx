@@ -32,6 +32,13 @@ function lazyWithRetry(importer) {
 const PdfReaderPage = lazyWithRetry(() => import('./PdfReaderPage'))
 const EpubReaderPage = lazyWithRetry(() => import('./EpubReaderPage'))
 
+function getReaderTypeFromBook(book) {
+  const fileType = (book?.fileType || '').toLowerCase()
+  const fileUrl = (book?.fileUrl || book?.pdf || '').toLowerCase()
+  if (fileType === 'epub' || fileUrl.endsWith('.epub')) return 'epub'
+  return 'pdf'
+}
+
 function getReaderTypeFromHash(hash) {
   const queryString = hash.includes('?') ? hash.split('?')[1] : ''
   const params = new URLSearchParams(queryString)
@@ -41,8 +48,11 @@ function getReaderTypeFromHash(hash) {
   return 'pdf'
 }
 
-export default function UnifiedReaderPage() {
-  const readerType = useMemo(() => getReaderTypeFromHash(window.location.hash || ''), [])
+export default function UnifiedReaderPage({ book = null }) {
+  const readerType = useMemo(
+    () => (book ? getReaderTypeFromBook(book) : getReaderTypeFromHash(window.location.hash || '')),
+    [book],
+  )
   return (
     <div className="min-h-screen w-full animate-reader-fade-up">
       <Suspense
@@ -52,7 +62,7 @@ export default function UnifiedReaderPage() {
           </div>
         )}
       >
-        {readerType === 'epub' ? <EpubReaderPage /> : <PdfReaderPage />}
+        {readerType === 'epub' ? <EpubReaderPage book={book} /> : <PdfReaderPage book={book} />}
       </Suspense>
     </div>
   )

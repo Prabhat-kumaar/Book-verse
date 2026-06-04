@@ -20,7 +20,17 @@ const CONTROLS_HIDE_DELAY_MS = 2500
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
 
-function parseReaderParams() {
+function parseReaderParams(book = null) {
+  if (book) {
+    return {
+      bookId: book._id || book.id || '',
+      pdf: book.fileUrl || book.pdf || '',
+      title: book.title || 'Untitled Book',
+      author: book.author || 'Unknown Author',
+      page: 1,
+    }
+  }
+
   const hash = window.location.hash || ''
   const queryString = hash.includes('?') ? hash.split('?')[1] : ''
   const params = new URLSearchParams(queryString)
@@ -38,8 +48,8 @@ function getZoomStorageKey(bookId) {
   return `readerZoom:${bookId || 'default'}`
 }
 
-export default function PdfReaderPage() {
-  const [params, setParams] = useState(parseReaderParams)
+export default function PdfReaderPage({ book = null }) {
+  const [params, setParams] = useState(() => parseReaderParams(book))
   const [pdfLoading, setPdfLoading] = useState(true)
   const [readerWidth, setReaderWidth] = useState(900)
   const [zoomScale, setZoomScale] = useState(1)
@@ -145,6 +155,11 @@ export default function PdfReaderPage() {
   }, [params.bookId, zoomScale])
 
   useEffect(() => {
+    if (book) {
+      setParams(parseReaderParams(book))
+      return undefined
+    }
+
     const onHashChange = () => setParams(parseReaderParams())
     window.addEventListener('hashchange', onHashChange)
     return () => {
@@ -152,7 +167,7 @@ export default function PdfReaderPage() {
       if (zoomDebounceTimerRef.current) window.clearTimeout(zoomDebounceTimerRef.current)
       if (controlsHideTimerRef.current) window.clearTimeout(controlsHideTimerRef.current)
     }
-  }, [])
+  }, [book])
 
   const revealControls = useCallback(() => {
     setControlsVisible(true)

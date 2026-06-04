@@ -26,6 +26,7 @@ const bookSchema = new mongoose.Schema(
             trim: true,
             lowercase: true,
             unique: true,
+            index: true,
             sparse: true,
         },
         author: {
@@ -132,7 +133,7 @@ bookSchema.statics.createUniqueSlug = async function createUniqueSlug(title, doc
     return candidate;
 };
 
-bookSchema.pre('validate', async function setBookSlug(next) {
+bookSchema.pre('save', async function setBookSlug(next) {
     try {
         if (!this.slug || this.isModified('title')) {
             this.slug = await this.constructor.createUniqueSlug(this.title, this._id);

@@ -369,6 +369,25 @@ const getBookById = async (req, res, next) => {
     }
 };
 
+const getBookBySlug = async (req, res, next) => {
+    try {
+        const slug = asTrimmedString(req.params.slug).toLowerCase();
+        const book = await Book.findOne({ slug });
+        if (!book) {
+            return res.status(404).json({ success: false, message: 'Book not found' });
+        }
+        const formattedBook = {
+            ...book._doc,
+            fileUrl: book.fileUrl ? formatUrl(req, book.fileUrl) : null,
+            thumbnail: book.thumbnail ? formatUrl(req, book.thumbnail) : null,
+            coverImage: book.coverImage ? formatUrl(req, book.coverImage) : null
+        };
+        res.json({ success: true, data: formattedBook });
+    } catch (error) {
+        next(error);
+    }
+};
+
 const updateBook = async (req, res, next) => {
     try {
         const bookId = req.params.id;
@@ -496,6 +515,7 @@ module.exports = {
     getAllBooks,
     getBooksByCategory,
     getBookById,
+    getBookBySlug,
     updateBook,
     deleteBook,
     getRecommendations,
