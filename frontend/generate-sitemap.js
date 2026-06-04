@@ -38,11 +38,11 @@ const buildSitemapXml = (books = []) => {
     xml += '  </url>\n';
   });
 
-  books.forEach(book => {
-    if (!book?._id) return;
+books.forEach(book => {
+    if (!book?.slug) return;
 
     xml += '  <url>\n';
-    xml += `    <loc>${PRODUCTION_DOMAIN}/book/${book._id}</loc>\n`;
+    xml += `    <loc>${PRODUCTION_DOMAIN}/read/${book.slug}</loc>\n`;
     xml += `    <lastmod>${sanitizeDate(book.updatedAt)}</lastmod>\n`;
     xml += '    <changefreq>monthly</changefreq>\n';
     xml += '    <priority>0.8</priority>\n';
