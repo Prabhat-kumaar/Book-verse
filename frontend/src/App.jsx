@@ -155,9 +155,17 @@ function RouteFallback() {
   )
 }
 
+function parseReaderBookId(hash = '') {
+  if (!hash.startsWith('#reader')) return ''
+  const queryString = hash.includes('?') ? hash.split('?')[1] : ''
+  const params = new URLSearchParams(queryString)
+  return params.get('bookId') || ''
+}
+
 function App() {
   const navigate = useNavigate()
   const [hash, setHash] = useState(window.location.hash)
+  const [hashReaderRedirecting, setHashReaderRedirecting] = useState(false)
 
   useEffect(() => {
     const onHashChange = () => {
@@ -217,10 +225,45 @@ function App() {
 
   const isReaderRoute = hash.startsWith('#reader')
 
+  useEffect(() => {
+    if (!isReaderRoute) {
+      setHashReaderRedirecting(false)
+      return undefined
+    }
+
+    const bookId = parseReaderBookId(hash)
+    if (!bookId) return undefined
+
+    let cancelled = false
+    setHashReaderRedirecting(true)
+
+    const redirectOldReaderLink = async () => {
+      try {
+        const response = await apiClient.get(`/api/books/${encodeURIComponent(bookId)}`)
+        const book = response.data?.data || response.data?.book || response.data
+        if (!cancelled && book?.slug) {
+          navigate(`/read/${book.slug}/`, { replace: true })
+        }
+      } catch (err) {
+        if (isDev) console.error('Failed to redirect old reader link:', err)
+      } finally {
+        if (!cancelled) setHashReaderRedirecting(false)
+      }
+    }
+
+    redirectOldReaderLink()
+
+    return () => {
+      cancelled = true
+    }
+  }, [hash, isReaderRoute, navigate])
+
   return (
     <AppErrorBoundary>
       <Suspense fallback={<RouteFallback />}>
-        {isReaderRoute ? (
+        {isReaderRoute && hashReaderRedirecting ? (
+          <RouteFallback />
+        ) : isReaderRoute ? (
           <RequireAuth>
             <MainLayout hideChrome fullBleed>
               <UnifiedReaderPage />

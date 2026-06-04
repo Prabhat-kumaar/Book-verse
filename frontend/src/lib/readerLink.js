@@ -14,27 +14,9 @@ export function getBookFileType(book) {
   return url.endsWith('.epub') ? 'epub' : 'pdf'
 }
 
-export function buildReaderHash(book, page) {
-  let resolvedPage = page
-  let resumeCfi = ''
-  if (typeof page === 'object' && page !== null) {
-    resolvedPage = page.page
-    resumeCfi = page.cfi || ''
-  }
+export function buildReaderHash(book) {
+  const slug = String(book?.slug || '').trim()
+  if (slug) return `/read/${encodeURIComponent(slug)}/`
 
-  const fileType = getBookFileType(book)
-  const params = new URLSearchParams({
-    bookId: book?._id || '',
-    fileUrl: getBookFileUrl(book),
-    fileType,
-    title: book?.title || '',
-    author: book?.author || '',
-  })
-  if (Number.isInteger(resolvedPage) && resolvedPage > 0) {
-    params.set('page', String(resolvedPage))
-  }
-  if (resumeCfi) {
-    params.set('cfi', resumeCfi)
-  }
-  return `#reader?${params.toString()}`
+  return book?._id ? `/book/${book._id}` : '/books'
 }
