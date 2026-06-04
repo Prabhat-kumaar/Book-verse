@@ -47,6 +47,7 @@ export default function Navbar() {
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     setSearch(params.get('q') || '')
+    setSearchDirty(false)
     setMenuOpen(false)
     setProfileOpen(false)
     if (!location.pathname.startsWith('/books')) {
@@ -377,4 +378,3 @@ export default function Navbar() {
     </motion.header>
   )
 }
-
