@@ -5,7 +5,6 @@ import useProgress from '../hooks/useProgress'
 import SaveBookHeart from '../components/SaveBookHeart'
 import EmptyState from '../components/EmptyState'
 import { GridSkeleton } from '../components/Skeletons'
-import { buildReaderHash } from '../lib/readerLink'
 import { buildProgressMap } from '../lib/readingProgress'
 import { getBookThumbnailUrl } from '../lib/mediaUrls'
 import SEO from '../components/SEO'
@@ -56,8 +55,7 @@ function getCategoryColor(category) {
 }
 
 const BookCard = memo(function BookCard({ book, progress }) {
-  const resumePage = Number.isInteger(progress?.currentPage) && progress.currentPage > 0 ? progress.currentPage : undefined
-  const readerLink = buildReaderHash(book, { page: resumePage, cfi: progress?.cfi || '' })
+  const readerLink = book.slug ? `/read/${book.slug}` : `/book/${book._id}`
   const [thumbFailed, setThumbFailed] = useState(false)
 
   return (
