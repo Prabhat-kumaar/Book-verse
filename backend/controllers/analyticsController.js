@@ -48,6 +48,18 @@ const isBotUserAgent = (userAgent) => {
     return /bot|crawler|spider|googlebot|bingbot|slurp|facebookexternalhit/i.test(userAgent);
 };
 
+const normalizeVisitPath = (value) => {
+    const path = typeof value === 'string' && value.trim() ? value.trim() : '/';
+    if (!path.startsWith('/')) return '/';
+    if (/^\/admin(?:\/|$)/i.test(path)) return '/admin';
+    return path.slice(0, 300);
+};
+
+const normalizeSessionId = (value) => {
+    const sessionId = typeof value === 'string' && value.trim() ? value.trim() : 'sess_unknown';
+    return sessionId.slice(0, 120);
+};
+
 const atDayStart = (dateLike) => {
     const d = new Date(dateLike);
     d.setHours(0, 0, 0, 0);
@@ -190,11 +202,13 @@ const recordVisit = async (req, res, next) => {
         const country = geo ? (geo.country || 'Unknown') : 'Unknown';
         const deviceType = getDeviceType(userAgent);
         
-        const { path = '/', sessionId = 'sess_unknown' } = req.body;
+        const path = normalizeVisitPath(req.body.path);
+        const sessionId = normalizeSessionId(req.body.sessionId);
         const recentVisit = await SiteVisitLog.findOne({
             hashedIp,
-            sessionId: req.body.sessionId,
-            visitedAt: { $gte: new Date(Date.now() - 30 * 60 * 1000) }
+            sessionId,
+            path,
+            visitedAt: { $gte: new Date(Date.now() - 10 * 1000) }
         });
         if (recentVisit) {
             return res.json({ success: true, skipped: true, reason: 'session_active' });
@@ -212,7 +226,7 @@ const recordVisit = async (req, res, next) => {
         // Check if daily unique
         const isDailyUnique = !(await SiteVisitLog.exists({
             hashedIp,
-            createdAt: { $gte: today, $lt: tomorrow }
+            visitedAt: { $gte: today, $lt: tomorrow }
         }));
 
         // Log the visit to SiteVisitLog

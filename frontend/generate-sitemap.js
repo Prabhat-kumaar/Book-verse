@@ -11,11 +11,19 @@ const TARGET_PATH = path.resolve(__dirname, 'public/sitemap.xml');
 
 const sanitizeDate = (dateVal) => {
   const d = dateVal ? new Date(dateVal) : new Date();
+  if (Number.isNaN(d.getTime())) return sanitizeDate();
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
+
+const escapeXml = (value = '') => String(value)
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&apos;');
 
 const staticRoutes = [
   { loc: `${PRODUCTION_DOMAIN}/`, changefreq: 'weekly', priority: '1.0' },
@@ -31,18 +39,20 @@ const buildSitemapXml = (books = []) => {
 
   staticRoutes.forEach(route => {
     xml += '  <url>\n';
-    xml += `    <loc>${route.loc}</loc>\n`;
+    xml += `    <loc>${escapeXml(route.loc)}</loc>\n`;
     xml += `    <lastmod>${todayStr}</lastmod>\n`;
     xml += `    <changefreq>${route.changefreq}</changefreq>\n`;
     xml += `    <priority>${route.priority}</priority>\n`;
     xml += '  </url>\n';
   });
 
-books.forEach(book => {
-    if (!book?.slug) return;
+  books.forEach(book => {
+    if (!book?._id) return;
+
+    const bookUrl = `${PRODUCTION_DOMAIN}/book/${book._id}`;
 
     xml += '  <url>\n';
-    xml += `    <loc>${PRODUCTION_DOMAIN}/read/${book.slug}</loc>\n`;
+    xml += `    <loc>${escapeXml(bookUrl)}</loc>\n`;
     xml += `    <lastmod>${sanitizeDate(book.updatedAt)}</lastmod>\n`;
     xml += '    <changefreq>monthly</changefreq>\n';
     xml += '    <priority>0.8</priority>\n';

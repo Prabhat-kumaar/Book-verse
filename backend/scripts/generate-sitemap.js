@@ -15,6 +15,13 @@ try {
 
 const PRODUCTION_DOMAIN = 'https://readifyai.vercel.app';
 
+const escapeXml = (value = '') => String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+
 const main = async () => {
     const mongoUri = process.env.MONGODB_URI;
     let books = [];
@@ -58,7 +65,7 @@ const main = async () => {
 
     staticRoutes.forEach(route => {
         xml += '  <url>\n';
-        xml += `    <loc>${PRODUCTION_DOMAIN}${route.path}</loc>\n`;
+        xml += `    <loc>${escapeXml(`${PRODUCTION_DOMAIN}${route.path}`)}</loc>\n`;
         xml += `    <lastmod>${todayStr}</lastmod>\n`;
         xml += `    <changefreq>${route.changefreq}</changefreq>\n`;
         xml += `    <priority>${route.priority}</priority>\n`;
@@ -73,7 +80,7 @@ const main = async () => {
                 : todayStr;
 
             xml += '  <url>\n';
-            xml += `    <loc>${PRODUCTION_DOMAIN}/book/${book._id}</loc>\n`;
+            xml += `    <loc>${escapeXml(`${PRODUCTION_DOMAIN}/book/${book._id}`)}</loc>\n`;
             xml += `    <lastmod>${lastModDate}</lastmod>\n`;
             xml += `    <changefreq>weekly</changefreq>\n`;
             xml += `    <priority>0.7</priority>\n`;
