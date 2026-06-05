@@ -47,9 +47,8 @@ const buildSitemapXml = (books = []) => {
   });
 
   books.forEach(book => {
-    if (!book?._id) return;
-
-    const bookUrl = `${PRODUCTION_DOMAIN}/book/${book._id}`;
+    if (!book?.slug) return;
+    const bookUrl = `${PRODUCTION_DOMAIN}/read/${book.slug}`;
 
     xml += '  <url>\n';
     xml += `    <loc>${escapeXml(bookUrl)}</loc>\n`;
