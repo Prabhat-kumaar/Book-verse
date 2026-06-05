@@ -6,7 +6,7 @@ const AppError = require('../utils/appError');
 
 const generateToken = (id, role) => {
     return jwt.sign({ id, role }, process.env.JWT_SECRET, {
-        expiresIn: '30d',
+        expiresIn: '7d',
     });
 };
 
@@ -39,7 +39,7 @@ const register = async (req, res, next) => {
         }
 
         if (!validate.password(password)) {
-            return next(new AppError('Password must be at least 6 characters', 400));
+            return next(new AppError('Password must be at least 8 characters', 400));
         }
 
         const userExists = await User.findOne({

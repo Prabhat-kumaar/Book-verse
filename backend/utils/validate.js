@@ -22,7 +22,7 @@ const validate = {
         return re.test(String(email).toLowerCase());
     },
 
-    password: (password) => typeof password === 'string' && password.length >= 6,
+    password: (password) => typeof password === 'string' && password.length >= 8,
 
     sanitize: (str, maxLength = 500) => {
         if (typeof str !== 'string') return '';

@@ -10,7 +10,7 @@ const authLimiter = rateLimit({
 
 const uploadLimiter = rateLimit({
     windowMs: 10 * 60 * 1000,
-    max: 30,
+    max: 100,
     standardHeaders: true,
     legacyHeaders: false,
     message: { message: 'Too many upload/update attempts. Please try again later.' },

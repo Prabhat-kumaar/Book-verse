@@ -39,7 +39,7 @@ export default function SignUpPage() {
         throw new Error('Sign up failed')
       }
 
-      localStorage.setItem('authToken', token)
+      sessionStorage.setItem('authToken', token)
       localStorage.setItem('authUser', JSON.stringify(user))
       window.dispatchEvent(new Event('authChanged'))
       navigate('/', { replace: true })

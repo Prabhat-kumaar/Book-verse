@@ -98,7 +98,7 @@ export default function Navbar() {
   }, [])
 
   const handleLogout = () => {
-    localStorage.removeItem('authToken')
+    sessionStorage.removeItem('authToken')
     localStorage.removeItem('authUser')
     window.dispatchEvent(new Event('authChanged'))
     setProfileOpen(false)

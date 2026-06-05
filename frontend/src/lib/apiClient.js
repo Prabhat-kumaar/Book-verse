@@ -25,7 +25,7 @@ apiClient.interceptors.request.use(
     }
     const finalUrl = isAbsolute ? url : buildApiUrl(normalizedRelativeUrl)
     isDev && console.log('[apiClient] Final request:', finalUrl)
-    const token = localStorage.getItem('authToken')
+    const token = sessionStorage.getItem('authToken')
     const headers = config.headers || {}
     config.headers = headers
 

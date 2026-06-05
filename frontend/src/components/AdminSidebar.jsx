@@ -15,7 +15,7 @@ export default function AdminSidebar() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
   const onLogout = () => {
-    localStorage.removeItem('authToken')
+    sessionStorage.removeItem('authToken')
     localStorage.removeItem('authUser')
     window.dispatchEvent(new Event('authChanged'))
     localStorage.removeItem('adminEmail')

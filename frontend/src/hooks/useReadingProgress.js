@@ -343,7 +343,7 @@ export default function useReadingProgress(bookId, userId, fileType = 'pdf') {
       }
 
       const headers = { 'Content-Type': 'application/json' }
-      const token = localStorage.getItem('authToken')
+      const token = sessionStorage.getItem('authToken')
       if (token) {
         headers.Authorization = `Bearer ${token}`
       }

@@ -37,7 +37,7 @@ function readAuthUserId() {
 }
 
 function readAuthToken() {
-  return Boolean(localStorage.getItem('authToken'))
+  return Boolean(sessionStorage.getItem('authToken'))
 }
 
 function normalizeId(value) {

@@ -396,7 +396,7 @@ export default function AdminAddBookPage() {
 
     try {
       setCsvUploading(true)
-      const token = localStorage.getItem('authToken')
+      const token = sessionStorage.getItem('authToken')
       if (!token) throw new Error('Please login first')
 
       let uploadedCount = csvBooks.filter((book) => csvProgress[book.id]?.status === 'done').length
@@ -444,7 +444,7 @@ export default function AdminAddBookPage() {
 
     try {
       setSubmitting(true)
-      const token = localStorage.getItem('authToken')
+      const token = sessionStorage.getItem('authToken')
       if (!token) {
         throw new Error('Please login first')
       }
@@ -534,7 +534,7 @@ export default function AdminAddBookPage() {
 
     try {
       setBulkUploading(true)
-      const token = localStorage.getItem('authToken')
+      const token = sessionStorage.getItem('authToken')
       if (!token) throw new Error('Please login first')
 
       let uploadedCount = bulkSlots.filter((slot) => bulkProgress[slot.id]?.status === 'done').length

@@ -130,13 +130,13 @@ function readAuthUser() {
 }
 
 function RequireAuth({ children }) {
-  const token = localStorage.getItem('authToken')
+  const token = sessionStorage.getItem('authToken')
   if (!token) return <Navigate to="/login" replace />
   return children
 }
 
 function RequireAdmin({ children }) {
-  const token = localStorage.getItem('authToken')
+  const token = sessionStorage.getItem('authToken')
   const user = readAuthUser()
   if (!token) return <Navigate to="/login" replace />
   if (user?.role !== 'admin') return <Navigate to="/" replace />

@@ -92,7 +92,7 @@ app.use(cors({
         }
 
         // 2. Allow any Vercel deployment dynamically to prevent dynamic subdomain blockages
-        if (normalizedOrigin.endsWith('.vercel.app')) {
+        if (normalizedOrigin === 'https://readifyai.vercel.app') {
             return callback(null, true);
         }
 
@@ -144,7 +144,7 @@ const generalLimiter = rateLimit({
 
 const strictLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 30,
+    max: 100,
     standardHeaders: true,
     legacyHeaders: false,
     handler: (_req, res) => apiResponse.error(res, 'Too many requests', 429),
