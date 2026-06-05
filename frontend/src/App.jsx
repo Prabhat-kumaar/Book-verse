@@ -4,7 +4,7 @@ import apiClient from './lib/apiClient'
 import MainLayout from './layout/MainLayout'
 
 const isDev = import.meta.env.DEV
-const VISIT_DEDUPE_TTL_MS = 2000
+const VISIT_DEDUPE_TTL_MS = 1800000
 const CHUNK_RELOAD_KEY = 'readify_chunk_reload_at'
 const CHUNK_RELOAD_TTL_MS = 30000
 const recentVisitRequests = new Map()
@@ -130,13 +130,13 @@ function readAuthUser() {
 }
 
 function RequireAuth({ children }) {
-  const token = sessionStorage.getItem('authToken')
+  const token = localStorage.getItem('authToken')
   if (!token) return <Navigate to="/login" replace />
   return children
 }
 
 function RequireAdmin({ children }) {
-  const token = sessionStorage.getItem('authToken')
+  const token = localStorage.getItem('authToken')
   const user = readAuthUser()
   if (!token) return <Navigate to="/login" replace />
   if (user?.role !== 'admin') return <Navigate to="/" replace />
@@ -180,11 +180,11 @@ function App() {
   const location = useLocation()
 
   useEffect(() => {
-    // Generate or fetch session ID from sessionStorage
-    let sessionId = sessionStorage.getItem('readify_session_id')
+    // Generate or fetch session ID from localStorage
+    let sessionId = localStorage.getItem('readify_session_id')
     if (!sessionId) {
       sessionId = 'sess_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36)
-      sessionStorage.setItem('readify_session_id', sessionId)
+      localStorage.setItem('readify_session_id', sessionId)
     }
 
     const recordVisit = async () => {

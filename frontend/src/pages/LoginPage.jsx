@@ -37,7 +37,7 @@ export default function LoginPage() {
         throw new Error('Login failed')
       }
 
-      sessionStorage.setItem('authToken', token)
+      localStorage.setItem('authToken', token)
       localStorage.setItem('authUser', JSON.stringify(user))
       window.dispatchEvent(new Event('authChanged'))
 

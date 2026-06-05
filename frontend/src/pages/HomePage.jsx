@@ -416,6 +416,17 @@ export default function HomePage() {
                 <ProgressCardSkeleton key={`continue-skeleton-${idx}`} />
               ))}
             </div>
+          ) : (isGuestUser || (progressError && (progressError.includes('Not authorized') || progressError.includes('no token')))) ? (
+            <div className="mx-1 rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center backdrop-blur-xl">
+              <p className="text-sm text-slate-300">Login to track your reading progress</p>
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="mt-3 inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-blue-500 to-violet-600 px-5 py-2 text-xs font-semibold text-white shadow-md hover:brightness-110"
+              >
+                Login
+              </button>
+            </div>
           ) : progressError ? (
             <p className="px-1 text-sm text-rose-200">{progressError}</p>
           ) : continueReadingBooks.length === 0 ? (

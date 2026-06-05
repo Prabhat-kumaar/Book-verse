@@ -325,7 +325,13 @@ export default function AdminAddBookPage() {
           .filter((row) => csvColumns.some((column) => String(row[column] ?? '').trim()))
           .map((row) => ({
             id: crypto.randomUUID(),
-            title: String(row.title ?? '').trim(),
+            title: (() => {
+              const rawTitle = String(row.title ?? '').trim();
+              if (rawTitle.includes('-') && !rawTitle.includes(' ')) {
+                return rawTitle.replace(/-/g, ' ');
+              }
+              return rawTitle;
+            })(),
             author: String(row.author ?? '').trim(),
             category: String(row.category ?? '').trim(),
             difficulty: String(row.difficulty ?? '').trim(),
@@ -396,7 +402,7 @@ export default function AdminAddBookPage() {
 
     try {
       setCsvUploading(true)
-      const token = sessionStorage.getItem('authToken')
+      const token = localStorage.getItem('authToken')
       if (!token) throw new Error('Please login first')
 
       let uploadedCount = csvBooks.filter((book) => csvProgress[book.id]?.status === 'done').length
@@ -444,7 +450,7 @@ export default function AdminAddBookPage() {
 
     try {
       setSubmitting(true)
-      const token = sessionStorage.getItem('authToken')
+      const token = localStorage.getItem('authToken')
       if (!token) {
         throw new Error('Please login first')
       }
@@ -534,7 +540,7 @@ export default function AdminAddBookPage() {
 
     try {
       setBulkUploading(true)
-      const token = sessionStorage.getItem('authToken')
+      const token = localStorage.getItem('authToken')
       if (!token) throw new Error('Please login first')
 
       let uploadedCount = bulkSlots.filter((slot) => bulkProgress[slot.id]?.status === 'done').length
