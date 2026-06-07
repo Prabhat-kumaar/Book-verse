@@ -2,6 +2,7 @@ import { Navigate, Outlet, Route, Routes, useNavigate, useLocation } from 'react
 import React, { Suspense, useEffect, useState } from 'react'
 import apiClient from './lib/apiClient'
 import MainLayout from './layout/MainLayout'
+import { initGA, trackPageView } from './utils/analytics'
 
 const isDev = import.meta.env.DEV
 const VISIT_DEDUPE_TTL_MS = 1800000
@@ -45,6 +46,11 @@ const AdminUsersPage = lazyWithRetry(() => import('./pages/AdminUsersPage'))
 const LoginPage = lazyWithRetry(() => import('./pages/LoginPage'))
 const SignUpPage = lazyWithRetry(() => import('./pages/SignUpPage'))
 const BooksPage = lazyWithRetry(() => import('./pages/BooksPage'))
+const BlogPage = lazyWithRetry(() => import('./pages/BlogPage'))
+const BlogDetailPage = lazyWithRetry(() => import('./pages/BlogDetailPage'))
+const AdminBlogPage = lazyWithRetry(() => import('./pages/admin/AdminBlogPage'))
+const AdminBlogCreateEditPage = lazyWithRetry(() => import('./pages/admin/AdminBlogCreateEditPage'))
+const AdminBlogAnalyticsPage = lazyWithRetry(() => import('./pages/admin/AdminBlogAnalyticsPage'))
 const CategoriesPage = lazyWithRetry(() => import('./pages/CategoriesPage'))
 const RecommendedPage = lazyWithRetry(() => import('./pages/RecommendedPage'))
 const SavedBooksPage = lazyWithRetry(() => import('./pages/SavedBooksPage'))
@@ -179,6 +185,25 @@ function App() {
 
   const location = useLocation()
 
+  // Defer GA4 script initialization until after the page load / LCP window is complete
+  useEffect(() => {
+    const deferGA = () => {
+      if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(() => initGA(), { timeout: 3000 })
+      } else {
+        setTimeout(initGA, 2000)
+      }
+    }
+
+    if (document.readyState === 'complete') {
+      deferGA()
+    } else {
+      window.addEventListener('load', deferGA, { once: true })
+      return () => window.removeEventListener('load', deferGA)
+    }
+    return undefined
+  }, [])
+
   useEffect(() => {
     // Generate or fetch session ID from localStorage
     let sessionId = localStorage.getItem('readify_session_id')
@@ -192,6 +217,9 @@ function App() {
       const lastRecordedAt = recentVisitRequests.get(visitKey) || 0
       if (Date.now() - lastRecordedAt < VISIT_DEDUPE_TTL_MS) return
       recentVisitRequests.set(visitKey, Date.now())
+
+      // Record in GA4 using the batched queue utility
+      trackPageView(location.pathname)
 
       try {
         const authUser = readAuthUser()
@@ -273,6 +301,8 @@ function App() {
           <Routes>
             <Route path="/" element={<MainLayout><HomePage /></MainLayout>} />
             <Route path="/books" element={<MainLayout><BooksPage /></MainLayout>} />
+            <Route path="/blog" element={<BlogPage />} />
+            <Route path="/blog/:slug" element={<BlogDetailPage />} />
             <Route path="/book/:id" element={<MainLayout><BookDetailPage /></MainLayout>} />
             <Route path="/read/:bookSlug" element={<RequireAuth><MainLayout hideChrome fullBleed><BookReadPage /></MainLayout></RequireAuth>} />
             <Route path="/reader" element={<Navigate to="/read" replace />} />
@@ -285,6 +315,10 @@ function App() {
               <Route path="dashboard" element={<AdminDashboardPage />} />
               <Route path="add-book" element={<AdminAddBookPage />} />
               <Route path="manage-books" element={<AdminManageBooksPage />} />
+              <Route path="blogs" element={<AdminBlogPage />} />
+              <Route path="blogs/create" element={<AdminBlogCreateEditPage />} />
+              <Route path="blogs/:id/edit" element={<AdminBlogCreateEditPage />} />
+              <Route path="blogs/analytics" element={<AdminBlogAnalyticsPage />} />
               <Route path="analytics" element={<AdminAnalyticsPage />} />
               <Route path="users" element={<AdminUsersPage />} />
               <Route index element={<Navigate to="/admin/dashboard" replace />} />

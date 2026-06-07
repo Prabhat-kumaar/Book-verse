@@ -7,6 +7,7 @@ import { getBookThumbnailUrl, applyThumbnailFallback } from '../lib/mediaUrls'
 import { buildReaderHash } from '../lib/readerLink'
 import SaveBookHeart from '../components/SaveBookHeart'
 import EmptyState from '../components/EmptyState'
+import OptimizedImage from '../components/OptimizedImage'
 
 const BOOK_SEO_ATTR = 'data-book-detail-seo'
 const PRODUCTION_DOMAIN = 'https://readifyai.vercel.app'
@@ -374,20 +375,23 @@ export default function BookDetailPage() {
     >
       {/* Mobile Top Header Backdrop (Cover Image) */}
       <div className="relative md:hidden w-full aspect-[4/3] sm:aspect-[16/9] overflow-hidden bg-slate-950">
-        <img
+        <OptimizedImage
           src={getBookThumbnailUrl(book)}
           onError={applyThumbnailFallback}
           alt={`Cover background of ${book.title}`}
+          loading="eager"
+          fetchPriority="high"
           className="absolute inset-0 h-full w-full object-cover blur-md opacity-30 scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
         <div className="absolute inset-0 flex items-center justify-center p-4">
           <div className="relative aspect-[3/4] h-[85%] rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/15">
-            <img
-              loading="lazy"
+            <OptimizedImage
               src={getBookThumbnailUrl(book)}
               onError={applyThumbnailFallback}
               alt={`Cover of ${book.title}`}
+              loading="eager"
+              fetchPriority="high"
               className="h-full w-full object-cover"
             />
           </div>
@@ -409,11 +413,12 @@ export default function BookDetailPage() {
           {/* Desktop Left Column Cover */}
           <div className="hidden md:block md:col-span-4 lg:col-span-4 flex flex-col items-center">
             <div className="relative aspect-[3/4] w-full max-w-[280px] overflow-hidden rounded-3xl bg-slate-950/50 shadow-2xl ring-1 ring-white/15 transition-transform duration-300 hover:scale-[1.01]">
-              <img
-                loading="lazy"
+              <OptimizedImage
                 src={getBookThumbnailUrl(book)}
                 onError={applyThumbnailFallback}
                 alt={`Cover art for ${book.title}`}
+                loading="eager"
+                fetchPriority="high"
                 className="h-full w-full object-cover"
               />
             </div>
@@ -805,11 +810,12 @@ export default function BookDetailPage() {
                   className="group min-w-[160px] max-w-[160px] md:min-w-0 md:max-w-none snap-start cursor-pointer transition-transform duration-300 hover:-translate-y-1"
                 >
                   <div className="aspect-[3/4] w-full overflow-hidden rounded-2xl bg-slate-900 ring-1 ring-white/10 relative shadow-md group-hover:ring-white/20 group-hover:shadow-indigo-500/10">
-                    <img
-                      loading="lazy"
+                    <OptimizedImage
                       src={getBookThumbnailUrl(item)}
                       onError={applyThumbnailFallback}
                       alt={item.title}
+                      loading="lazy"
+                      fetchPriority="low"
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   </div>

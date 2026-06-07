@@ -9,6 +9,7 @@ import { buildReaderHash } from '../lib/readerLink'
 import { getBookThumbnailUrl } from '../lib/mediaUrls'
 import { buildProgressMap } from '../lib/readingProgress'
 import SEO from '../components/SEO'
+import OptimizedImage from '../components/OptimizedImage'
 
 function getCategoryColor(category) {
   const cat = (category || '').toString().trim().toLowerCase()
@@ -38,7 +39,14 @@ function BookCard({ book, progress }) {
         <Link to={`/book/${book._id}`} className="group/link block cursor-pointer text-left">
           <div className="mb-2 aspect-[3/4] w-full overflow-hidden rounded-lg bg-slate-950/50 shadow-inner ring-1 ring-white/10 relative block">
             {book.thumbnail && !thumbFailed ? (
-              <img loading="lazy" src={getBookThumbnailUrl(book)} onError={() => setThumbFailed(true)} alt={book.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+              <OptimizedImage
+                src={getBookThumbnailUrl(book)}
+                onError={() => setThumbFailed(true)}
+                alt={book.title}
+                loading="lazy"
+                fetchPriority="low"
+                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              />
             ) : (
               <div className="grid h-full w-full place-items-center bg-gradient-to-br from-blue-500/50 to-violet-600/50 p-2 text-center text-sm font-semibold text-white">
                 {book.title}
@@ -133,6 +141,25 @@ export default function RecommendedPage() {
           ))}
         </div>
       )}
+
+      {/* Blog Promotion Banner */}
+      <div className="mt-8 rounded-2xl border border-purple-500/20 bg-slate-950/20 p-5 flex flex-col sm:flex-row items-center justify-between gap-4 text-left">
+        <div>
+          <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
+            <span>📝</span>
+            Discover Reading Tips & Guides
+          </h4>
+          <p className="text-xs text-slate-400 mt-1">
+            Check out our latest articles on classic books, study tips, and literary analysis.
+          </p>
+        </div>
+        <Link
+          to="/blog"
+          className="shrink-0 rounded-xl bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-5 py-2 text-xs font-bold transition shadow-md shadow-purple-500/10"
+        >
+          Read Blog
+        </Link>
+      </div>
     </section>
   )
 }

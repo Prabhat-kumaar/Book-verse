@@ -6,6 +6,7 @@ const navItems = [
   { label: 'Dashboard', to: '/admin/dashboard' },
   { label: 'Add Book', to: '/admin/add-book' },
   { label: 'Manage Books', to: '/admin/manage-books' },
+  { label: 'Manage Blogs', href: '/admin/blogs', icon: '📝' },
   { label: 'Analytics', to: '/admin/analytics' },
   { label: 'Manage Users', to: '/admin/users' },
 ]
@@ -46,7 +47,7 @@ export default function AdminSidebar() {
           {navItems.map((item) => (
             <NavLink
               key={item.label}
-              to={item.to}
+              to={item.to || item.href}
               className={({ isActive }) =>
                 `whitespace-nowrap rounded-xl border px-4 py-3 text-left text-sm font-semibold transition duration-300 ${
                   isActive
@@ -55,6 +56,7 @@ export default function AdminSidebar() {
                 }`
               }
             >
+              {item.icon && <span className="mr-2">{item.icon}</span>}
               {item.label}
             </NavLink>
           ))}
@@ -100,7 +102,7 @@ export default function AdminSidebar() {
           {navItems.map((item) => (
             <NavLink
               key={item.label}
-              to={item.to}
+              to={item.to || item.href}
               onClick={() => setMobileSidebarOpen(false)}
               className={({ isActive }) =>
                 `block rounded-xl border px-4 py-3 text-left text-sm font-semibold transition duration-300 ${
@@ -110,6 +112,7 @@ export default function AdminSidebar() {
                 }`
               }
             >
+              {item.icon && <span className="mr-2">{item.icon}</span>}
               {item.label}
             </NavLink>
           ))}

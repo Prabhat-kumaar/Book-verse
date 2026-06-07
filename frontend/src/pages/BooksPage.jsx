@@ -8,6 +8,7 @@ import { GridSkeleton } from '../components/Skeletons'
 import { buildProgressMap } from '../lib/readingProgress'
 import { getBookThumbnailUrl } from '../lib/mediaUrls'
 import SEO from '../components/SEO'
+import OptimizedImage from '../components/OptimizedImage'
 
 function normalize(value) {
   return (value || '').toString().trim().toLowerCase()
@@ -68,7 +69,14 @@ const BookCard = memo(function BookCard({ book, progress }) {
         <Link to={`/book/${book._id}`} className="group/link block cursor-pointer text-left">
           <div className="mb-2 aspect-[3/4] w-full overflow-hidden rounded-lg bg-slate-950/50 shadow-inner ring-1 ring-white/10 relative block">
             {book.thumbnail && !thumbFailed ? (
-              <img loading="lazy" src={getBookThumbnailUrl(book)} onError={() => setThumbFailed(true)} alt={book.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+              <OptimizedImage
+                src={getBookThumbnailUrl(book)}
+                onError={() => setThumbFailed(true)}
+                alt={book.title}
+                loading="lazy"
+                fetchPriority="low"
+                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              />
             ) : (
               <div className="grid h-full w-full place-items-center bg-gradient-to-br from-blue-500/50 to-violet-600/50 p-2 text-center text-sm font-semibold text-white">
                 {book.title}
@@ -204,7 +212,7 @@ export default function BooksPage() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search books, authors, or categories..."
-              className="w-full rounded-xl border border-white/15 bg-slate-950/60 py-3 pl-10 pr-4 text-sm text-white outline-none transition duration-300 placeholder:text-slate-400 focus:border-indigo-400/50 focus:bg-slate-900/80 focus:shadow-[0_0_0_4px_rgba(99,102,241,0.2)]"
+              className="w-full rounded-xl border border-white/15 bg-slate-950/60 py-3 pl-10 pr-4 text-sm text-white outline-none transition duration-300 placeholder:text-slate-400 focus:border-indigo-500 focus:bg-slate-900/80"
             />
           </div>
           
@@ -213,11 +221,11 @@ export default function BooksPage() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="rounded-xl border border-white/15 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-400/50 focus:bg-slate-900/80"
+              className="rounded-xl border border-white/15 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500 focus:bg-slate-900/80"
             >
-              <option value="Newest">📅 Newest</option>
-              <option value="Most Read">🔥 Most Read</option>
-              <option value="A-Z">🔤 A-Z</option>
+              <option value="Newest" className="text-white bg-slate-950">📅 Newest</option>
+              <option value="Most Read" className="text-white bg-slate-950">🔥 Most Read</option>
+              <option value="A-Z" className="text-white bg-slate-950">🔤 A-Z</option>
             </select>
           </div>
         </div>

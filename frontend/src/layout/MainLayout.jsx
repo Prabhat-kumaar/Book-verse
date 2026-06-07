@@ -3,7 +3,7 @@ import { MdHome, MdLibraryBooks, MdStar, MdExplore, MdPerson } from 'react-icons
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 
-export default function MainLayout({ children, hideChrome = false, fullBleed = false }) {
+export default function MainLayout({ children, hideChrome = false, fullBleed = false, wide = false }) {
   const location = useLocation()
   const mobileNavItems = [
     { label: 'Home', href: '/', Icon: MdHome },
@@ -14,7 +14,7 @@ export default function MainLayout({ children, hideChrome = false, fullBleed = f
   ]
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-x-clip">
+    <div className="relative flex min-h-screen flex-col overflow-x-clip transition-colors duration-300">
       {!hideChrome ? <div className="pointer-events-none absolute -left-20 top-24 h-72 w-72 rounded-full bg-blue-600/20 blur-[110px]" /> : null}
       {!hideChrome ? <div className="pointer-events-none absolute right-0 top-56 h-80 w-80 rounded-full bg-indigo-500/20 blur-[120px]" /> : null}
       {!hideChrome ? <div className="pointer-events-none absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-cyan-400/10 blur-[100px]" /> : null}
@@ -22,7 +22,7 @@ export default function MainLayout({ children, hideChrome = false, fullBleed = f
       {!hideChrome ? <Navbar /> : null}
       <main className={fullBleed
         ? 'relative w-full flex-1'
-        : 'relative mx-auto w-full max-w-7xl flex-1 bg-[#0d0d1a] px-3 pb-[calc(80px+var(--safe-bottom))] pt-20 sm:bg-transparent sm:px-8 sm:pt-28 md:pb-16 lg:px-12'}
+        : `relative mx-auto w-full ${wide ? 'max-w-screen-2xl' : 'max-w-7xl'} flex-1 bg-[#0d0d1a] px-3 pb-[calc(80px+var(--safe-bottom))] pt-20 sm:bg-transparent sm:px-8 sm:pt-28 md:pb-16 lg:px-12`}
       >
         {children}
       </main>

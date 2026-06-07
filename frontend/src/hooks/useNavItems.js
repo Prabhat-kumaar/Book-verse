@@ -3,6 +3,7 @@ const navItems = [
   { label: 'Categories', href: '/categories' },
   { label: 'Recommended', href: '/recommended' },
   { label: 'Explore Books', href: '/books' },
+  { label: 'Blog', href: '/blog' },
 ]
 
 export default function useNavItems() {

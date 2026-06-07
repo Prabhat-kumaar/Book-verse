@@ -11,6 +11,7 @@ import { applyThumbnailFallback, getBookThumbnailUrl } from '../lib/mediaUrls'
 import { buildProgressMap, computeProgress } from '../lib/readingProgress'
 import SEO from '../components/SEO'
 import apiClient from '../lib/apiClient'
+import OptimizedImage from '../components/OptimizedImage'
 
 const GOAL_CACHE_TTL_MS = 15000
 const goalCache = {
@@ -118,7 +119,14 @@ const BookCard = memo(function BookCard({ book, index }) {
         <Link to={`/book/${book._id}`} className="group/link block cursor-pointer text-left">
           <div className="mb-2.5 aspect-[3/4] w-full overflow-hidden rounded-xl bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 shadow-inner ring-1 ring-white/10 relative block">
             {book.thumbnail && !thumbFailed ? (
-              <img loading="lazy" src={getBookThumbnailUrl(book)} alt={book.title} onError={(event) => { setThumbFailed(true); applyThumbnailFallback(event) }} className="h-full w-full object-cover transition-transform duration-500 hover:scale-105" />
+              <OptimizedImage
+                src={getBookThumbnailUrl(book)}
+                alt={book.title}
+                onError={() => setThumbFailed(true)}
+                loading="lazy"
+                fetchPriority="low"
+                className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
+              />
             ) : (
               <div
                 className={`h-full w-full rounded-lg bg-gradient-to-br ${index % 3 === 0
@@ -451,7 +459,14 @@ export default function HomePage() {
                   <div key={item._id} className="group w-[66vw] min-w-[66vw] shrink-0 snap-start rounded-2xl border border-white/10 bg-white/[0.05] p-3 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-blue-300/35 hover:bg-white/[0.09] sm:w-[230px] sm:min-w-[230px]">
                     <a href={link} className="group relative block h-[150px] overflow-hidden rounded-xl bg-slate-950">
                       {book.thumbnail ? (
-                        <img loading="lazy" src={getBookThumbnailUrl(book)} onError={applyThumbnailFallback} alt={book.title} className="h-full w-full object-cover" />
+                        <OptimizedImage
+                          src={getBookThumbnailUrl(book)}
+                          onError={applyThumbnailFallback}
+                          alt={book.title}
+                          loading="lazy"
+                          fetchPriority="low"
+                          className="h-full w-full object-cover"
+                        />
                       ) : (
                         <div className="grid h-full w-full place-items-center bg-gradient-to-br from-blue-500/45 to-violet-600/45 p-3 text-center text-sm font-semibold text-white">
                           {book.title || 'Book'}
@@ -520,6 +535,28 @@ export default function HomePage() {
             />
           ))}
         </div>
+
+        {/* Premium Blog CTA Section */}
+        <section className="relative overflow-hidden rounded-2xl border border-purple-500/20 bg-slate-950/20 p-6 sm:p-8 text-center transition-all duration-300 shadow-md hover:shadow-lg">
+          <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-[#0c1033]/20 via-[#3c1e78]/10 to-[#090514]/20" />
+          <div className="relative z-10 flex flex-col items-center">
+            <span className="text-4xl select-none" role="img" aria-label="blog">📝</span>
+            <h3 className="mt-4 text-lg sm:text-xl font-extrabold text-white tracking-tight">
+              Explore Our Blog
+            </h3>
+            <p className="mt-2 text-xs sm:text-sm text-gray-300 max-w-lg mx-auto leading-relaxed">
+              Read articles, tips, and guides about books and reading to enrich your literary experience.
+            </p>
+            <div className="mt-5">
+              <Link
+                to="/blog"
+                className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 px-6 py-2.5 text-xs font-bold text-white transition shadow-md shadow-purple-500/20"
+              >
+                Browse Blog
+              </Link>
+            </div>
+          </div>
+        </section>
 
         {authUser && !goalLoading && goalData?.goalSet && (
           <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-950/45 p-4 backdrop-blur-md">

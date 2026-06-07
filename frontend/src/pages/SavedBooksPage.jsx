@@ -7,8 +7,9 @@ import useProgress from '../hooks/useProgress'
 import EmptyState from '../components/EmptyState'
 import { GridSkeleton } from '../components/Skeletons'
 import { buildReaderHash } from '../lib/readerLink'
-import { applyThumbnailFallback, getBookThumbnailUrl } from '../lib/mediaUrls'
+import { getBookThumbnailUrl } from '../lib/mediaUrls'
 import { buildProgressMap } from '../lib/readingProgress'
+import OptimizedImage from '../components/OptimizedImage'
 
 const ORDER_KEY = 'savedCollectionsOrder'
 
@@ -315,7 +316,13 @@ export default function SavedBooksPage() {
                     <Link to={`/book/${book._id}`} className="group/link block cursor-pointer text-left">
                       <div className="mb-2 aspect-[3/4] w-full overflow-hidden rounded-lg bg-slate-950/50 shadow-inner ring-1 ring-white/10 relative block">
                         {book.thumbnail ? (
-                          <img loading="lazy" src={getBookThumbnailUrl(book)} onError={applyThumbnailFallback} alt={book.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                          <OptimizedImage
+                            src={getBookThumbnailUrl(book)}
+                            alt={book.title}
+                            loading="lazy"
+                            fetchPriority="low"
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
                         ) : (
                           <div className="grid h-full w-full place-items-center bg-gradient-to-br from-blue-500/50 to-violet-600/50 p-2 text-center text-sm font-semibold text-white">
                             {book.title}

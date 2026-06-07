@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { MdMenu, MdPerson, MdSearch } from 'react-icons/md'
 
+
 function SearchIcon() {
   return (
     <svg
@@ -112,7 +113,7 @@ export default function Navbar() {
       transition={{ duration: 0.55, ease: 'easeOut' }}
       className="sticky top-0 z-50 px-2 pt-2 sm:px-6 sm:pt-3 lg:px-10"
     >
-      <nav className="mx-auto w-full max-w-7xl rounded-2xl border border-white/10 bg-gradient-to-r from-[#0f0f0f]/95 via-[#131313]/95 to-[#0f0f0f]/95 shadow-[0_18px_60px_rgba(0,0,0,0.62)] backdrop-blur-2xl">
+      <nav className="mx-auto w-full max-w-7xl rounded-2xl border border-white/10 bg-gradient-to-r from-[#0f0f0f]/95 via-[#131313]/95 to-[#0f0f0f]/95 shadow-lg shadow-[0_18px_60px_rgba(0,0,0,0.62)] backdrop-blur-2xl">
         <div className="flex items-center gap-2 px-3 py-2.5 sm:gap-4 sm:px-6 sm:py-3.5">
           <Link to="/" className="group flex shrink-0 items-center gap-2.5 sm:gap-3">
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600 text-sm font-bold text-white shadow-[0_0_35px_rgba(100,105,255,0.55)] transition duration-300 group-hover:scale-105 group-hover:rotate-3 sm:h-11 sm:w-11 sm:rounded-2xl">
@@ -139,23 +140,31 @@ export default function Navbar() {
                   setSearchDirty(true)
                 }}
                 placeholder="Search books, genres, or authors..."
-                className="h-11 w-full rounded-xl border border-white/10 bg-black/60 pl-10 pr-4 text-sm text-white placeholder:text-zinc-400 outline-none transition duration-300 focus:border-blue-300/60 focus:bg-black/80 focus:shadow-[0_0_0_4px_rgba(96,102,255,0.18)]"
+                className="h-11 w-full rounded-xl border border-white/10 bg-black/60 pl-10 pr-4 text-sm text-white placeholder:text-zinc-400 outline-none transition duration-300 focus:border-blue-300/60 focus:bg-black/80"
               />
             </label>
           </div>
 
           <ul className="hidden items-center gap-1 lg:flex">
-            {navItems.map((item) => (
-              <li key={item.label}>
-                <Link
-                  to={item.href}
-                  className="group relative rounded-lg px-4 py-2 text-sm font-medium text-slate-200/90 transition duration-300 hover:-translate-y-0.5 hover:text-white"
-                >
-                  {item.label}
-                  <span className="absolute inset-x-3 -bottom-0.5 h-px scale-x-0 bg-gradient-to-r from-blue-400 to-violet-400 transition duration-300 group-hover:scale-x-100" />
-                </Link>
-              </li>
-            ))}
+            {navItems.map((item) => {
+              const isBlog = item.label === 'Blog'
+              return (
+                <li key={item.label}>
+                  <Link
+                    to={item.href}
+                    className={`group relative rounded-lg px-4 py-2 text-sm font-medium transition duration-300 hover:-translate-y-0.5 flex items-center gap-1.5 ${
+                      isBlog ? 'text-purple-305/90 hover:text-purple-400' : 'text-slate-200/90 hover:text-white'
+                    }`}
+                  >
+                    {isBlog && <span className="select-none text-sm">📝</span>}
+                    <span>{item.label}</span>
+                    <span className={`absolute inset-x-3 -bottom-0.5 h-px scale-x-0 transition duration-300 group-hover:scale-x-100 ${
+                      isBlog ? 'bg-gradient-to-r from-purple-400 to-purple-500' : 'bg-gradient-to-r from-blue-400 to-violet-400'
+                    }`} />
+                  </Link>
+                </li>
+              )
+            })}
             {!authUser ? (
               <li>
                 <Link
@@ -168,7 +177,8 @@ export default function Navbar() {
             ) : null}
           </ul>
 
-          <div className="relative ml-auto hidden md:block lg:hidden">
+          {/* Tablet controls */}
+          <div className="relative ml-auto hidden md:flex lg:hidden items-center gap-2">
             <button
               type="button"
               aria-label="Open menu"
@@ -178,7 +188,12 @@ export default function Navbar() {
               <MdMenu className="h-5 w-5" />
             </button>
             {menuOpen ? (
-              <div className="absolute right-0 mt-2 w-52 overflow-hidden rounded-2xl border border-white/15 bg-slate-950/90 p-2 shadow-[0_20px_60px_rgba(0,0,0,0.55)] backdrop-blur-2xl">
+              <div className="absolute right-0 top-12 w-52 overflow-hidden rounded-2xl border border-white/15 bg-slate-950/90 p-2 shadow-lg shadow-[0_20px_60px_rgba(0,0,0,0.55)] backdrop-blur-2xl z-50">
+                <Link to="/blog" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10 flex items-center justify-between mb-1">
+                  <span>📝 Blog</span>
+                  <span className="bg-purple-650 bg-gradient-to-r from-purple-600 to-purple-700 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">New</span>
+                </Link>
+                <div className="border-b border-white/10 my-1" />
                 {authUser ? (
                   <>
                     <Link to="/profile" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
@@ -211,6 +226,7 @@ export default function Navbar() {
             ) : null}
           </div>
 
+          {/* Mobile controls */}
           <div className="ml-auto flex items-center gap-1.5 md:hidden">
             <button
               type="button"
@@ -248,55 +264,61 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {authUser ? (
-            <div ref={profileRef} className="relative hidden xl:block">
-              <motion.button
-                whileHover={{ y: -2, scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                type="button"
-                onClick={() => setProfileOpen((prev) => !prev)}
-                aria-label="Profile menu"
-                className="group inline-flex items-center gap-3 rounded-xl border border-white/20 bg-white/10 p-1 pr-3 transition duration-300 hover:border-blue-300/45 hover:bg-white/15"
-              >
-                <span className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-blue-500 to-violet-600 text-sm font-bold text-white shadow-[0_8px_25px_rgba(85,104,255,0.5)]">
-                  {avatarLabel}
-                </span>
-                <span className="hidden text-sm font-semibold text-slate-100 sm:block">Profile</span>
-              </motion.button>
+          {/* Desktop User Menu */}
+          <div className="hidden lg:flex items-center gap-3">
+            {authUser ? (
+              <div ref={profileRef} className="relative">
+                <motion.button
+                  whileHover={{ y: -2, scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  type="button"
+                  onClick={() => setProfileOpen((prev) => !prev)}
+                  aria-label="Profile menu"
+                  className="group inline-flex items-center gap-3 rounded-xl border border-white/20 bg-white/10 p-1 pr-3 transition duration-300 hover:border-blue-300/45 hover:bg-white/15"
+                >
+                  <span className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-blue-500 to-violet-600 text-sm font-bold text-white shadow-[0_8px_25px_rgba(85,104,255,0.5)]">
+                    {avatarLabel}
+                  </span>
+                  <span className="hidden text-sm font-semibold text-slate-100 sm:block">Profile</span>
+                </motion.button>
 
-              {profileOpen ? (
-                <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-2xl border border-white/15 bg-slate-950/90 p-2 shadow-[0_20px_60px_rgba(0,0,0,0.55)] backdrop-blur-2xl">
-                  <Link to="/profile" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
-                    My Profile
-                  </Link>
-                  <Link to="/" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
-                    Continue Reading
-                  </Link>
-                  <Link to="/saved-books" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
-                    Saved Books
-                  </Link>
-                  <Link to="/#continue-reading" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
-                    Reading History
-                  </Link>
-                  <Link to="/profile" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
-                    Settings
-                  </Link>
-                  {isAdmin ? (
-                    <Link to="/admin/dashboard" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
-                      Admin Dashboard
+                {profileOpen ? (
+                  <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-2xl border border-white/15 bg-slate-950/90 p-2 shadow-lg shadow-[0_20px_60px_rgba(0,0,0,0.55)] backdrop-blur-2xl z-50">
+                    <Link to="/profile" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
+                      My Profile
                     </Link>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="mt-1 w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-rose-200 transition hover:bg-rose-500/15"
-                  >
-                    Logout
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
+                    <Link to="/" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
+                      Continue Reading
+                    </Link>
+                    <Link to="/saved-books" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
+                      Saved Books
+                    </Link>
+                    <Link to="/#continue-reading" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
+                      Reading History
+                    </Link>
+                    <Link to="/profile" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
+                      Settings
+                    </Link>
+                    <Link to="/blog" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
+                      Blog
+                    </Link>
+                    {isAdmin ? (
+                      <Link to="/admin/dashboard" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
+                        Admin Dashboard
+                      </Link>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="mt-1 w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-rose-200 transition hover:bg-rose-500/15"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         </div>
 
         {mobileSearchOpen ? (
@@ -322,6 +344,11 @@ export default function Navbar() {
         {menuOpen ? (
           <div className="px-3 pb-3 md:hidden">
             <div className="overflow-hidden rounded-xl border border-white/15 bg-slate-950/85 p-2 backdrop-blur-xl">
+              <Link to="/blog" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10 flex items-center justify-between mb-1">
+                <span>📝 Blog</span>
+                <span className="bg-purple-650 bg-gradient-to-r from-purple-600 to-purple-700 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">New</span>
+              </Link>
+              <div className="border-b border-white/10 my-1.5" />
               {authUser ? (
                 <>
                   <Link to="/profile" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10">
