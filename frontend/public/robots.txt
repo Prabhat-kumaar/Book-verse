@@ -1,5 +1,7 @@
 User-agent: *
 Allow: /
 Disallow: /admin
+Disallow: /read/
+Disallow: /dashboard
+Disallow: /profile
 Sitemap: https://readifyai.vercel.app/sitemap.xml
-# Generated sitemap index supports sitemap-1.xml if the site grows beyond one page
