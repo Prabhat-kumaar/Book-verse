@@ -47,8 +47,40 @@ export default function useReadingProgress(bookId, userId, fileType = 'pdf') {
 
   // Fetch progress once per mounted reader/book.
   const loadProgress = useCallback(async () => {
-    if (!bookId || !userId) {
+    if (!bookId) {
       setProgress((prev) => ({ ...prev, loading: false }))
+      return
+    }
+
+    if (!userId) {
+      // Load progress for guest user from local storage
+      const storageKey = `progress:guest:${bookId}`
+      const localDataRaw = localStorage.getItem(storageKey)
+      if (localDataRaw) {
+        try {
+          const localData = JSON.parse(localDataRaw)
+          const initialVal = {
+            currentPage: localData.currentPage || 1,
+            totalPages: localData.totalPages || 1,
+            progressPercentage: localData.progressPercentage || 0,
+            locationCfi: localData.locationCfi || '',
+            completed: Boolean(localData.completed),
+            loading: false,
+            error: null,
+          }
+          setProgress(initialVal)
+          latestProgressRef.current = {
+            ...latestProgressRef.current,
+            ...initialVal,
+          }
+          lastSavedPageRef.current = initialVal.currentPage
+          lastSavedCfiRef.current = initialVal.locationCfi
+        } catch {
+          setProgress((prev) => ({ ...prev, loading: false }))
+        }
+      } else {
+        setProgress((prev) => ({ ...prev, loading: false }))
+      }
       return
     }
 
@@ -117,11 +149,8 @@ export default function useReadingProgress(bookId, userId, fileType = 'pdf') {
   }, [bookId, userId])
 
   useEffect(() => {
-    const fetchKey = bookId && userId ? `${userId}:${bookId}` : ''
-    if (!fetchKey) {
-      loadProgress()
-      return
-    }
+    const fetchKey = bookId ? `${userId || 'guest'}:${bookId}` : ''
+    if (!fetchKey) return
     if (fetchedProgressKeyRef.current === fetchKey) return
     fetchedProgressKeyRef.current = fetchKey
     loadProgress()
@@ -239,8 +268,8 @@ export default function useReadingProgress(bookId, userId, fileType = 'pdf') {
 
       // Save locally to cache immediately
       const current = latestProgressRef.current
-      if (current.userId && current.bookId) {
-        const storageKey = `progress:${current.userId}:${current.bookId}`
+      if (current.bookId) {
+        const storageKey = current.userId ? `progress:${current.userId}:${current.bookId}` : `progress:guest:${current.bookId}`
         localStorage.setItem(storageKey, JSON.stringify({
           currentPage,
           totalPages,
@@ -249,6 +278,10 @@ export default function useReadingProgress(bookId, userId, fileType = 'pdf') {
           completed,
           updatedAt: new Date().toISOString(),
         }))
+      }
+
+      if (!current.userId) {
+        return nextState
       }
 
       // Debounce backend saves so frequent page/CFI changes do not spam the API.
@@ -267,7 +300,7 @@ export default function useReadingProgress(bookId, userId, fileType = 'pdf') {
   // Explicit mark completed API
   const markCompleted = useCallback(async () => {
     const current = latestProgressRef.current
-    if (!current.bookId || !current.userId) return
+    if (!current.bookId) return
 
     try {
       setProgress((prev) => {
@@ -284,7 +317,7 @@ export default function useReadingProgress(bookId, userId, fileType = 'pdf') {
         return nextState
       })
 
-      const storageKey = `progress:${current.userId}:${current.bookId}`
+      const storageKey = current.userId ? `progress:${current.userId}:${current.bookId}` : `progress:guest:${current.bookId}`
       localStorage.setItem(storageKey, JSON.stringify({
         currentPage: current.totalPages,
         totalPages: current.totalPages,
@@ -292,6 +325,8 @@ export default function useReadingProgress(bookId, userId, fileType = 'pdf') {
         completed: true,
         updatedAt: new Date().toISOString(),
       }))
+
+      if (!current.userId) return
 
       console.log('[useReadingProgress] Marking book completed')
       await apiClient.post('/api/progress/complete', { bookId: current.bookId })
@@ -304,10 +339,10 @@ export default function useReadingProgress(bookId, userId, fileType = 'pdf') {
   useEffect(() => {
     const handleBeforeUnload = () => {
       const current = latestProgressRef.current
-      if (!current.bookId || !current.userId) return
+      if (!current.bookId) return
 
       // Synchronous local storage update for maximum resiliency
-      const storageKey = `progress:${current.userId}:${current.bookId}`
+      const storageKey = current.userId ? `progress:${current.userId}:${current.bookId}` : `progress:guest:${current.bookId}`
       localStorage.setItem(storageKey, JSON.stringify({
         currentPage: current.currentPage,
         totalPages: current.totalPages,
@@ -316,6 +351,8 @@ export default function useReadingProgress(bookId, userId, fileType = 'pdf') {
         completed: current.completed,
         updatedAt: new Date().toISOString(),
       }))
+
+      if (!current.userId) return
 
       // Avoid redundant beacon save if it matches what was already successfully synced to MongoDB
       if (lastSavedPageRef.current === current.currentPage && 

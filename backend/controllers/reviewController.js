@@ -70,6 +70,7 @@ const getBookReviews = async (req, res, next) => {
             .populate('user', 'username avatar')
             .sort(sortOption);
 
+        res.setHeader('Cache-Control', 'public, max-age=3600');
         res.status(200).json({
             success: true,
             count: reviews.length,

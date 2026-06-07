@@ -292,11 +292,9 @@ function App() {
         {isReaderRoute && hashReaderRedirecting ? (
           <RouteFallback />
         ) : isReaderRoute ? (
-          <RequireAuth>
-            <MainLayout hideChrome fullBleed>
-              <UnifiedReaderPage />
-            </MainLayout>
-          </RequireAuth>
+          <MainLayout hideChrome fullBleed>
+            <UnifiedReaderPage />
+          </MainLayout>
         ) : (
           <Routes>
             <Route path="/" element={<MainLayout><HomePage /></MainLayout>} />
@@ -304,7 +302,7 @@ function App() {
             <Route path="/blog" element={<BlogPage />} />
             <Route path="/blog/:slug" element={<BlogDetailPage />} />
             <Route path="/book/:id" element={<MainLayout><BookDetailPage /></MainLayout>} />
-            <Route path="/read/:bookSlug" element={<RequireAuth><MainLayout hideChrome fullBleed><BookReadPage /></MainLayout></RequireAuth>} />
+            <Route path="/read/:bookSlug" element={<MainLayout hideChrome fullBleed><BookReadPage /></MainLayout>} />
             <Route path="/reader" element={<Navigate to="/read" replace />} />
             <Route path="/categories" element={<MainLayout><CategoriesPage /></MainLayout>} />
             <Route path="/recommended" element={<MainLayout><RecommendedPage /></MainLayout>} />

@@ -156,7 +156,13 @@ export default function BookDetailPage() {
               type="button"
               onMouseEnter={() => setFormHoverRating(star)}
               onMouseLeave={() => setFormHoverRating(0)}
-              onClick={() => setFormRating(star)}
+              onClick={() => {
+                if (!authUser) {
+                  setFormSubmitError('Login to continue')
+                  return
+                }
+                setFormRating(star)
+              }}
               className="text-2xl sm:text-3xl focus:outline-none transition-transform active:scale-95 duration-100"
             >
               <span className={isFilled ? 'text-amber-400 font-bold' : 'text-slate-700 font-normal'}>
@@ -176,6 +182,10 @@ export default function BookDetailPage() {
 
   const handleSubmitReview = async (e) => {
     e.preventDefault()
+    if (!authUser) {
+      setFormSubmitError('Login to continue')
+      return
+    }
     if (formRating === 0) {
       setFormSubmitError('Please select a rating before submitting')
       return
@@ -699,18 +709,7 @@ export default function BookDetailPage() {
                 </div>
               )}
 
-              {!authUser ? (
-                <div className="text-center py-6 border border-dashed border-white/10 rounded-2xl bg-white/[0.01]">
-                  <p className="text-xs text-slate-400 font-semibold mb-3.5">Please sign in to read/write reviews</p>
-                  <button
-                    type="button"
-                    onClick={() => navigate('/login')}
-                    className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-md transition hover:bg-indigo-500 active:scale-95"
-                  >
-                    Login to Write Review
-                  </button>
-                </div>
-              ) : myReview && !isEditing ? (
+              {myReview && !isEditing ? (
                 <div className="space-y-4">
                   <div className="rounded-xl border border-white/5 bg-[#0f1424]/20 p-4">
                     <div className="flex items-center justify-between">

@@ -298,6 +298,7 @@ const getAllBooks = async (req, res, next) => {
             thumbnail: book.thumbnail ? formatUrl(req, book.thumbnail) : null,
             coverImage: book.coverImage ? formatUrl(req, book.coverImage) : null,
         }));
+        res.setHeader('Cache-Control', 'public, max-age=3600');
         res.json({
             success: true,
             books: formattedBooks,
@@ -335,6 +336,7 @@ const getBooksByCategory = async (req, res, next) => {
             thumbnail: book.thumbnail ? formatUrl(req, book.thumbnail) : null,
             coverImage: book.coverImage ? formatUrl(req, book.coverImage) : null,
         }));
+        res.setHeader('Cache-Control', 'public, max-age=3600');
         res.json({
             success: true,
             books: formattedBooks,
@@ -363,6 +365,7 @@ const getBookById = async (req, res, next) => {
             thumbnail: book.thumbnail ? formatUrl(req, book.thumbnail) : null,
             coverImage: book.coverImage ? formatUrl(req, book.coverImage) : null
         };
+        res.setHeader('Cache-Control', 'public, max-age=3600');
         res.json({ success: true, data: formattedBook });
     } catch (error) {
         next(error);
@@ -382,6 +385,7 @@ const getBookBySlug = async (req, res, next) => {
             thumbnail: book.thumbnail ? formatUrl(req, book.thumbnail) : null,
             coverImage: book.coverImage ? formatUrl(req, book.coverImage) : null
         };
+        res.setHeader('Cache-Control', 'public, max-age=3600');
         res.json({ success: true, data: formattedBook });
     } catch (error) {
         next(error);
@@ -477,6 +481,7 @@ const getRecommendations = async (req, res, next) => {
             thumbnail: book.thumbnail ? formatUrl(req, book.thumbnail) : null,
             coverImage: book.coverImage ? formatUrl(req, book.coverImage) : null
         }));
+        res.setHeader('Cache-Control', 'public, max-age=3600');
         res.json({ success: true, data: formattedBooks });
     } catch (error) {
         next(error);

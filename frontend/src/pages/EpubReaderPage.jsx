@@ -830,6 +830,10 @@ export default function EpubReaderPage({ book = null }) {
 
   const toggleSaveToLibrary = async () => {
     if (!bookId) return
+    if (!authUser) {
+      showToast('Login to continue')
+      return
+    }
     try {
       if (isBookSaved) {
         const response = await apiClient.delete(`/api/saved-books/${encodeURIComponent(savedEntry._id)}`)
