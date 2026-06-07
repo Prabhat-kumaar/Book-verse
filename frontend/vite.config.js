@@ -8,26 +8,6 @@ export default defineConfig({
   optimizeDeps: {
     include: ['recharts', 'es-toolkit']
   },
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            // Group primary React core libraries for clean caching
-            if (
-              id.includes('react') ||
-              id.includes('react-dom') ||
-              id.includes('react-router') ||
-              id.includes('react-helmet-async')
-            ) {
-              return 'vendor-core'
-            }
-          }
-          return undefined
-        }
-      }
-    }
-  },
   server: {
     host: '0.0.0.0',
     port: 5173,
