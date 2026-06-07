@@ -1,5 +1,3 @@
-import React from 'react'
-
 export default function LoadingFallback() {
     return (
         <div className="grid min-h-screen place-items-center bg-[#050914] text-slate-200">

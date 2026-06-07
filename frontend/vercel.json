@@ -1,7 +1,7 @@
 {
   "rewrites": [
     {
-      "source": "/((?!api/|assets/|favicon.svg|icons.svg|sitemap.xml|robots.txt).*)",
+      "source": "/((?!api/|assets/|favicon.svg|icons.svg|sitemap.xml|sitemap-.*.xml|robots.txt).*)",
       "destination": "/index.html"
     }
   ],
@@ -12,6 +12,23 @@
         {
           "key": "Content-Type",
           "value": "application/xml"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, stale-while-revalidate=86400"
+        }
+      ]
+    },
+    {
+      "source": "/sitemap-:slug*.xml",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/xml"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, stale-while-revalidate=86400"
         }
       ]
     },
@@ -21,6 +38,10 @@
         {
           "key": "Content-Type",
           "value": "text/plain"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, stale-while-revalidate=86400"
         }
       ]
     }

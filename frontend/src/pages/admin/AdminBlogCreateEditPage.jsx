@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Select from 'react-select';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TiptapLink from '@tiptap/extension-link';
-import TiptapImage from '@tiptap/extension-image';
 import Underline from '@tiptap/extension-underline';
 import Strike from '@tiptap/extension-strike';
 import Code from '@tiptap/extension-code';
@@ -41,8 +40,8 @@ const slugify = (text) => {
         .toLowerCase()
         .trim()
         .replace(/\s+/g, '-')           // Replace spaces with -
-        .replace(/[^\w\-]+/g, '')       // Remove all non-word chars
-        .replace(/\-\-+/g, '-')         // Replace multiple - with single -
+        .replace(/[^\w-]+/g, '')       // Remove all non-word chars
+        .replace(/-+/g, '-')         // Replace multiple - with single -
         .replace(/^-+/, '')             // Trim - from start of text
         .replace(/-+$/, '');            // Trim - from end of text
 };
@@ -74,10 +73,10 @@ const selectDarkStyles = {
     }),
     option: (base, state) => ({
         ...base,
-        backgroundColor: state.isSelected 
-            ? 'rgb(99, 102, 241)' 
-            : state.isFocused 
-                ? 'rgba(255, 255, 255, 0.05)' 
+        backgroundColor: state.isSelected
+            ? 'rgb(99, 102, 241)'
+            : state.isFocused
+                ? 'rgba(255, 255, 255, 0.05)'
                 : 'transparent',
         color: '#fff',
         cursor: 'pointer',
@@ -226,7 +225,7 @@ const CustomImage = ImageResize.extend({
     renderHTML({ HTMLAttributes }) {
         const alignment = HTMLAttributes.class || 'align-center';
         const imgAttributes = { ...HTMLAttributes };
-        
+
         if (alignment === 'align-right') {
             imgAttributes.class = 'align-right';
         } else if (alignment === 'align-left') {
@@ -243,7 +242,7 @@ const CustomImage = ImageResize.extend({
             }
             imgAttributes.style = `width: ${widthVal}; height: auto;`;
         }
-        
+
         return ['img', imgAttributes];
     },
 });
@@ -272,7 +271,7 @@ export default function AdminBlogCreateEditPage() {
 
     // Books list for selection options
     const [booksOptions, setBooksOptions] = useState([]);
-    
+
     // UI flow states
     const [loading, setLoading] = useState(mode === 'edit');
     const [submitting, setSubmitting] = useState(false);
@@ -345,7 +344,7 @@ export default function AdminBlogCreateEditPage() {
     const handleInsertYoutube = (e) => {
         e.preventDefault();
         if (!editor || !youtubeUrl.trim()) return;
-        
+
         editor.chain().focus().setYoutubeVideo({
             src: youtubeUrl.trim(),
             width: 640,
@@ -366,7 +365,7 @@ export default function AdminBlogCreateEditPage() {
     const handleSaveLink = (e) => {
         e.preventDefault();
         if (!editor) return;
-        
+
         if (linkUrl.trim() === '') {
             editor.chain().focus().extendMarkRange('link').unsetLink().run();
         } else {
@@ -388,7 +387,7 @@ export default function AdminBlogCreateEditPage() {
         if (!editor) return;
         setEditorImageError('');
 
-        let finalUrl = '';
+        let finalUrl;
 
         if (editorImageTab === 'upload') {
             if (!editorImageFile) {
@@ -539,7 +538,7 @@ export default function AdminBlogCreateEditPage() {
             const response = await apiClient.get('/api/books');
             const data = response.data || [];
             const resolved = Array.isArray(data) ? data : data.books || data.data || [];
-            
+
             const options = resolved.map(book => ({
                 value: book._id,
                 label: `${book.title} - ${book.author}`,
@@ -564,7 +563,7 @@ export default function AdminBlogCreateEditPage() {
             if (!blog) {
                 throw new Error('Blog post not found.');
             }
-            
+
             // Map blog content to form structure
             setFormData({
                 title: blog.title || '',
@@ -592,7 +591,7 @@ export default function AdminBlogCreateEditPage() {
     // Load on mount
     useEffect(() => {
         fetchBooks();
-        
+
         // Check if there is a saved autosave in localStorage
         const autosaved = localStorage.getItem('readify_autosave_blog');
         if (autosaved) {
@@ -666,7 +665,7 @@ export default function AdminBlogCreateEditPage() {
             uploadForm.append('thumbnail', file); // passes multer image filter
 
             const response = await apiClient.post('/api/blogs/admin/upload-cover', uploadForm);
-            
+
             if (response.data?.url) {
                 updateFormField('coverImage', response.data.url);
                 setToast('Cover image uploaded successfully.');
@@ -735,7 +734,7 @@ export default function AdminBlogCreateEditPage() {
             formDataPayload.append('language', 'English');
             formDataPayload.append('difficulty', 'Intermediate');
             formDataPayload.append('tags', JSON.stringify(['classic', 'featured']));
-            
+
             if (newBookImageMode === 'file' && newBookThumbnailFile) {
                 formDataPayload.append('thumbnail', newBookThumbnailFile);
             } else {
@@ -752,7 +751,7 @@ export default function AdminBlogCreateEditPage() {
 
             if (response.data && response.data.success && response.data.data) {
                 const createdBook = response.data.data;
-                
+
                 await fetchBooks();
 
                 setFormData(prev => {
@@ -768,7 +767,7 @@ export default function AdminBlogCreateEditPage() {
 
                 setToast(`Book "${createdBook.title}" added and selected.`);
                 setTimeout(() => setToast(''), 2200);
-                
+
                 setNewBook({
                     title: '',
                     author: '',
@@ -848,7 +847,7 @@ export default function AdminBlogCreateEditPage() {
                 data: formData
             };
             localStorage.setItem('readify_autosave_blog', JSON.stringify(autosavePayload));
-            
+
             setTimeout(() => {
                 setAutosaveIndicator('Draft saved locally.');
             }, 1000);
@@ -922,12 +921,12 @@ export default function AdminBlogCreateEditPage() {
         try {
             const endpoint = mode === 'create' ? '/api/blogs' : `/api/blogs/${id}`;
             const apiMethod = mode === 'create' ? 'post' : 'put';
-            
-            const response = await apiClient[apiMethod](endpoint, formData);
+
+            await apiClient[apiMethod](endpoint, formData);
 
             setToast(mode === 'create' ? 'Blog created successfully.' : 'Blog updated successfully.');
             setTimeout(() => setToast(''), 2200);
-            
+
             setIsSaved(true);
             // Clear localStorage auto-save draft
             localStorage.removeItem('readify_autosave_blog');
@@ -956,11 +955,9 @@ export default function AdminBlogCreateEditPage() {
     const isEditorReady = editor && !editor.isDestroyed;
 
     const getBtnClass = (active, disabled = false) => {
-        return `px-2.5 py-1 text-xs font-bold rounded transition flex items-center justify-center min-w-[28px] h-7 ${
-            disabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
-        } ${
-            active ? 'bg-indigo-500 text-white border border-indigo-400' : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-transparent'
-        }`;
+        return `px-2.5 py-1 text-xs font-bold rounded transition flex items-center justify-center min-w-[28px] h-7 ${disabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
+            } ${active ? 'bg-indigo-500 text-white border border-indigo-400' : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-transparent'
+            }`;
     };
 
     const renderPreviewPanelContent = () => {
@@ -1023,7 +1020,7 @@ export default function AdminBlogCreateEditPage() {
                 {/* Rendered HTML content */}
                 <div className="border-t border-white/10 pt-5 space-y-4">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-400">Article Content Preview</h4>
-                    <div 
+                    <div
                         className="blog-content-html blog-content text-left text-gray-300 text-sm leading-relaxed space-y-4 
                         [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:text-white [&_h1]:mt-6 [&_h1]:mb-3
                         [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-white [&_h2]:mt-6 [&_h2]:mb-3
@@ -1096,7 +1093,7 @@ export default function AdminBlogCreateEditPage() {
 
             <MainLayout wide>
                 <div className="rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-white/[0.01] p-5 backdrop-blur-2xl lg:p-8">
-                    
+
                     {/* Header bar */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-5 border-b border-white/5 text-left">
                         <div>
@@ -1134,7 +1131,7 @@ export default function AdminBlogCreateEditPage() {
                         </div>
                     ) : (
                         <div className="flex flex-col md:flex-row gap-8 items-start relative">
-                            
+
                             {/* Form Column */}
                             <form onSubmit={handleSubmit} className={`w-full flex flex-col gap-6 text-left transition-all duration-300 ease-in-out ${showPreview ? 'flex-1 min-w-0' : 'w-full max-w-none'}`}>
                                 {error && (
@@ -1146,7 +1143,7 @@ export default function AdminBlogCreateEditPage() {
                                 {/* Basic Info */}
                                 <div className="space-y-4 rounded-2xl border border-white/5 bg-white/[0.01] p-5 sm:p-6">
                                     <h3 className="text-sm font-bold uppercase tracking-wider text-slate-300 border-b border-white/5 pb-2">Basic Info</h3>
-                                    
+
                                     {/* Title */}
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-bold text-slate-300">Title <span className="text-rose-400">*</span></label>
@@ -1220,7 +1217,7 @@ export default function AdminBlogCreateEditPage() {
                                 {/* Cover Image upload/link */}
                                 <div className="space-y-4 rounded-2xl border border-white/5 bg-white/[0.01] p-5 sm:p-6">
                                     <h3 className="text-sm font-bold uppercase tracking-wider text-slate-300 border-b border-white/5 pb-2">Cover Image</h3>
-                                    
+
                                     <div className="grid gap-4 sm:grid-cols-[200px_1fr]">
                                         {/* Image preview box */}
                                         <div className="aspect-[16/10] w-full rounded-xl border border-white/10 bg-slate-950/40 relative overflow-hidden flex items-center justify-center">
@@ -1262,7 +1259,7 @@ export default function AdminBlogCreateEditPage() {
                                                     className="hidden"
                                                 />
                                             </div>
-                                            
+
                                             <div className="space-y-1.5">
                                                 <label className="text-[10px] font-bold text-slate-400">Or Paste Image URL directly</label>
                                                 <input
@@ -1286,7 +1283,7 @@ export default function AdminBlogCreateEditPage() {
                                             <button
                                                 type="button"
                                                 onClick={togglePreview}
-                                                className={showPreview 
+                                                className={showPreview
                                                     ? "border border-white/20 text-slate-400 text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-white/5 transition-all duration-300 ease-in-out"
                                                     : "border border-indigo-500 text-indigo-400 text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-indigo-500/10 transition-all duration-300 ease-in-out"
                                                 }
@@ -1487,7 +1484,7 @@ export default function AdminBlogCreateEditPage() {
                                                         </button>
                                                     )}
                                                 </div>
-                                                
+
                                                 <div className="flex items-center gap-1.5 bg-slate-950/45 border border-white/5 rounded px-2 h-7 text-xs">
                                                     <label htmlFor="textHighlightPicker" className="text-[10px] font-bold text-slate-400 cursor-pointer select-none">Highlight:</label>
                                                     <input
@@ -1540,7 +1537,7 @@ export default function AdminBlogCreateEditPage() {
                                                 >
                                                     YouTube
                                                 </button>
-                                                
+
                                                 <span className="w-px h-4 bg-white/10 mx-0.5" />
 
                                                 {/* Table Insert & Controls */}
@@ -1618,8 +1615,8 @@ export default function AdminBlogCreateEditPage() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <EditorContent 
-                                            editor={editor} 
+                                        <EditorContent
+                                            editor={editor}
                                             className="prose prose-invert max-w-none min-h-[500px] px-5 py-4 focus:outline-none text-slate-200 text-base outline-none rounded-b-xl w-full blog-content"
                                         />
                                     </div>
@@ -1779,7 +1776,7 @@ export default function AdminBlogCreateEditPage() {
                                 {/* Status Radios */}
                                 <div className="space-y-4 rounded-2xl border border-white/5 bg-white/[0.01] p-5 sm:p-6">
                                     <h3 className="text-sm font-bold uppercase tracking-wider text-slate-300 border-b border-white/5 pb-2">Status</h3>
-                                    
+
                                     <div className="flex flex-wrap gap-6 text-sm font-bold text-slate-300">
                                         <label className="flex items-center gap-2 cursor-pointer">
                                             <input
@@ -2081,7 +2078,7 @@ export default function AdminBlogCreateEditPage() {
             {/* Rich Text Editor Link Modal */}
             {showLinkModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-[fadeIn_180ms_ease-out]">
-                    <form 
+                    <form
                         onSubmit={handleSaveLink}
                         className="w-full max-w-sm rounded-2xl border border-white/10 bg-slate-900 p-5 shadow-2xl text-left"
                     >
@@ -2147,7 +2144,7 @@ export default function AdminBlogCreateEditPage() {
             {/* Rich Text Editor Image Modal */}
             {showImageModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-[fadeIn_180ms_ease-out]">
-                    <form 
+                    <form
                         onSubmit={handleInsertImage}
                         className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-900 p-5 shadow-2xl text-left space-y-4"
                     >
@@ -2176,18 +2173,16 @@ export default function AdminBlogCreateEditPage() {
                                 <button
                                     type="button"
                                     onClick={() => setEditorImageTab('upload')}
-                                    className={`rounded px-2.5 py-0.5 text-[9px] font-bold transition ${
-                                        editorImageTab === 'upload' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
-                                    }`}
+                                    className={`rounded px-2.5 py-0.5 text-[9px] font-bold transition ${editorImageTab === 'upload' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                                        }`}
                                 >
                                     File Upload
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setEditorImageTab('url')}
-                                    className={`rounded px-2.5 py-0.5 text-[9px] font-bold transition ${
-                                        editorImageTab === 'url' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
-                                    }`}
+                                    className={`rounded px-2.5 py-0.5 text-[9px] font-bold transition ${editorImageTab === 'url' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                                        }`}
                                 >
                                     Web URL
                                 </button>
@@ -2228,11 +2223,10 @@ export default function AdminBlogCreateEditPage() {
                             <div className="space-y-1.5">
                                 <label className="text-[11px] font-bold text-slate-350 block">Image Alignment (Text Wrapping)</label>
                                 <div className="grid grid-cols-3 gap-2">
-                                    <label className={`flex flex-col items-center justify-center p-2 rounded-lg border text-center cursor-pointer transition ${
-                                        editorImageAlignment === 'align-left' 
-                                            ? 'border-indigo-500 bg-indigo-500/10 text-white' 
+                                    <label className={`flex flex-col items-center justify-center p-2 rounded-lg border text-center cursor-pointer transition ${editorImageAlignment === 'align-left'
+                                            ? 'border-indigo-500 bg-indigo-500/10 text-white'
                                             : 'border-white/10 bg-slate-950/40 text-slate-400 hover:text-white'
-                                    }`}>
+                                        }`}>
                                         <input
                                             type="radio"
                                             name="alignment"
@@ -2244,11 +2238,10 @@ export default function AdminBlogCreateEditPage() {
                                         <span className="text-xs font-bold">Left</span>
                                         <span className="text-[9px] text-slate-500 mt-0.5">Wrap Right</span>
                                     </label>
-                                    <label className={`flex flex-col items-center justify-center p-2 rounded-lg border text-center cursor-pointer transition ${
-                                        editorImageAlignment === 'align-center' 
-                                            ? 'border-indigo-500 bg-indigo-500/10 text-white' 
+                                    <label className={`flex flex-col items-center justify-center p-2 rounded-lg border text-center cursor-pointer transition ${editorImageAlignment === 'align-center'
+                                            ? 'border-indigo-500 bg-indigo-500/10 text-white'
                                             : 'border-white/10 bg-slate-950/40 text-slate-400 hover:text-white'
-                                    }`}>
+                                        }`}>
                                         <input
                                             type="radio"
                                             name="alignment"
@@ -2260,11 +2253,10 @@ export default function AdminBlogCreateEditPage() {
                                         <span className="text-xs font-bold">Center</span>
                                         <span className="text-[9px] text-slate-500 mt-0.5">Block/Full</span>
                                     </label>
-                                    <label className={`flex flex-col items-center justify-center p-2 rounded-lg border text-center cursor-pointer transition ${
-                                        editorImageAlignment === 'align-right' 
-                                            ? 'border-indigo-500 bg-indigo-500/10 text-white' 
+                                    <label className={`flex flex-col items-center justify-center p-2 rounded-lg border text-center cursor-pointer transition ${editorImageAlignment === 'align-right'
+                                            ? 'border-indigo-500 bg-indigo-500/10 text-white'
                                             : 'border-white/10 bg-slate-950/40 text-slate-400 hover:text-white'
-                                    }`}>
+                                        }`}>
                                         <input
                                             type="radio"
                                             name="alignment"
@@ -2322,7 +2314,7 @@ export default function AdminBlogCreateEditPage() {
             {/* Rich Text Editor YouTube Embed Modal */}
             {showYoutubeModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-[fadeIn_180ms_ease-out]">
-                    <form 
+                    <form
                         onSubmit={handleInsertYoutube}
                         className="w-full max-w-sm rounded-2xl border border-white/10 bg-slate-900 p-5 shadow-2xl text-left"
                     >

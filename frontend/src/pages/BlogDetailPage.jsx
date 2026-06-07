@@ -33,7 +33,7 @@ const truncateExcerpt = (text) => {
  */
 const Shine = React.memo(function Shine({ className = '' }) {
     return (
-        <div className="relative overflow-hidden rounded border border-white/5 bg-slate-900/60 h-full w-full">
+        <div className={`relative overflow-hidden rounded border border-white/5 bg-slate-900/60 h-full w-full ${className}`}>
             <div className="absolute inset-0 -translate-x-full animate-[skeletonShimmer_1.4s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/5 to-transparent" />
         </div>
     );
@@ -121,7 +121,7 @@ const HeroSection = React.memo(function HeroSection({ blog, readTime, formattedD
             {/* Ambient glow blobs */}
             <div className="absolute -left-10 -top-10 w-40 h-40 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-pink-600/5 rounded-full blur-3xl pointer-events-none" />
-            
+
             <div className="max-w-4xl mx-auto px-6 sm:px-10 w-full text-left relative z-10">
                 <div className="mb-4">
                     <Breadcrumb blogTitle={blog.title} />
@@ -202,12 +202,12 @@ const BlogContent = React.memo(function BlogContent({ blog, readTime, formattedD
                         </summary>
                         <ul className="mt-3 space-y-2.5 text-xs font-semibold text-slate-400 border-t border-purple-500/10 pt-3">
                             {headings.map((item) => (
-                                <li 
-                                    key={item.id} 
+                                <li
+                                    key={item.id}
                                     style={{ paddingLeft: `${(item.level - 2) * 12}px` }}
                                 >
-                                    <a 
-                                        href={`#${item.id}`} 
+                                    <a
+                                        href={`#${item.id}`}
                                         onClick={(e) => {
                                             e.preventDefault();
                                             document.getElementById(item.id)?.scrollIntoView({ behavior: 'smooth' });
@@ -224,7 +224,7 @@ const BlogContent = React.memo(function BlogContent({ blog, readTime, formattedD
             )}
 
             {/* Render HTML content with premium styling rules */}
-            <div 
+            <div
                 className="blog-content-html blog-content text-gray-300 text-base leading-relaxed space-y-6 text-left 
                 [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:text-white [&_h1]:mt-8 [&_h1]:mb-4
                 [&_h2]:text-3xl [&_h2]:font-bold [&_h2]:text-white [&_h2]:mt-8 [&_h2]:mb-4
@@ -384,12 +384,12 @@ const TableOfContents = React.memo(function TableOfContents({ headings }) {
             <h4 className="text-sm font-bold text-white mb-4">Table of Contents</h4>
             <ul className="space-y-2.5 text-xs font-semibold text-slate-350 border-t border-purple-500/10 pt-3">
                 {headings.map((item) => (
-                    <li 
-                        key={item.id} 
+                    <li
+                        key={item.id}
                         style={{ paddingLeft: `${(item.level - 2) * 12}px` }}
                     >
-                        <a 
-                            href={`#${item.id}`} 
+                        <a
+                            href={`#${item.id}`}
                             onClick={(e) => {
                                 e.preventDefault();
                                 document.getElementById(item.id)?.scrollIntoView({ behavior: 'smooth' });
@@ -412,7 +412,7 @@ const BlogCTA = React.memo(function BlogCTA() {
     return (
         <div className="relative rounded-2xl border border-purple-500/20 bg-gradient-to-br from-[#0c1033] via-[#3c1e78] to-[#090514] p-6 sm:p-8 text-center overflow-hidden transition-all duration-300 shadow-md hover:shadow-lg">
             <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-purple-500/10 via-purple-500/5 to-transparent" />
-            
+
             <span className="text-3.5xl">📚</span>
             <h3 className="mt-4 text-lg sm:text-xl font-extrabold text-white tracking-tight">
                 Ready to Start Reading?
@@ -420,7 +420,7 @@ const BlogCTA = React.memo(function BlogCTA() {
             <p className="mt-2 text-xs sm:text-sm text-slate-300 max-w-lg mx-auto leading-relaxed">
                 Dive into our curated selection of digital books, track your streaks, and read interactively with AI assistance.
             </p>
-            
+
             <div className="mt-6 flex flex-wrap justify-center gap-3 relative z-10">
                 <Link
                     to="/books"
@@ -560,7 +560,7 @@ const Subscribe = React.memo(function Subscribe() {
     return (
         <div className="rounded-2xl border border-purple-500/20 bg-slate-950/20 p-5 text-left relative overflow-hidden transition-colors">
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-purple-500/5 to-purple-500/0" />
-            
+
             <h4 className="text-sm font-bold text-white relative">Stay Updated</h4>
             <p className="text-xs text-slate-400 mt-1 relative">
                 Get new blog posts delivered directly to your inbox.
@@ -682,7 +682,7 @@ const BookCoversGallery = React.memo(function BookCoversGallery({ relatedBooks, 
                         <div key={book.slug || book._id} className="group cursor-pointer flex flex-col justify-between">
                             <div>
                                 <div className="relative mb-3 overflow-hidden rounded-lg shadow-lg hover:shadow-2xl hover:shadow-purple-500/50 transition-all duration-300">
-                                    <img 
+                                    <img
                                         src={coverUrl}
                                         alt={book.title}
                                         className="w-full aspect-[3/4] object-cover group-hover:scale-110 transition-transform duration-500"
@@ -690,7 +690,7 @@ const BookCoversGallery = React.memo(function BookCoversGallery({ relatedBooks, 
                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                                         <Link to={readLink} className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 shadow-lg shadow-purple-600/30 text-xs sm:text-sm transition-all hover:scale-105 active:scale-95">
                                             Read Now
-                                         </Link>
+                                        </Link>
                                     </div>
                                 </div>
                                 <h4 className="text-white font-bold text-sm line-clamp-2 group-hover:text-purple-400 transition-colors leading-snug">
@@ -740,7 +740,7 @@ export default function BlogDetailPage() {
     const fetchBlogDetail = async () => {
         setLoading(true);
         setError('');
-        
+
         try {
             const url = buildApiUrl(`/blogs/${encodeURIComponent(slug)}`);
             console.log(`[BlogDetailPage] API call: ${url}`);
@@ -775,28 +775,29 @@ export default function BlogDetailPage() {
     const wordCount = blog?.content ? blog.content.split(/\s+/).length : 0;
     const readTime = `${Math.ceil(wordCount / 200) || 1} min read`;
     const formattedDate = blog ? formatDate(blog.publishedAt || blog.createdAt) : '';
+    const content = blog?.content || '';
 
     // Parsed headings for dynamic Table of Contents
     const headings = useMemo(() => {
-        if (!blog?.content) return [];
+        if (!content) return [];
         const regex = /<h([2-3])[^>]*>(.*?)<\/h\1>/gi;
         const items = [];
         let match;
         let index = 0;
-        while ((match = regex.exec(blog.content)) !== null) {
+        while ((match = regex.exec(content)) !== null) {
             const level = parseInt(match[1], 10);
             const rawText = match[2].replace(/<[^>]*>/g, '');
             const id = `heading-${index++}-${rawText.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
             items.push({ level, text: rawText, id });
         }
         return items;
-    }, [blog?.content]);
+    }, [content]);
 
     // HTML Content with injected anchor IDs and styled book cover summaries on the right
     const processedContent = useMemo(() => {
-        if (!blog?.content) return '';
-        let html = blog.content;
-        
+        if (!content) return '';
+        let html = content;
+
         // 1. Generate IDs for headings for smooth scroll table of contents
         let index = 0;
         html = html.replace(/<h([2-3])([^>]*)>(.*?)<\/h\1>/gi, (match, level, attrs, text) => {
@@ -851,11 +852,11 @@ export default function BlogDetailPage() {
                     // Book Cover Column
                     const coverCol = doc.createElement('div');
                     coverCol.className = "w-full md:w-40 flex-shrink-0";
-                    
+
                     // Prioritize database book's coverImage/thumbnail, fallback to static coverImage
                     const dbCover = matchedDbBook ? (matchedDbBook.coverImage || matchedDbBook.thumbnail) : '';
-                    const resolvedCoverUrl = dbCover 
-                        ? getBookThumbnailUrl(matchedDbBook) 
+                    const resolvedCoverUrl = dbCover
+                        ? getBookThumbnailUrl(matchedDbBook)
                         : (matchedStaticBook ? matchedStaticBook.coverImage : getBookThumbnailUrl(matchedBook));
 
                     const img = doc.createElement('img');
@@ -878,7 +879,7 @@ export default function BlogDetailPage() {
                     let hasReadLink = false;
                     siblings.forEach(sib => {
                         const clonedSib = sib.cloneNode(true);
-                        
+
                         const links = clonedSib.querySelectorAll('a');
                         links.forEach(link => {
                             if (link.getAttribute('href')?.includes('/read/') || link.getAttribute('href')?.includes('/book/')) {
@@ -886,21 +887,21 @@ export default function BlogDetailPage() {
                                 link.className = "text-purple-400 hover:text-purple-300 font-semibold inline-flex items-center gap-1 transition-colors";
                             }
                         });
-                        
+
                         detailsCol.appendChild(clonedSib);
                     });
 
                     // Add fallback read link if not found in sibling content
                     if (!hasReadLink) {
-                         const readLink = `/read/${matchedBook.slug}`;
-                         const linkPara = doc.createElement('p');
-                         linkPara.className = "mt-4";
-                         const a = doc.createElement('a');
-                         a.href = readLink;
-                         a.className = "text-purple-400 hover:text-purple-300 font-semibold inline-flex items-center gap-1 transition-colors";
-                         a.textContent = `Read ${matchedBook.title} Free on Readify AI`;
-                         linkPara.appendChild(a);
-                         detailsCol.appendChild(linkPara);
+                        const readLink = `/read/${matchedBook.slug}`;
+                        const linkPara = doc.createElement('p');
+                        linkPara.className = "mt-4";
+                        const a = doc.createElement('a');
+                        a.href = readLink;
+                        a.className = "text-purple-400 hover:text-purple-300 font-semibold inline-flex items-center gap-1 transition-colors";
+                        a.textContent = `Read ${matchedBook.title} Free on Readify AI`;
+                        linkPara.appendChild(a);
+                        detailsCol.appendChild(linkPara);
                     }
 
                     container.appendChild(coverCol);
@@ -928,7 +929,7 @@ export default function BlogDetailPage() {
             console.error('[BlogDetailPage] Error parsing blog HTML:', e);
             return html;
         }
-    }, [blog?.content, relatedBooks]);
+    }, [content, relatedBooks]);
 
     // Article schema JSON-LD for rich snippets
     const schemaOrgMarkup = useMemo(() => {
@@ -963,8 +964,8 @@ export default function BlogDetailPage() {
 
             {/* 2. Reading Progress Indicator */}
             {!loading && blog && (
-                <div 
-                    className="fixed top-0 left-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 z-[100] transition-all duration-100 ease-out" 
+                <div
+                    className="fixed top-0 left-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 z-[100] transition-all duration-100 ease-out"
                     style={{ width: `${scrollPercent}%` }}
                 />
             )}
@@ -979,7 +980,7 @@ export default function BlogDetailPage() {
                             <span className="text-3xl">⚠️</span>
                             <h3 className="mt-3 text-base font-bold text-white">Could not load article</h3>
                             <p className="mt-2 text-xs text-rose-300/80 leading-relaxed">{error}</p>
-                            
+
                             <div className="mt-6 flex justify-center gap-3">
                                 <button
                                     type="button"
@@ -1022,7 +1023,7 @@ export default function BlogDetailPage() {
 
                             {/* 5. Split Page Columns (70 / 30) */}
                             <div className="flex flex-col lg:flex-row gap-8 mt-4">
-                                
+
                                 {/* Left Content column (70%) */}
                                 <div className="w-full lg:w-[70%] flex flex-col gap-6">
                                     {/* HTML Content rendering */}
@@ -1036,7 +1037,7 @@ export default function BlogDetailPage() {
 
                                     {/* Start Reading CTA banner */}
                                     <BlogCTA />
-                                    
+
                                     {/* Share Buttons */}
                                     <ShareButtons
                                         title={blog.title}
@@ -1053,10 +1054,10 @@ export default function BlogDetailPage() {
 
                                     {/* Related Books */}
                                     <RelatedBooks relatedBooks={relatedBooks} />
-                                    
+
                                     {/* Related Blog Posts */}
                                     <RelatedBlogs relatedBlogs={relatedPosts} />
-                                    
+
                                     {/* Subscribe Form */}
                                     <Subscribe />
                                 </aside>

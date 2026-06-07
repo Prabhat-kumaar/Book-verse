@@ -30,14 +30,6 @@ const formatDate = (dateStr) => {
     }
 };
 
-// Helper to calculate reading time (200 words = 1 minute)
-const calculateReadTime = (content) => {
-    if (!content) return '1 min read';
-    const words = content.trim().split(/\s+/).length;
-    const minutes = Math.ceil(words / 200) || 1;
-    return `${minutes} min read`;
-};
-
 // Excerpt truncation helper
 const truncateExcerpt = (text) => {
     if (!text) return '';
@@ -138,7 +130,7 @@ const Hero = React.memo(function Hero() {
         <div className="relative h-[300px] w-full rounded-2xl overflow-hidden border border-purple-500/20 bg-gradient-to-br from-[#0a0f24] via-[#3b1c75] to-[#090514] p-6 sm:p-10 flex flex-col justify-center text-left shadow-2xl mb-8 animate-[fadeIn_200ms_ease-out]">
             {/* Subtle grid pattern overlay */}
             <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px] pointer-events-none" />
-            
+
             {/* Ambient blur glow blobs */}
             <div className="absolute -left-10 -top-10 w-40 h-40 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-purple-600/20 rounded-full blur-3xl pointer-events-none" />
@@ -431,11 +423,10 @@ const Pagination = React.memo(function Pagination({ currentPage, totalPages, onP
                     <button
                         type="button"
                         onClick={() => onPageChange(1)}
-                        className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl border text-sm font-bold transition duration-300 cursor-pointer ${
-                            currentPage === 1
+                        className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl border text-sm font-bold transition duration-300 cursor-pointer ${currentPage === 1
                                 ? 'border-purple-500 bg-purple-650 bg-gradient-to-br from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-500/30'
                                 : 'border-purple-500/20 bg-slate-900/40 text-slate-350 hover:border-purple-500/50 hover:bg-slate-900'
-                        }`}
+                            }`}
                     >
                         1
                     </button>
@@ -450,11 +441,10 @@ const Pagination = React.memo(function Pagination({ currentPage, totalPages, onP
                         key={pageNum}
                         type="button"
                         onClick={() => onPageChange(pageNum)}
-                        className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl border text-sm font-bold transition duration-300 cursor-pointer ${
-                            currentPage === pageNum
+                        className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl border text-sm font-bold transition duration-300 cursor-pointer ${currentPage === pageNum
                                 ? 'border-purple-500 bg-gradient-to-br from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-500/30'
                                 : 'border-purple-500/20 bg-slate-900/40 text-slate-350 hover:border-purple-500/50 hover:bg-slate-900'
-                        }`}
+                            }`}
                     >
                         {pageNum}
                     </button>
@@ -467,11 +457,10 @@ const Pagination = React.memo(function Pagination({ currentPage, totalPages, onP
                     <button
                         type="button"
                         onClick={() => onPageChange(totalPages)}
-                        className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl border text-sm font-bold transition duration-300 cursor-pointer ${
-                            currentPage === totalPages
+                        className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl border text-sm font-bold transition duration-300 cursor-pointer ${currentPage === totalPages
                                 ? 'border-purple-500 bg-gradient-to-br from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-500/30'
                                 : 'border-purple-500/20 bg-slate-900/40 text-slate-350 hover:border-purple-500/50 hover:bg-slate-900'
-                        }`}
+                            }`}
                     >
                         {totalPages}
                     </button>
@@ -543,7 +532,7 @@ export default function BlogPage() {
     const fetchBlogs = async () => {
         setLoading(true);
         setError('');
-        
+
         try {
             const limit = 10;
             const queryParams = new URLSearchParams({
@@ -554,16 +543,16 @@ export default function BlogPage() {
                 sort: sort
             });
             const url = buildApiUrl(`/blogs?${queryParams.toString()}`);
-            
+
             console.log(`[BlogPage] API call: ${url}`);
-            
+
             const response = await fetch(url);
             const data = await response.json();
-            
+
             if (!response.ok) {
                 throw new Error(data.message || 'Failed to fetch blogs');
             }
-            
+
             setBlogs(data.blogs || []);
             setTotalPages(data.totalPages || 1);
         } catch (err) {
@@ -628,7 +617,7 @@ export default function BlogPage() {
             {/* 2. MainLayout Wrapper */}
             <MainLayout>
                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 sm:p-7 backdrop-blur-xl">
-                    
+
                     {/* 3. Hero Section (Title & Subtitle) */}
                     <Hero />
 

@@ -19,12 +19,11 @@ export function initGA() {
 
     window.dataLayer = window.dataLayer || []
     window.gtag = function gtag() {
-      // eslint-disable-next-line prefer-rest-params
       window.dataLayer.push(arguments)
     }
 
     window.gtag('js', new Date())
-    
+
     // Disable automatic pageviews (we track them programmatically to avoid double counting)
     // Use beacon transport to avoid blocking page navigation and network bandwidth
     window.gtag('config', GA_MEASUREMENT_ID, {
@@ -34,7 +33,7 @@ export function initGA() {
     })
 
     trackingInitialized = true
-    
+
     // Process any events that were queued before initialization completed
     processQueue()
   } catch (err) {

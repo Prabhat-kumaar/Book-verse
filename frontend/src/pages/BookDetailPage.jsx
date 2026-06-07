@@ -8,8 +8,9 @@ import { buildReaderHash } from '../lib/readerLink'
 import SaveBookHeart from '../components/SaveBookHeart'
 import EmptyState from '../components/EmptyState'
 import OptimizedImage from '../components/OptimizedImage'
+import SEO from '../components/SEO'
+import { createBookSchema } from '../components/BookSchema'
 
-const BOOK_SEO_ATTR = 'data-book-detail-seo'
 const PRODUCTION_DOMAIN = 'https://readifyai.vercel.app'
 
 const getCategoryColorStyles = (category) => {
@@ -109,6 +110,23 @@ export default function BookDetailPage() {
       return null
     }
   }, [])
+
+  const seo = useMemo(() => {
+    if (!book) return null
+
+    const title = book.title ? `${book.title} by ${book.author || 'Unknown Author'} | Readify AI` : 'Readify AI'
+    const description = (book.description || 'Read the full book online for free with Readify AI.').replace(/\s+/g, ' ').trim().slice(0, 160)
+    const pagePath = `/book/${id}`
+    const image = book.thumbnail ? getBookThumbnailUrl(book) : `${PRODUCTION_DOMAIN}/favicon.svg`
+
+    return {
+      title,
+      description,
+      image,
+      path: pagePath,
+      schema: createBookSchema(book, pagePath, image),
+    }
+  }, [book, id])
 
   const fetchReviews = async () => {
     try {
@@ -290,71 +308,6 @@ export default function BookDetailPage() {
     return pageCount * 2 // 2 minutes per page
   }, [pageCount])
 
-  const seoDescription = useMemo(() => {
-    return (book?.description || '').slice(0, 160)
-  }, [book])
-
-  useEffect(() => {
-    if (!book) return undefined
-
-    const previousTitle = document.title
-    const bookUrl = `${PRODUCTION_DOMAIN}/book/${book._id}`
-    const fullDescription = `${seoDescription} - Read ${book.title} free on Readify AI`
-    const taggedSelector = `[${BOOK_SEO_ATTR}="true"]`
-
-    document.querySelectorAll(taggedSelector).forEach((node) => node.remove())
-    document.title = `${book.title} by ${book.author} - Read Free on Readify AI`
-
-    const addMetaTag = (attribute, key, content) => {
-      const meta = document.createElement('meta')
-      meta.setAttribute(attribute, key)
-      meta.setAttribute('content', content || '')
-      meta.setAttribute(BOOK_SEO_ATTR, 'true')
-      document.head.appendChild(meta)
-    }
-
-    addMetaTag('name', 'description', fullDescription)
-    addMetaTag('name', 'keywords', `${book.title}, ${book.author}, ${book.category}, read online free, epub, ebook`)
-    addMetaTag('property', 'og:title', `${book.title} by ${book.author}`)
-    addMetaTag('property', 'og:description', seoDescription)
-    addMetaTag('property', 'og:image', book.thumbnail)
-    addMetaTag('property', 'og:url', bookUrl)
-    addMetaTag('property', 'og:type', 'book')
-    addMetaTag('name', 'twitter:card', 'summary_large_image')
-    addMetaTag('name', 'twitter:title', `${book.title} by ${book.author}`)
-    addMetaTag('name', 'twitter:image', book.thumbnail)
-
-    const script = document.createElement('script')
-    script.type = 'application/ld+json'
-    script.setAttribute(BOOK_SEO_ATTR, 'true')
-    script.textContent = JSON.stringify({
-      '@context': 'https://schema.org',
-      '@type': 'Book',
-      name: book.title,
-      author: {
-        '@type': 'Person',
-        name: book.author
-      },
-      description: book.description,
-      image: book.thumbnail,
-      genre: book.category,
-      inLanguage: book.language || 'English',
-      url: bookUrl,
-      offers: {
-        '@type': 'Offer',
-        price: '0',
-        priceCurrency: 'USD',
-        availability: 'https://schema.org/InStock'
-      }
-    })
-    document.head.appendChild(script)
-
-    return () => {
-      document.querySelectorAll(taggedSelector).forEach((node) => node.remove())
-      document.title = previousTitle
-    }
-  }, [book, seoDescription])
-
   if (loading) {
     return <SkeletonLoader />
   }
@@ -383,6 +336,7 @@ export default function BookDetailPage() {
       transition={{ duration: 0.35 }}
       className="mx-auto w-full max-w-6xl text-slate-100 bg-slate-950"
     >
+      {seo && <SEO {...seo} />}
       {/* Mobile Top Header Backdrop (Cover Image) */}
       <div className="relative md:hidden w-full aspect-[4/3] sm:aspect-[16/9] overflow-hidden bg-slate-950">
         <OptimizedImage
@@ -459,7 +413,7 @@ export default function BookDetailPage() {
               <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight leading-tight text-white mb-2">
                 {book.title}
               </h1>
-              
+
               <div className="flex flex-wrap items-center gap-3">
                 <p className="text-base text-slate-400">
                   By <strong className="text-slate-300 font-semibold">{book.author || 'Unknown Author'}</strong>
@@ -567,7 +521,7 @@ export default function BookDetailPage() {
         {/* 6. REVIEWS AND RATINGS SECTION */}
         <div className="mt-16 pt-8 border-t border-white/10 animate-[fadeIn_350ms_ease-out]">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            
+
             {/* Reviews List (Left Column) */}
             <div className="lg:col-span-8 space-y-6">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-white/5 pb-4">
@@ -577,7 +531,7 @@ export default function BookDetailPage() {
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">Hear from other readers in the community</p>
                 </div>
-                
+
                 {reviews.length > 0 && (
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Sort by:</span>
@@ -621,7 +575,7 @@ export default function BookDetailPage() {
                     const reviewerName = review.user?.username || 'Anonymous';
                     const firstName = getFirstName(reviewerName);
                     const reviewDate = new Date(review.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-                    
+
                     return (
                       <article
                         key={review._id}
@@ -641,7 +595,7 @@ export default function BookDetailPage() {
                               <p className="text-[9px] text-slate-500 font-semibold mt-0.5">{reviewDate}</p>
                             </div>
                           </div>
-                          
+
                           <div className="flex items-center text-xs text-amber-400 select-none">
                             {[1, 2, 3, 4, 5].map((star) => (
                               <span key={`review-star-${review._id}-${star}`}>
@@ -698,7 +652,7 @@ export default function BookDetailPage() {
                 {myReview && !isEditing ? 'Your Submitted Review' : myReview ? 'Edit Your Review' : 'Write a Review'}
               </h3>
               <p className="text-[10px] text-slate-400 mb-4 font-semibold leading-relaxed">
-                {myReview && !isEditing 
+                {myReview && !isEditing
                   ? 'Thank you for reviewing this title. You can modify or delete your feedback at any time.'
                   : 'Share your stars and written thoughts about this book with the community.'}
               </p>
@@ -797,11 +751,11 @@ export default function BookDetailPage() {
         {relatedBooks.length > 0 && (
           <div className="mt-16 pt-8 border-t border-white/10 animate-[fadeIn_350ms_ease-out]">
             <h3 className="text-xl font-bold text-white mb-6 tracking-tight">More in {book.category}</h3>
-            
+
             <div className="flex overflow-x-auto md:grid md:grid-cols-4 lg:grid-cols-5 gap-6 pb-4 scrollbar-none snap-x snap-mandatory">
               {relatedBooks.map((item) => (
-                <div 
-                  key={item._id} 
+                <div
+                  key={item._id}
                   onClick={() => {
                     navigate(`/book/${item._id}`);
                     window.scrollTo({ top: 0, behavior: 'smooth' });

@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { FaFileAlt, FaEye, FaChartBar, FaBook, FaCalendarAlt } from 'react-icons/fa';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { FaFileAlt, FaEye, FaChartBar, FaBook } from 'react-icons/fa';
 import apiClient from '../../lib/apiClient';
 import AdminSidebar from '../../components/AdminSidebar';
 import MainLayout from '../../layout/MainLayout';
@@ -236,8 +236,7 @@ export default function AdminBlogAnalyticsPage() {
             const date = new Date(now);
             date.setDate(now.getDate() - i);
             const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            // Add safe random fluctuation
-            const variance = Math.floor((Math.random() - 0.4) * (dailyBase * 0.5));
+            const variance = Math.floor((Math.sin(i + dailyBase) - 0.4) * (dailyBase * 0.5));
             const dailyViews = Math.max(1, dailyBase + variance);
             data.push({ date: dateStr, views: dailyViews });
         }
@@ -331,8 +330,8 @@ export default function AdminBlogAnalyticsPage() {
                                                 }
                                             }}
                                             className={`rounded-lg px-3.5 py-2 transition duration-200 ${dateRange === btn.key
-                                                    ? 'bg-indigo-500 text-white shadow-lg'
-                                                    : 'hover:bg-white/5'
+                                                ? 'bg-indigo-500 text-white shadow-lg'
+                                                : 'hover:bg-white/5'
                                                 }`}
                                         >
                                             {btn.label}

@@ -121,12 +121,12 @@ const OptimizedImage = React.memo(function OptimizedImage({
         sizes={sizes || undefined}
         alt={alt || ''}
         loading={loading}
+        decoding="async"
         fetchpriority={fetchPriority !== 'low' ? fetchPriority : undefined}
         onLoad={handleImageLoad}
         onError={handleImageError}
-        className={`w-full h-full object-cover transition-all duration-500 ${
-          isLoaded ? 'opacity-100 blur-0' : 'opacity-0 blur-sm'
-        }`}
+        className={`w-full h-full object-cover transition-all duration-500 ${isLoaded ? 'opacity-100 blur-0' : 'opacity-0 blur-sm'
+          }`}
         {...props}
       />
     </div>
