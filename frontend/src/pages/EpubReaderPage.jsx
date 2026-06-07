@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import ePub from 'epubjs'
 import {
   MdBookmarkBorder,
   MdClose,
@@ -113,7 +112,7 @@ function flattenToc(items = [], depth = 0) {
 function buildThemeStyles(theme, fontSize = 18, isDesktop = false) {
   let bgColor = '#faf8f4'
   let textColor = '#111827'
-  
+
   if (theme === 'dark') {
     bgColor = '#0f0f0f'
     textColor = '#e8e8e8'
@@ -138,7 +137,7 @@ function buildThemeStyles(theme, fontSize = 18, isDesktop = false) {
     html: {
       background: `${bgColor} !important`,
     },
-    p: { 
+    p: {
       'margin-bottom': '1.5em',
       'line-height': '1.8',
     },
@@ -168,7 +167,7 @@ function buildThemeStyles(theme, fontSize = 18, isDesktop = false) {
       'font-family': 'Iowan Old Style, Palatino, Georgia, Charter, serif',
     },
     img: { 'max-width': '100%', height: 'auto' },
-    a: { 
+    a: {
       color: theme === 'dark' ? '#93c5fd' : '#1d4ed8',
       'text-decoration': 'none',
       transition: 'color 0.2s ease, opacity 0.2s ease',
@@ -209,12 +208,16 @@ function applyReaderStyles(rendition, theme, fontSize, isDesktop) {
 
 async function loadEpubBook(fileUrl) {
   try {
-    return ePub(fileUrl)
+    const epubModule = await import('epubjs')
+    const epub = epubModule.default || epubModule
+    return epub(fileUrl)
   } catch {
     const response = await fetch(fileUrl)
     if (!response.ok) throw new Error(`Unable to fetch EPUB (${response.status})`)
     const buffer = await response.arrayBuffer()
-    return ePub(buffer)
+    const epubModule = await import('epubjs')
+    const epub = epubModule.default || epubModule
+    return epub(buffer)
   }
 }
 
@@ -403,7 +406,7 @@ export default function EpubReaderPage({ book = null }) {
   useEffect(() => {
     localStorage.setItem('epubTheme', theme)
     if (!renditionRef.current) return
-    
+
     let bgColor = '#faf8f4'
     let textColor = '#111827'
     if (theme === 'dark') {
@@ -603,7 +606,7 @@ export default function EpubReaderPage({ book = null }) {
             }
 
             const pageNumber = Math.max(1, Math.min(totalLocs, currentLocation + 1))
-            
+
             console.log('[Progress] EPUB Location updated:', {
               pageNumber,
               totalLocs,
@@ -644,7 +647,7 @@ export default function EpubReaderPage({ book = null }) {
             if (!isDestroyed) {
               locationsReadyRef.current = true
               debugLog('[Locations] Background generation complete. Total:', book.locations.total)
-              
+
               // Trigger a manual page calculation now that locations are ready
               const currentLocObj = rendition.currentLocation()
               if (currentLocObj) {
@@ -799,7 +802,7 @@ export default function EpubReaderPage({ book = null }) {
       await rendition.display(item.href)
       const spineIndex = findSpineIndexForHref(item.href)
       if (spineIndex >= 0) updateSpineIndex(spineIndex)
-      
+
       // If navigating to a section without a specific hash anchor, force container scroll to 0 to prevent dynamic loading jumps
       if (!item.href.includes('#')) {
         forceScrollReset(rendition)

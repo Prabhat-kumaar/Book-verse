@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import * as pdfjsLib from 'pdfjs-dist'
 import { MdFullscreen } from 'react-icons/md'
 import { ReaderSkeleton } from '../components/Skeletons'
 import { API_ORIGIN } from '../lib/apiConfig'
@@ -17,8 +16,6 @@ const WHEEL_ZOOM_FACTOR = 0.0012
 const PINCH_DAMPING = 0.25
 const FULLSCREEN_DEFAULT_ZOOM = 1.1
 const CONTROLS_HIDE_DELAY_MS = 2500
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
 
 function parseReaderParams(book = null) {
   if (book) {
@@ -60,7 +57,7 @@ export default function PdfReaderPage({ book = null }) {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [error, setError] = useState('')
   const [controlsVisible, setControlsVisible] = useState(false)
-  
+
   const authUser = useMemo(() => {
     try {
       const raw = localStorage.getItem('authUser')
@@ -249,6 +246,9 @@ export default function PdfReaderPage({ book = null }) {
           pdfDocumentRef.current = null
         }
 
+        const pdfjsLib = await import('pdfjs-dist')
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
+
         const task = pdfjsLib.getDocument({ url: resolvedPdfUrl, cMapPacked: true })
         const doc = await task.promise
         if (cancelled) {
@@ -256,7 +256,7 @@ export default function PdfReaderPage({ book = null }) {
           return
         }
         pdfDocumentRef.current = doc
-        
+
         const numPages = Math.max(1, doc.numPages || 1)
         pageHeightsRef.current = Array.from({ length: numPages }, () => DEFAULT_PAGE_HEIGHT)
 
@@ -329,14 +329,14 @@ export default function PdfReaderPage({ book = null }) {
     for (let p = windowRange.start; p <= windowRange.end; p += 1) pagesToRender.push(p)
 
     let isCancelled = false
-    ;(async () => {
-      for (const pageNumber of pagesToRender) {
-        if (isCancelled) return
-        const canvas = pageCanvasesRef.current[pageNumber]
-        if (!canvas) continue
-        await renderPage(pageNumber, canvas, renderScale)
-      }
-    })()
+      ; (async () => {
+        for (const pageNumber of pagesToRender) {
+          if (isCancelled) return
+          const canvas = pageCanvasesRef.current[pageNumber]
+          if (!canvas) continue
+          await renderPage(pageNumber, canvas, renderScale)
+        }
+      })()
 
     return () => {
       isCancelled = true

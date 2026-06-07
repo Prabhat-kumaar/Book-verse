@@ -1,6 +1,7 @@
 import { Navigate, Outlet, Route, Routes, useNavigate, useLocation } from 'react-router-dom'
 import React, { Suspense, useEffect, useState } from 'react'
 import apiClient from './lib/apiClient'
+import LoadingFallback from './components/LoadingFallback'
 import MainLayout from './layout/MainLayout'
 import { initGA, trackPageView } from './utils/analytics'
 
@@ -30,13 +31,13 @@ function lazyWithRetry(importer) {
   return React.lazy(() => importer().catch((error) => {
     if (isRouteChunkError(error) && shouldReloadForChunkError()) {
       window.location.reload()
-      return new Promise(() => {})
+      return new Promise(() => { })
     }
     throw error
   }))
 }
 
-const HomePage = lazyWithRetry(() => import('./pages/HomePage'))
+import HomePage from './pages/HomePage'
 const UnifiedReaderPage = lazyWithRetry(() => import('./pages/UnifiedReaderPage'))
 const AdminDashboardPage = lazyWithRetry(() => import('./pages/AdminDashboardPage'))
 const AdminAddBookPage = lazyWithRetry(() => import('./pages/AdminAddBookPage'))
@@ -149,17 +150,6 @@ function RequireAdmin({ children }) {
   return children
 }
 
-function RouteFallback() {
-  return (
-    <div className="grid min-h-screen place-items-center bg-[#050914] text-slate-200">
-      <div
-        className="h-10 w-10 animate-spin rounded-full border-4 border-white/10 border-t-indigo-400"
-        role="status"
-        aria-label="Loading"
-      />
-    </div>
-  )
-}
 
 function parseReaderBookId(hash = '') {
   if (!hash.startsWith('#reader')) return ''
@@ -288,9 +278,9 @@ function App() {
 
   return (
     <AppErrorBoundary>
-      <Suspense fallback={<RouteFallback />}>
+      <Suspense fallback={<LoadingFallback />}>
         {isReaderRoute && hashReaderRedirecting ? (
-          <RouteFallback />
+          <LoadingFallback />
         ) : isReaderRoute ? (
           <MainLayout hideChrome fullBleed>
             <UnifiedReaderPage />

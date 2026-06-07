@@ -1,17 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { 
-    ResponsiveContainer, 
-    LineChart, 
-    Line, 
-    BarChart, 
-    Bar, 
-    XAxis, 
-    YAxis, 
-    CartesianGrid, 
-    Tooltip, 
-    Cell 
-} from 'recharts';
 import { FaFileAlt, FaEye, FaChartBar, FaBook, FaCalendarAlt } from 'react-icons/fa';
 import apiClient from '../../lib/apiClient';
 import AdminSidebar from '../../components/AdminSidebar';
@@ -188,8 +176,23 @@ export default function AdminBlogAnalyticsPage() {
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
     const [analytics, setAnalytics] = useState({});
+    const [charts, setCharts] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+
+    useEffect(() => {
+        let cancelled = false;
+        import('recharts')
+            .then((mod) => {
+                if (!cancelled) setCharts(mod);
+            })
+            .catch((err) => {
+                console.error('[AdminBlogAnalyticsPage] Recharts dynamic import failed:', err);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     // Load data from analytics endpoint
     const fetchAnalytics = async () => {
@@ -265,6 +268,20 @@ export default function AdminBlogAnalyticsPage() {
         return Math.round((postsDiff / analytics.postsLastMonth) * 100);
     }, [postsDiff, analytics.postsLastMonth, analytics.postsThisMonth]);
 
+    const chartsLoaded = Boolean(charts);
+    const {
+        ResponsiveContainer,
+        LineChart,
+        Line,
+        BarChart,
+        Bar,
+        XAxis,
+        YAxis,
+        CartesianGrid,
+        Tooltip,
+        Cell,
+    } = charts || {};
+
     return (
         <div className="relative min-h-screen overflow-x-clip bg-[#050914] text-slate-100">
             {/* Ambient background glows */}
@@ -280,20 +297,20 @@ export default function AdminBlogAnalyticsPage() {
 
             <MainLayout>
                 <div className="relative mx-auto grid min-h-screen w-full max-w-[1440px] grid-cols-1 gap-4 p-4 lg:grid-cols-[280px_1fr] lg:gap-6 lg:p-6">
-                    
+
                     {/* Admin Navigation Sidebar */}
                     <AdminSidebar />
 
                     {/* Dashboard Operations Panel */}
                     <main className="rounded-3xl border border-white/15 bg-gradient-to-b from-white/[0.08] to-white/[0.03] p-5 backdrop-blur-2xl lg:p-8">
-                        
+
                         {/* Header */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 text-left border-b border-white/5 pb-6">
                             <div>
                                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-indigo-400">Blog Metrics</p>
                                 <h2 className="mt-1 text-3xl font-black text-white sm:text-4xl">Blog Analytics</h2>
                             </div>
-                            
+
                             {/* Date filters and Range selectors */}
                             <div className="flex flex-col items-end gap-3">
                                 <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-white/10 bg-slate-950/40 p-1 text-xs font-bold text-slate-300">
@@ -313,11 +330,10 @@ export default function AdminBlogAnalyticsPage() {
                                                     setCustomEndDate('');
                                                 }
                                             }}
-                                            className={`rounded-lg px-3.5 py-2 transition duration-200 ${
-                                                dateRange === btn.key
+                                            className={`rounded-lg px-3.5 py-2 transition duration-200 ${dateRange === btn.key
                                                     ? 'bg-indigo-500 text-white shadow-lg'
                                                     : 'hover:bg-white/5'
-                                            }`}
+                                                }`}
                                         >
                                             {btn.label}
                                         </button>
@@ -379,20 +395,26 @@ export default function AdminBlogAnalyticsPage() {
 
                                     {/* Charts Grid */}
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                                        
+
                                         {/* Line Chart: Views Over Time */}
                                         <div className="rounded-2xl border border-white/10 bg-slate-950/20 p-5 backdrop-blur-xl">
                                             <h4 className="text-sm font-bold text-white mb-5 text-left">Views Over Time (Last 30 Days)</h4>
                                             <div className="h-64 w-full">
-                                                <ResponsiveContainer width="100%" height="100%">
-                                                    <LineChart data={lineChartData} margin={{ left: -20, right: 10, top: 5, bottom: 5 }}>
-                                                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                                                        <XAxis dataKey="date" stroke="rgba(255,255,255,0.4)" fontSize={10} tickLine={false} />
-                                                        <YAxis stroke="rgba(255,255,255,0.4)" fontSize={10} tickLine={false} />
-                                                        <Tooltip content={<CustomTooltip />} />
-                                                        <Line type="monotone" dataKey="views" stroke="#6366f1" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
-                                                    </LineChart>
-                                                </ResponsiveContainer>
+                                                {chartsLoaded ? (
+                                                    <ResponsiveContainer width="100%" height="100%">
+                                                        <LineChart data={lineChartData} margin={{ left: -20, right: 10, top: 5, bottom: 5 }}>
+                                                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                                                            <XAxis dataKey="date" stroke="rgba(255,255,255,0.4)" fontSize={10} tickLine={false} />
+                                                            <YAxis stroke="rgba(255,255,255,0.4)" fontSize={10} tickLine={false} />
+                                                            <Tooltip content={<CustomTooltip />} />
+                                                            <Line type="monotone" dataKey="views" stroke="#6366f1" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
+                                                        </LineChart>
+                                                    </ResponsiveContainer>
+                                                ) : (
+                                                    <div className="grid h-full place-items-center text-slate-400 text-sm">
+                                                        Loading charts...
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
 
@@ -402,7 +424,7 @@ export default function AdminBlogAnalyticsPage() {
                                             <div className="h-64 w-full">
                                                 {barChartData.length === 0 ? (
                                                     <div className="grid h-full place-items-center text-xs text-slate-500 font-semibold">No category statistics found</div>
-                                                ) : (
+                                                ) : chartsLoaded ? (
                                                     <ResponsiveContainer width="100%" height="100%">
                                                         <BarChart data={barChartData} margin={{ left: -20, right: 10, top: 5, bottom: 5 }}>
                                                             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
@@ -416,6 +438,10 @@ export default function AdminBlogAnalyticsPage() {
                                                             </Bar>
                                                         </BarChart>
                                                     </ResponsiveContainer>
+                                                ) : (
+                                                    <div className="grid h-full place-items-center text-slate-400 text-sm">
+                                                        Loading charts...
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
@@ -469,7 +495,7 @@ export default function AdminBlogAnalyticsPage() {
 
                                     {/* Category Performance Table & Engagement metrics side-by-side */}
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-left">
-                                        
+
                                         {/* Category Performance */}
                                         <div className="rounded-2xl border border-white/10 bg-slate-950/20 backdrop-blur-xl overflow-hidden">
                                             <div className="p-5 border-b border-white/5">
@@ -510,7 +536,7 @@ export default function AdminBlogAnalyticsPage() {
                                         <div className="rounded-2xl border border-white/10 bg-slate-950/20 p-5 backdrop-blur-xl flex flex-col justify-between">
                                             <div>
                                                 <h4 className="text-sm font-bold text-white border-b border-white/5 pb-3 mb-4">Engagement Metrics</h4>
-                                                
+
                                                 <div className="space-y-4">
                                                     {/* Posts this month */}
                                                     <div className="flex justify-between items-center text-xs">
@@ -548,7 +574,7 @@ export default function AdminBlogAnalyticsPage() {
                                                     </div>
                                                 </div>
                                             </div>
-                                            
+
                                             <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between text-xs text-slate-500 font-bold select-none">
                                                 <span>Telemetry status: Active</span>
                                                 <span className="text-emerald-400 animate-pulse">● Online</span>
