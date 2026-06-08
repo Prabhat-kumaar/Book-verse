@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Select from 'react-select';
 import { useEditor, EditorContent } from '@tiptap/react';
+import { Mark, Extension } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import TiptapLink from '@tiptap/extension-link';
 import Underline from '@tiptap/extension-underline';
@@ -117,21 +118,12 @@ const selectDarkStyles = {
 
 // Extend ImageResize to support class attribute for left/right/center image alignment
 const CustomImage = ImageResize.extend({
-    inline: true,
-    group: 'inline',
-
     addAttributes() {
         return {
             ...this.parent?.(),
             class: {
                 default: 'align-center',
                 parseHTML: element => {
-                    const parent = element.parentElement;
-                    if (parent && parent.tagName === 'DIV') {
-                        if (parent.classList.contains('float-right') || parent.classList.contains('align-right')) return 'align-right';
-                        if (parent.classList.contains('float-left') || parent.classList.contains('align-left')) return 'align-left';
-                        if (parent.classList.contains('flex') && parent.classList.contains('justify-center')) return 'align-center';
-                    }
                     const cls = element.getAttribute('class') || '';
                     if (cls.includes('align-left')) return 'align-left';
                     if (cls.includes('align-right')) return 'align-right';
@@ -141,117 +133,174 @@ const CustomImage = ImageResize.extend({
                     return { class: attributes.class || 'align-center' };
                 },
             },
-            style: {
-                default: null,
-                parseHTML: element => element.getAttribute('style'),
-                renderHTML: attributes => {
-                    if (!attributes.style && !attributes.width) {
-                        return {};
-                    }
-                    let styleVal = attributes.style || '';
-                    if (attributes.width) {
-                        let widthVal = attributes.width;
-                        if (typeof widthVal === 'number' || /^\d+$/.test(widthVal)) {
-                            widthVal = `${widthVal}px`;
-                        }
-                        // Ensure width is set/updated in inline style
-                        styleVal = `width: ${widthVal}; height: auto; ${styleVal.replace(/width:[^;]+;?/, '')}`;
-                    }
-                    return { style: styleVal.trim() };
-                },
-            },
         };
     },
+});
 
+// Custom Subscript Mark
+const Subscript = Mark.create({
+    name: 'subscript',
     parseHTML() {
+        return [{ tag: 'sub' }];
+    },
+    renderHTML() {
+        return ['sub', 0];
+    },
+    addCommands() {
+        return {
+            toggleSubscript: () => ({ commands }) => {
+                return commands.toggleMark(this.name);
+            }
+        };
+    }
+});
+
+// Custom Superscript Mark
+const Superscript = Mark.create({
+    name: 'superscript',
+    parseHTML() {
+        return [{ tag: 'sup' }];
+    },
+    renderHTML() {
+        return ['sup', 0];
+    },
+    addCommands() {
+        return {
+            toggleSuperscript: () => ({ commands }) => {
+                return commands.toggleMark(this.name);
+            }
+        };
+    }
+});
+
+// Custom TextStyle Extension consolidating custom typography styling attributes
+const CustomTextStyle = TextStyle.extend({
+    addAttributes() {
+        return {
+            ...this.parent?.(),
+            fontFamily: {
+                default: null,
+                parseHTML: element => element.style.fontFamily?.replace(/['"]/g, ''),
+                renderHTML: attributes => {
+                    if (!attributes.fontFamily) return {};
+                    return { style: `font-family: ${attributes.fontFamily}` };
+                }
+            },
+            fontSize: {
+                default: null,
+                parseHTML: element => element.style.fontSize,
+                renderHTML: attributes => {
+                    if (!attributes.fontSize) return {};
+                    return { style: `font-size: ${attributes.fontSize}` };
+                }
+            },
+            lineHeight: {
+                default: null,
+                parseHTML: element => element.style.lineHeight,
+                renderHTML: attributes => {
+                    if (!attributes.lineHeight) return {};
+                    return { style: `line-height: ${attributes.lineHeight}` };
+                }
+            },
+            marginLeft: {
+                default: null,
+                parseHTML: element => element.style.marginLeft,
+                renderHTML: attributes => {
+                    if (!attributes.marginLeft) return {};
+                    return { style: `margin-left: ${attributes.marginLeft}` };
+                }
+            },
+            textShadow: {
+                default: null,
+                parseHTML: element => element.style.textShadow,
+                renderHTML: attributes => {
+                    if (!attributes.textShadow) return {};
+                    return { style: `text-shadow: ${attributes.textShadow}` };
+                }
+            }
+        };
+    },
+    addCommands() {
+        return {
+            setFontFamily: fontFamily => ({ chain }) => {
+                return chain().setMark('textStyle', { fontFamily }).run();
+            },
+            unsetFontFamily: () => ({ chain }) => {
+                return chain().setMark('textStyle', { fontFamily: null }).run();
+            },
+            setFontSize: fontSize => ({ chain }) => {
+                return chain().setMark('textStyle', { fontSize }).run();
+            },
+            unsetFontSize: () => ({ chain }) => {
+                return chain().setMark('textStyle', { fontSize: null }).run();
+            },
+            setLineHeight: lineHeight => ({ chain }) => {
+                return chain().setMark('textStyle', { lineHeight }).run();
+            },
+            unsetLineHeight: () => ({ chain }) => {
+                return chain().setMark('textStyle', { lineHeight: null }).run();
+            },
+            indentText: () => ({ editor, chain }) => {
+                const attrs = editor.getAttributes('textStyle');
+                const currentMargin = attrs.marginLeft || '0px';
+                const currentPx = parseInt(currentMargin, 10) || 0;
+                const newPx = currentPx + 20;
+                return chain().setMark('textStyle', { marginLeft: `${newPx}px` }).run();
+            },
+            outdentText: () => ({ editor, chain }) => {
+                const attrs = editor.getAttributes('textStyle');
+                const currentMargin = attrs.marginLeft || '0px';
+                const currentPx = parseInt(currentMargin, 10) || 0;
+                const newPx = Math.max(0, currentPx - 20);
+                return chain().setMark('textStyle', { marginLeft: newPx > 0 ? `${newPx}px` : null }).run();
+            },
+            setTextShadow: textShadow => ({ chain }) => {
+                return chain().setMark('textStyle', { textShadow }).run();
+            },
+            unsetTextShadow: () => ({ chain }) => {
+                return chain().setMark('textStyle', { textShadow: null }).run();
+            }
+        };
+    }
+});
+
+// Custom BlockStyles Extension to support paragraph/heading style attributes
+const BlockStyles = Extension.create({
+    name: 'blockStyles',
+    addGlobalAttributes() {
         return [
             {
-                tag: 'div.float-right img',
-                getAttrs: (node) => ({
-                    src: node.getAttribute('src'),
-                    alt: node.getAttribute('alt'),
-                    title: node.getAttribute('title'),
-                    width: node.getAttribute('width'),
-                    height: node.getAttribute('height'),
-                    style: node.getAttribute('style'),
-                    class: 'align-right'
-                })
-            },
-            {
-                tag: 'div.float-left img',
-                getAttrs: (node) => ({
-                    src: node.getAttribute('src'),
-                    alt: node.getAttribute('alt'),
-                    title: node.getAttribute('title'),
-                    width: node.getAttribute('width'),
-                    height: node.getAttribute('height'),
-                    style: node.getAttribute('style'),
-                    class: 'align-left'
-                })
-            },
-            {
-                tag: 'div.flex.justify-center img',
-                getAttrs: (node) => ({
-                    src: node.getAttribute('src'),
-                    alt: node.getAttribute('alt'),
-                    title: node.getAttribute('title'),
-                    width: node.getAttribute('width'),
-                    height: node.getAttribute('height'),
-                    style: node.getAttribute('style'),
-                    class: 'align-center'
-                })
-            },
-            {
-                tag: 'img[src]',
-                getAttrs: (node) => {
-                    const cls = node.getAttribute('class') || '';
-                    let alignment = 'align-center';
-                    if (cls.includes('align-left')) alignment = 'align-left';
-                    else if (cls.includes('align-right')) alignment = 'align-right';
-                    return {
-                        src: node.getAttribute('src'),
-                        alt: node.getAttribute('alt'),
-                        title: node.getAttribute('title'),
-                        width: node.getAttribute('width'),
-                        height: node.getAttribute('height'),
-                        style: node.getAttribute('style'),
-                        class: alignment
-                    };
+                types: ['paragraph', 'heading'],
+                attributes: {
+                    style: {
+                        default: null,
+                        parseHTML: element => element.getAttribute('style'),
+                        renderHTML: attributes => {
+                            if (!attributes.style) return {};
+                            return { style: attributes.style };
+                        }
+                    }
                 }
             }
         ];
-    },
-
-    renderHTML({ HTMLAttributes }) {
-        const alignment = HTMLAttributes.class || 'align-center';
-        const imgAttributes = { ...HTMLAttributes };
-
-        if (alignment === 'align-right') {
-            imgAttributes.class = 'align-right';
-        } else if (alignment === 'align-left') {
-            imgAttributes.class = 'align-left';
-        } else {
-            imgAttributes.class = 'align-center';
-        }
-
-        // Map width attribute to style tag to guarantee it overrides cleanly in browser
-        if (imgAttributes.width && !imgAttributes.style) {
-            let widthVal = imgAttributes.width;
-            if (typeof widthVal === 'number' || /^\d+$/.test(widthVal)) {
-                widthVal = `${widthVal}px`;
-            }
-            imgAttributes.style = `width: ${widthVal}; height: auto;`;
-        }
-
-        return ['img', imgAttributes];
-    },
+    }
 });
+
 
 
 export default function AdminBlogCreateEditPage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const mode = id ? 'edit' : 'create';
+
+    // Ribbon States
+    const [showFormattingMarks, setShowFormattingMarks] = useState(false);
+    const [formatPainterState, setFormatPainterState] = useState(null);
+    const formatPainterRef = useRef(null);
+    const savedSelectionRef = useRef(null);
+    const [findText, setFindText] = useState('');
+    const [replaceText, setReplaceText] = useState('');
+    const [showFindReplacePanel, setShowFindReplacePanel] = useState(false);
 
     // Form fields state
     const [formData, setFormData] = useState({
@@ -345,6 +394,10 @@ export default function AdminBlogCreateEditPage() {
         e.preventDefault();
         if (!editor || !youtubeUrl.trim()) return;
 
+        if (savedSelectionRef.current) {
+            editor.chain().setTextSelection(savedSelectionRef.current).run();
+        }
+
         editor.chain().focus().setYoutubeVideo({
             src: youtubeUrl.trim(),
             width: 640,
@@ -357,14 +410,31 @@ export default function AdminBlogCreateEditPage() {
 
     const handleOpenLinkModal = () => {
         if (!editor) return;
+        savedSelectionRef.current = editor.state.selection;
         const previousUrl = editor.getAttributes('link').href || '';
         setLinkUrl(previousUrl);
         setShowLinkModal(true);
     };
 
+    const handleOpenImageModal = () => {
+        if (!editor) return;
+        savedSelectionRef.current = editor.state.selection;
+        setShowImageModal(true);
+    };
+
+    const handleOpenYoutubeModal = () => {
+        if (!editor) return;
+        savedSelectionRef.current = editor.state.selection;
+        setShowYoutubeModal(true);
+    };
+
     const handleSaveLink = (e) => {
         e.preventDefault();
         if (!editor) return;
+
+        if (savedSelectionRef.current) {
+            editor.chain().setTextSelection(savedSelectionRef.current).run();
+        }
 
         if (linkUrl.trim() === '') {
             editor.chain().focus().extendMarkRange('link').unsetLink().run();
@@ -421,6 +491,10 @@ export default function AdminBlogCreateEditPage() {
             finalUrl = editorImageUrl.trim();
         }
 
+        if (savedSelectionRef.current) {
+            editor.chain().setTextSelection(savedSelectionRef.current).run();
+        }
+
         // Insert image node to Tiptap editor with alignment class
         editor.chain().focus().setImage({
             src: finalUrl,
@@ -462,10 +536,14 @@ export default function AdminBlogCreateEditPage() {
             Underline,
             Strike,
             Code,
+            Subscript,
+            Superscript,
+            BlockStyles,
             TextAlign.configure({
                 types: ['heading', 'paragraph'],
+                alignments: ['left', 'center', 'right', 'justify']
             }),
-            TextStyle,
+            CustomTextStyle,
             Color,
             Highlight.configure({
                 multicolor: true,
@@ -496,6 +574,26 @@ export default function AdminBlogCreateEditPage() {
             }));
             setIsSaved(false);
         },
+        onSelectionUpdate: ({ editor }) => {
+            const { from, to } = editor.state.selection;
+            const copiedFormat = formatPainterRef.current;
+            if (copiedFormat && from !== to) {
+                let chain = editor.chain().focus();
+                // Apply copied marks
+                copiedFormat.marks.forEach(mark => {
+                    chain = chain.setMark(mark.name, mark.attrs);
+                });
+                // Apply copied styles
+                if (copiedFormat.textStyle) {
+                    chain = chain.setMark('textStyle', copiedFormat.textStyle);
+                }
+                chain.run();
+                formatPainterRef.current = null; // Clear ref after applying
+                setFormatPainterState(null); // Clear state
+                setToast('Format applied.');
+                setTimeout(() => setToast(''), 1500);
+            }
+        }
     });
 
     // Sync editor content when loaded (e.g., from DB or local storage restore)
@@ -949,6 +1047,296 @@ export default function AdminBlogCreateEditPage() {
         }, 100);
     };
 
+    // Ribbon Helper Functions
+    const handlePaste = async () => {
+        try {
+            const text = await navigator.clipboard.readText();
+            if (editor) {
+                editor.commands.insertContent(text);
+            }
+        } catch (err) {
+            setToast('Please use Ctrl+V to paste directly.');
+            setTimeout(() => setToast(''), 2200);
+        }
+    };
+
+    const handleCut = async () => {
+        if (!editor) return;
+        const { from, to } = editor.state.selection;
+        if (from === to) return;
+        const text = editor.state.doc.textBetween(from, to, ' ');
+        try {
+            await navigator.clipboard.writeText(text);
+            editor.commands.deleteSelection();
+            setToast('Cut to clipboard.');
+        } catch (err) {
+            setToast('Please use Ctrl+X to cut selection.');
+        }
+        setTimeout(() => setToast(''), 1500);
+    };
+
+    const handleCopy = async () => {
+        if (!editor) return;
+        const { from, to } = editor.state.selection;
+        if (from === to) return;
+        const text = editor.state.doc.textBetween(from, to, ' ');
+        try {
+            await navigator.clipboard.writeText(text);
+            setToast('Copied to clipboard.');
+        } catch (err) {
+            setToast('Please use Ctrl+C to copy selection.');
+        }
+        setTimeout(() => setToast(''), 1500);
+    };
+
+    const handleFormatPainterClick = () => {
+        if (!editor) return;
+        const { from, to } = editor.state.selection;
+        const activeMarkTypes = ['bold', 'italic', 'underline', 'strike', 'code', 'link', 'highlight'];
+        const marks = [];
+        activeMarkTypes.forEach(name => {
+            if (editor.isActive(name)) {
+                marks.push({ name, attrs: editor.getAttributes(name) });
+            }
+        });
+        const textStyle = editor.getAttributes('textStyle') || {};
+        const format = { marks, textStyle };
+        formatPainterRef.current = format;
+        setFormatPainterState(format);
+        setToast('Format copied. Select text to apply.');
+        setTimeout(() => setToast(''), 2200);
+    };
+
+    const changeFontSizeStep = (direction) => {
+        if (!editor) return;
+        const attrs = editor.getAttributes('textStyle');
+        const currentSize = attrs.fontSize || '16px';
+        const sizeNum = parseInt(currentSize, 10) || 16;
+        let newSize;
+        if (direction === 'increase') {
+            if (sizeNum < 12) newSize = sizeNum + 1;
+            else if (sizeNum < 28) newSize = sizeNum + 2;
+            else if (sizeNum < 48) newSize = sizeNum + 4;
+            else newSize = sizeNum + 8;
+        } else {
+            if (sizeNum <= 12) newSize = Math.max(8, sizeNum - 1);
+            else if (sizeNum <= 28) newSize = sizeNum - 2;
+            else if (sizeNum <= 48) newSize = sizeNum - 4;
+            else newSize = sizeNum - 8;
+        }
+        editor.commands.setFontSize(`${newSize}px`);
+    };
+
+    const changeTextCase = (caseType) => {
+        if (!editor) return;
+        const { state, dispatch } = editor.view;
+        const { from, to } = state.selection;
+        if (from === to) return;
+        
+        const tr = state.tr;
+        state.doc.nodesBetween(from, to, (node, pos) => {
+            if (node.isText) {
+                const start = Math.max(from, pos);
+                const end = Math.min(to, pos + node.text.length);
+                const originalText = node.text.slice(start - pos, end - pos);
+                let newText = originalText;
+                if (caseType === 'uppercase') {
+                    newText = originalText.toUpperCase();
+                } else if (caseType === 'lowercase') {
+                    newText = originalText.toLowerCase();
+                } else if (caseType === 'sentence') {
+                    newText = originalText.charAt(0).toUpperCase() + originalText.slice(1).toLowerCase();
+                } else if (caseType === 'capitalize') {
+                    newText = originalText.replace(/\b\w/g, c => c.toUpperCase());
+                } else if (caseType === 'toggle') {
+                    newText = originalText.split('').map(c => c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase()).join('');
+                }
+                tr.replaceWith(start, end, state.schema.text(newText, node.marks));
+            }
+        });
+        dispatch(tr);
+    };
+
+    const clearFormatting = () => {
+        if (!editor) return;
+        editor.chain().focus().clearNodes().unsetAllMarks().run();
+        setToast('Formatting cleared.');
+        setTimeout(() => setToast(''), 1200);
+    };
+
+    const handleMultilevelList = () => {
+        if (!editor) return;
+        if (editor.isActive('bulletList') || editor.isActive('orderedList')) {
+            editor.chain().focus().sinkListItem('listItem').run();
+        } else {
+            editor.chain().focus().toggleBulletList().sinkListItem('listItem').run();
+        }
+    };
+
+    const handleIndent = () => {
+        if (!editor) return;
+        if (editor.isActive('bulletList') || editor.isActive('orderedList')) {
+            editor.chain().focus().sinkListItem('listItem').run();
+        } else {
+            editor.chain().focus().indentText().run();
+        }
+    };
+
+    const handleOutdent = () => {
+        if (!editor) return;
+        if (editor.isActive('bulletList') || editor.isActive('orderedList')) {
+            editor.chain().focus().liftListItem('listItem').run();
+        } else {
+            editor.chain().focus().outdentText().run();
+        }
+    };
+
+    const sortSelectedLines = () => {
+        if (!editor) return;
+        const { from, to } = editor.state.selection;
+        if (from === to) return;
+        const text = editor.state.doc.textBetween(from, to, '\n');
+        const lines = text.split('\n');
+        if (lines.length <= 1) return;
+        const sorted = [...lines].sort((a, b) => a.localeCompare(b));
+        editor.chain().focus().insertContentAt({ from, to }, sorted.join('\n')).run();
+        setToast('Lines sorted alphabetically.');
+        setTimeout(() => setToast(''), 1500);
+    };
+
+    const setBlockShading = (color) => {
+        if (!editor) return;
+        const type = editor.isActive('heading') ? 'heading' : 'paragraph';
+        const currentAttrs = editor.getAttributes(type) || {};
+        const currentStyle = currentAttrs.style || '';
+        let newStyle = currentStyle.replace(/background-color:[^;]+;?/g, '').replace(/padding:[^;]+;?/g, '').replace(/border-radius:[^;]+;?/g, '');
+        if (color) {
+            newStyle = `background-color: ${color}; padding: 8px; border-radius: 4px; ${newStyle}`;
+        }
+        editor.commands.updateAttributes(type, { style: newStyle.trim() });
+    };
+
+    const setBlockBorder = (borderType) => {
+        if (!editor) return;
+        const type = editor.isActive('heading') ? 'heading' : 'paragraph';
+        const currentAttrs = editor.getAttributes(type) || {};
+        const currentStyle = currentAttrs.style || '';
+        let newStyle = currentStyle
+            .replace(/border-[^;]+;?/g, '')
+            .replace(/border:[^;]+;?/g, '')
+            .replace(/padding-bottom:[^;]+;?/g, '')
+            .replace(/padding-top:[^;]+;?/g, '')
+            .replace(/padding-left:[^;]+;?/g, '')
+            .replace(/padding:[^;]+;?/g, '');
+        
+        let borderStyle = '';
+        if (borderType === 'bottom') {
+            borderStyle = 'border-bottom: 2px solid rgba(99, 102, 241, 0.6); padding-bottom: 4px;';
+        } else if (borderType === 'box') {
+            borderStyle = 'border: 2px solid rgba(99, 102, 241, 0.6); padding: 8px; border-radius: 4px;';
+        } else if (borderType === 'top') {
+            borderStyle = 'border-top: 2px solid rgba(99, 102, 241, 0.6); padding-top: 4px;';
+        } else if (borderType === 'left') {
+            borderStyle = 'border-left: 4px solid rgba(99, 102, 241, 0.6); padding-left: 8px;';
+        }
+        
+        if (borderStyle) {
+            newStyle = `${borderStyle} ${newStyle}`;
+        }
+        editor.commands.updateAttributes(type, { style: newStyle.trim() });
+    };
+
+    const handleFindAndReplace = (replaceAll = false) => {
+        if (!editor || !findText.trim()) return;
+        
+        const { state, dispatch } = editor.view;
+        const tr = state.tr;
+        const searchRegex = new RegExp(findText.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
+        let matches = [];
+        
+        state.doc.descendants((node, pos) => {
+            if (node.isText) {
+                const text = node.text;
+                let match;
+                while ((match = searchRegex.exec(text)) !== null) {
+                    matches.push({
+                        from: pos + match.index,
+                        to: pos + match.index + match[0].length,
+                        text: match[0]
+                    });
+                }
+            }
+        });
+        
+        if (matches.length === 0) {
+            setToast('No matches found.');
+            setTimeout(() => setToast(''), 1500);
+            return;
+        }
+        
+        if (replaceAll) {
+            for (let i = matches.length - 1; i >= 0; i--) {
+                const { from, to } = matches[i];
+                tr.replaceWith(from, to, state.schema.text(replaceText));
+            }
+            dispatch(tr);
+            setToast(`Replaced ${matches.length} occurrence(s).`);
+        } else {
+            const first = matches[0];
+            const { from: selFrom, to: selTo } = state.selection;
+            let matchToReplace = matches.find(m => m.from === selFrom && m.to === selTo);
+            if (matchToReplace) {
+                tr.replaceWith(matchToReplace.from, matchToReplace.to, state.schema.text(replaceText));
+                dispatch(tr);
+                setTimeout(() => {
+                    handleFindAndReplace(false);
+                }, 50);
+            } else {
+                editor.commands.setTextSelection({ from: first.from, to: first.to });
+                setToast(`Found match. Click again to replace.`);
+            }
+        }
+        setTimeout(() => setToast(''), 2000);
+    };
+
+    const applyTextEffect = (effectType) => {
+        if (!editor) return;
+        let style = {};
+        if (effectType === 'glow') {
+            style = { textShadow: '0 0 8px rgba(99, 102, 241, 0.8), 0 0 2px rgba(99, 102, 241, 0.9)' };
+        } else if (effectType === 'shadow') {
+            style = { textShadow: '2px 2px 4px rgba(0, 0, 0, 0.6)' };
+        } else if (effectType === 'outline') {
+            style = { textShadow: '-1px -1px 0 #6366f1, 1px -1px 0 #6366f1, -1px 1px 0 #6366f1, 1px 1px 0 #6366f1' };
+        } else if (effectType === 'blue-glow') {
+            style = { textShadow: '0 0 8px rgba(59, 130, 246, 0.8)' };
+        } else {
+            editor.commands.unsetTextShadow();
+            return;
+        }
+        editor.commands.setTextShadow(style.textShadow);
+    };
+
+    const STYLES_GALLERY = useMemo(() => [
+        { name: 'Normal', label: 'Normal', preview: 'AaBbCc', action: () => editor.chain().focus().setParagraph().unsetFontSize().unsetFontFamily().unsetColor().unsetLineHeight().unsetTextShadow().run() },
+        { name: 'No Spacing', label: 'No Spacing', preview: 'AaBbCc', action: () => editor.chain().focus().setParagraph().setLineHeight('1.0').run() },
+        { name: 'Heading 1', label: 'Heading 1', preview: 'Heading 1', action: () => editor.chain().focus().toggleHeading({ level: 1 }).run() },
+        { name: 'Heading 2', label: 'Heading 2', preview: 'Heading 2', action: () => editor.chain().focus().toggleHeading({ level: 2 }).run() },
+        { name: 'Heading 3', label: 'Heading 3', preview: 'Heading 3', action: () => editor.chain().focus().toggleHeading({ level: 3 }).run() },
+        { name: 'Title', label: 'Title', preview: 'Title', action: () => editor.chain().focus().toggleHeading({ level: 1 }).setFontSize('32px').setColor('#6366f1').run() },
+        { name: 'Subtitle', label: 'Subtitle', preview: 'Subtitle', action: () => editor.chain().focus().setParagraph().setFontSize('18px').setColor('#94a3b8').run() }
+    ], [editor]);
+
+    const isStyleActive = (style) => {
+        if (!editor) return false;
+        if (style.name === 'Heading 1') return editor.isActive('heading', { level: 1 });
+        if (style.name === 'Heading 2') return editor.isActive('heading', { level: 2 });
+        if (style.name === 'Heading 3') return editor.isActive('heading', { level: 3 });
+        if (style.name === 'Normal') return editor.isActive('paragraph') && !editor.getAttributes('textStyle').fontSize;
+        if (style.name === 'No Spacing') return editor.isActive('paragraph') && editor.getAttributes('textStyle').lineHeight === '1.0';
+        return false;
+    };
+
     const inputClass =
         'w-full rounded-xl border border-white/15 bg-slate-950/50 px-4 py-3 text-sm text-white outline-none transition duration-300 placeholder:text-slate-500 focus:border-indigo-500/50 focus:bg-slate-900/70';
 
@@ -1294,330 +1682,647 @@ export default function AdminBlogCreateEditPage() {
                                         </div>
                                     </div>
 
-                                    {/* TipTap Rich Text Editor container */}
                                     <div className="border border-purple-500/30 rounded-xl bg-slate-950/40">
-                                        <div className="sticky top-[72px] sm:top-[88px] z-30 flex flex-wrap items-center gap-x-5 gap-y-2.5 p-3 bg-slate-900/95 backdrop-blur-md border-b border-purple-500/20 rounded-t-xl shadow-md">
-                                            {/* Section 1: Text Formatting */}
-                                            <div className="flex flex-wrap gap-1 items-center">
-                                                <span className="text-[10px] uppercase font-bold text-slate-500 mr-1 select-none">Format:</span>
-                                                <button
-                                                    type="button"
-                                                    disabled={!isEditorReady || !editor.can().undo()}
-                                                    onClick={() => isEditorReady && editor.chain().focus().undo().run()}
-                                                    className={getBtnClass(false, !isEditorReady || !editor.can().undo())}
-                                                    title="Undo (Ctrl+Z)"
-                                                >
-                                                    ↩
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    disabled={!isEditorReady || !editor.can().redo()}
-                                                    onClick={() => isEditorReady && editor.chain().focus().redo().run()}
-                                                    className={getBtnClass(false, !isEditorReady || !editor.can().redo())}
-                                                    title="Redo (Ctrl+Y)"
-                                                >
-                                                    ↪
-                                                </button>
-                                                <span className="w-px h-4 bg-white/10 mx-0.5" />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => isEditorReady && editor.chain().focus().toggleBold().run()}
-                                                    className={getBtnClass(isEditorReady && editor.isActive('bold'))}
-                                                    title="Bold"
-                                                >
-                                                    <strong>B</strong>
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => isEditorReady && editor.chain().focus().toggleItalic().run()}
-                                                    className={getBtnClass(isEditorReady && editor.isActive('italic'))}
-                                                    title="Italic"
-                                                >
-                                                    <em>I</em>
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => isEditorReady && editor.chain().focus().toggleUnderline().run()}
-                                                    className={getBtnClass(isEditorReady && editor.isActive('underline'))}
-                                                    title="Underline"
-                                                >
-                                                    <u>U</u>
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => isEditorReady && editor.chain().focus().toggleStrike().run()}
-                                                    className={getBtnClass(isEditorReady && editor.isActive('strike'))}
-                                                    title="Strikethrough"
-                                                >
-                                                    <s>S</s>
-                                                </button>
-                                                <span className="w-px h-4 bg-white/10 mx-0.5" />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => isEditorReady && editor.chain().focus().toggleCode().run()}
-                                                    className={getBtnClass(isEditorReady && editor.isActive('code'))}
-                                                    title="Inline Code"
-                                                >
-                                                    &lt;/&gt;
-                                                </button>
-                                            </div>
-
-                                            <span className="hidden sm:inline w-px h-5 bg-white/[0.08]" />
-
-                                            {/* Section 2: Headings + Structure */}
-                                            <div className="flex flex-wrap gap-1 items-center">
-                                                <span className="text-[10px] uppercase font-bold text-slate-500 mr-1 select-none">Structure:</span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => isEditorReady && editor.chain().focus().toggleHeading({ level: 1 }).run()}
-                                                    className={getBtnClass(isEditorReady && editor.isActive('heading', { level: 1 }))}
-                                                    title="Heading 1"
-                                                >
-                                                    H1
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => isEditorReady && editor.chain().focus().toggleHeading({ level: 2 }).run()}
-                                                    className={getBtnClass(isEditorReady && editor.isActive('heading', { level: 2 }))}
-                                                    title="Heading 2"
-                                                >
-                                                    H2
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => isEditorReady && editor.chain().focus().toggleHeading({ level: 3 }).run()}
-                                                    className={getBtnClass(isEditorReady && editor.isActive('heading', { level: 3 }))}
-                                                    title="Heading 3"
-                                                >
-                                                    H3
-                                                </button>
-                                                <span className="w-px h-4 bg-white/10 mx-0.5" />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => isEditorReady && editor.chain().focus().toggleBulletList().run()}
-                                                    className={getBtnClass(isEditorReady && editor.isActive('bulletList'))}
-                                                    title="Bullet List"
-                                                >
-                                                    • List
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => isEditorReady && editor.chain().focus().toggleOrderedList().run()}
-                                                    className={getBtnClass(isEditorReady && editor.isActive('orderedList'))}
-                                                    title="Ordered List"
-                                                >
-                                                    1. List
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => isEditorReady && editor.chain().focus().toggleBlockquote().run()}
-                                                    className={getBtnClass(isEditorReady && editor.isActive('blockquote'))}
-                                                    title="Blockquote"
-                                                >
-                                                    ” Quote
-                                                </button>
-                                                <span className="w-px h-4 bg-white/10 mx-0.5" />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => isEditorReady && editor.chain().focus().setHorizontalRule().run()}
-                                                    className={getBtnClass(false)}
-                                                    title="Horizontal Rule"
-                                                >
-                                                    — Line
-                                                </button>
-                                            </div>
-
-                                            <span className="hidden sm:inline w-px h-5 bg-white/[0.08]" />
-
-                                            {/* Section 3: Alignment */}
-                                            <div className="flex flex-wrap gap-1 items-center">
-                                                <span className="text-[10px] uppercase font-bold text-slate-500 mr-1 select-none">Alignment:</span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => isEditorReady && editor.chain().focus().setTextAlign('left').run()}
-                                                    className={getBtnClass(isEditorReady && editor.isActive({ textAlign: 'left' }))}
-                                                    title="Align Left"
-                                                >
-                                                    Align L
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => isEditorReady && editor.chain().focus().setTextAlign('center').run()}
-                                                    className={getBtnClass(isEditorReady && editor.isActive({ textAlign: 'center' }))}
-                                                    title="Align Center"
-                                                >
-                                                    Align C
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => isEditorReady && editor.chain().focus().setTextAlign('right').run()}
-                                                    className={getBtnClass(isEditorReady && editor.isActive({ textAlign: 'right' }))}
-                                                    title="Align Right"
-                                                >
-                                                    Align R
-                                                </button>
-                                            </div>
-
-                                            <span className="hidden sm:inline w-px h-5 bg-white/[0.08]" />
-
-                                            {/* Section 4: Colors */}
-                                            <div className="flex flex-wrap gap-2 items-center">
-                                                <span className="text-[10px] uppercase font-bold text-slate-500 mr-1 select-none">Colors:</span>
-                                                <div className="flex items-center gap-1.5 bg-slate-950/45 border border-white/5 rounded px-2 h-7 text-xs">
-                                                    <label htmlFor="textColorPicker" className="text-[10px] font-bold text-slate-400 cursor-pointer select-none">Text:</label>
-                                                    <input
-                                                        id="textColorPicker"
-                                                        type="color"
-                                                        value={editor?.getAttributes('textStyle').color || '#ffffff'}
-                                                        onChange={(e) => isEditorReady && editor.chain().focus().setColor(e.target.value).run()}
-                                                        className="w-4 h-4 bg-transparent border-0 cursor-pointer p-0 rounded"
-                                                        title="Choose text color"
-                                                    />
-                                                    {editor?.getAttributes('textStyle').color && (
+                                        <div className="sticky top-[72px] sm:top-[88px] z-30 bg-slate-900/95 backdrop-blur-md border-b border-purple-500/20 rounded-t-xl shadow-md">
+                                            {/* MS Word-like Ribbon */}
+                                            <div className="word-ribbon">
+                                                {/* Group 1: Clipboard */}
+                                                <div className="ribbon-group">
+                                                    <div className="ribbon-controls">
                                                         <button
                                                             type="button"
-                                                            onClick={() => isEditorReady && editor.chain().focus().unsetColor().run()}
-                                                            className="text-[9px] font-bold text-rose-400 hover:text-rose-300 ml-1 px-1 bg-slate-800 rounded select-none cursor-pointer"
-                                                            title="Reset text color"
+                                                            onClick={handlePaste}
+                                                            className="ribbon-btn ribbon-btn-large"
+                                                            title="Paste (Ctrl+V)"
                                                         >
-                                                            Reset
+                                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+                                                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                                                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1" fill="currentColor" opacity="0.2" />
+                                                            </svg>
+                                                            <span>Paste</span>
                                                         </button>
-                                                    )}
-                                                </div>
-
-                                                <div className="flex items-center gap-1.5 bg-slate-950/45 border border-white/5 rounded px-2 h-7 text-xs">
-                                                    <label htmlFor="textHighlightPicker" className="text-[10px] font-bold text-slate-400 cursor-pointer select-none">Highlight:</label>
-                                                    <input
-                                                        id="textHighlightPicker"
-                                                        type="color"
-                                                        value={editor?.getAttributes('highlight').color || '#fef08a'}
-                                                        onChange={(e) => isEditorReady && editor.chain().focus().toggleHighlight({ color: e.target.value }).run()}
-                                                        className="w-4 h-4 bg-transparent border-0 cursor-pointer p-0 rounded"
-                                                        title="Choose highlight color"
-                                                    />
-                                                    {editor?.isActive('highlight') && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => isEditorReady && editor.chain().focus().unsetHighlight().run()}
-                                                            className="text-[9px] font-bold text-rose-400 hover:text-rose-300 ml-1 px-1 bg-slate-800 rounded select-none cursor-pointer"
-                                                            title="Reset highlight"
-                                                        >
-                                                            Reset
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            <span className="hidden sm:inline w-px h-5 bg-white/[0.08]" />
-
-                                            {/* Section 5: Insert */}
-                                            <div className="flex flex-wrap gap-2 items-center">
-                                                <span className="text-[10px] uppercase font-bold text-slate-500 mr-1 select-none">Insert:</span>
-                                                <button
-                                                    type="button"
-                                                    onClick={handleOpenLinkModal}
-                                                    className={getBtnClass(isEditorReady && editor.isActive('link'))}
-                                                    title="Insert Link"
-                                                >
-                                                    Link
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setShowImageModal(true)}
-                                                    className={getBtnClass(false)}
-                                                    title="Insert Image"
-                                                >
-                                                    Image
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setShowYoutubeModal(true)}
-                                                    className={getBtnClass(isEditorReady && editor.isActive('youtube'))}
-                                                    title="Insert YouTube Embed"
-                                                >
-                                                    YouTube
-                                                </button>
-
-                                                <span className="w-px h-4 bg-white/10 mx-0.5" />
-
-                                                {/* Table Insert & Controls */}
-                                                <div className="flex flex-wrap gap-1 items-center">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => isEditorReady && editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
-                                                        className={getBtnClass(isEditorReady && editor.isActive('table'))}
-                                                        title="Insert 3x3 Table"
-                                                    >
-                                                        Table (3x3)
-                                                    </button>
-                                                    {isEditorReady && editor.isActive('table') && (
-                                                        <div className="flex gap-1 bg-slate-950/60 p-0.5 rounded border border-purple-500/20 animate-[fadeIn_150ms_ease-out]">
+                                                        <div className="ribbon-row">
                                                             <button
                                                                 type="button"
-                                                                onClick={() => editor.chain().focus().addRowBefore().run()}
-                                                                className="px-1.5 py-0.5 text-[9px] font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 rounded"
-                                                                title="Add row above"
+                                                                onClick={handleCut}
+                                                                className="ribbon-btn ribbon-btn-small"
+                                                                title="Cut (Ctrl+X)"
                                                             >
-                                                                +Row ↑
+                                                                ✂️ Cut
                                                             </button>
                                                             <button
                                                                 type="button"
-                                                                onClick={() => editor.chain().focus().addRowAfter().run()}
-                                                                className="px-1.5 py-0.5 text-[9px] font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 rounded"
-                                                                title="Add row below"
+                                                                onClick={handleCopy}
+                                                                className="ribbon-btn ribbon-btn-small"
+                                                                title="Copy (Ctrl+C)"
                                                             >
-                                                                +Row ↓
+                                                                📄 Copy
                                                             </button>
                                                             <button
                                                                 type="button"
-                                                                onClick={() => editor.chain().focus().deleteRow().run()}
-                                                                className="px-1.5 py-0.5 text-[9px] font-bold bg-rose-950/40 text-rose-355 hover:bg-rose-900 rounded"
-                                                                title="Delete row"
+                                                                onClick={handleFormatPainterClick}
+                                                                className={`ribbon-btn ribbon-btn-small ${formatPainterState ? 'active' : ''}`}
+                                                                title="Format Painter"
                                                             >
-                                                                -Row
-                                                            </button>
-                                                            <span className="w-px h-3 bg-white/10 self-center mx-0.5" />
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => editor.chain().focus().addColumnBefore().run()}
-                                                                className="px-1.5 py-0.5 text-[9px] font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 rounded"
-                                                                title="Add column left"
-                                                            >
-                                                                +Col ←
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => editor.chain().focus().addColumnAfter().run()}
-                                                                className="px-1.5 py-0.5 text-[9px] font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 rounded"
-                                                                title="Add column right"
-                                                            >
-                                                                +Col →
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => editor.chain().focus().deleteColumn().run()}
-                                                                className="px-1.5 py-0.5 text-[9px] font-bold bg-rose-950/40 text-rose-355 hover:bg-rose-900 rounded"
-                                                                title="Delete column"
-                                                            >
-                                                                -Col
-                                                            </button>
-                                                            <span className="w-px h-3 bg-white/10 self-center mx-0.5" />
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => editor.chain().focus().deleteTable().run()}
-                                                                className="px-1.5 py-0.5 text-[9px] font-extrabold bg-red-950/50 text-red-400 hover:bg-red-900 rounded"
-                                                                title="Delete Table"
-                                                            >
-                                                                Delete Table
+                                                                🖌️ Painter
                                                             </button>
                                                         </div>
-                                                    )}
+                                                    </div>
+                                                    <div className="ribbon-group-label">Clipboard</div>
+                                                </div>
+
+                                                {/* Group 2: Font */}
+                                                <div className="ribbon-group">
+                                                    <div className="ribbon-controls ribbon-row">
+                                                        {/* Top Row: Font controls */}
+                                                        <div className="ribbon-sub-row">
+                                                            <select
+                                                                value={editor?.getAttributes('textStyle').fontFamily || 'Aptos (Body)'}
+                                                                onChange={(e) => {
+                                                                    if (e.target.value === 'Aptos (Body)') {
+                                                                        editor.commands.unsetFontFamily();
+                                                                    } else {
+                                                                        editor.commands.setFontFamily(e.target.value);
+                                                                    }
+                                                                }}
+                                                                className="ribbon-select font-sans"
+                                                                style={{ width: '100px' }}
+                                                                title="Font Family"
+                                                            >
+                                                                <option value="Aptos (Body)">Aptos (Body)</option>
+                                                                <option value="DM Sans">DM Sans</option>
+                                                                <option value="Arial">Arial</option>
+                                                                <option value="Times New Roman">Times New Roman</option>
+                                                                <option value="Courier New">Courier New</option>
+                                                                <option value="Georgia">Georgia</option>
+                                                                <option value="Segoe UI">Segoe UI</option>
+                                                                <option value="Calibri">Calibri</option>
+                                                            </select>
+
+                                                            <select
+                                                                value={editor?.getAttributes('textStyle').fontSize || '16px'}
+                                                                onChange={(e) => editor.commands.setFontSize(e.target.value)}
+                                                                className="ribbon-select"
+                                                                style={{ width: '50px' }}
+                                                                title="Font Size"
+                                                            >
+                                                                {['8px', '9px', '10px', '11px', '12px', '14px', '16px', '18px', '20px', '24px', '28px', '36px', '48px', '72px'].map(sz => (
+                                                                    <option key={sz} value={sz}>{sz.replace('px', '')}</option>
+                                                                ))}
+                                                            </select>
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => changeFontSizeStep('increase')}
+                                                                className="ribbon-btn ribbon-btn-square font-bold text-xs"
+                                                                title="Grow Font Size"
+                                                            >
+                                                                A<sup>↑</sup>
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => changeFontSizeStep('decrease')}
+                                                                className="ribbon-btn ribbon-btn-square font-bold text-xs"
+                                                                title="Shrink Font Size"
+                                                            >
+                                                                A<sup>↓</sup>
+                                                            </button>
+
+                                                            <select
+                                                                onChange={(e) => {
+                                                                    changeTextCase(e.target.value);
+                                                                    e.target.value = '';
+                                                                }}
+                                                                className="ribbon-select text-center font-semibold"
+                                                                style={{ width: '38px' }}
+                                                                title="Change Case"
+                                                                defaultValue=""
+                                                            >
+                                                                <option value="" disabled>Aa</option>
+                                                                <option value="sentence">Sentence case</option>
+                                                                <option value="lowercase">lowercase</option>
+                                                                <option value="uppercase">UPPERCASE</option>
+                                                                <option value="capitalize">Capitalize Each Word</option>
+                                                                <option value="toggle">tOGGLE cASE</option>
+                                                            </select>
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={clearFormatting}
+                                                                className="ribbon-btn ribbon-btn-square"
+                                                                title="Clear All Formatting"
+                                                            >
+                                                                🧹
+                                                            </button>
+                                                        </div>
+
+                                                        {/* Bottom Row: Text Styles */}
+                                                        <div className="ribbon-sub-row">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => editor.chain().focus().toggleBold().run()}
+                                                                className={`ribbon-btn ribbon-btn-square font-bold ${editor?.isActive('bold') ? 'active' : ''}`}
+                                                                title="Bold (Ctrl+B)"
+                                                            >
+                                                                B
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => editor.chain().focus().toggleItalic().run()}
+                                                                className={`ribbon-btn ribbon-btn-square italic ${editor?.isActive('italic') ? 'active' : ''}`}
+                                                                title="Italic (Ctrl+I)"
+                                                            >
+                                                                I
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => editor.chain().focus().toggleUnderline().run()}
+                                                                className={`ribbon-btn ribbon-btn-square underline ${editor?.isActive('underline') ? 'active' : ''}`}
+                                                                title="Underline (Ctrl+U)"
+                                                            >
+                                                                U
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => editor.chain().focus().toggleStrike().run()}
+                                                                className={`ribbon-btn ribbon-btn-square line-through ${editor?.isActive('strike') ? 'active' : ''}`}
+                                                                title="Strikethrough"
+                                                            >
+                                                                ab
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => editor.chain().focus().toggleSubscript().run()}
+                                                                className={`ribbon-btn ribbon-btn-square text-[9px] ${editor?.isActive('subscript') ? 'active' : ''}`}
+                                                                title="Subscript"
+                                                            >
+                                                                X<sub>2</sub>
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => editor.chain().focus().toggleSuperscript().run()}
+                                                                className={`ribbon-btn ribbon-btn-square text-[9px] ${editor?.isActive('superscript') ? 'active' : ''}`}
+                                                                title="Superscript"
+                                                            >
+                                                                X<sup>2</sup>
+                                                            </button>
+
+                                                            {/* Text effects preset select */}
+                                                            <select
+                                                                onChange={(e) => {
+                                                                    applyTextEffect(e.target.value);
+                                                                    e.target.value = '';
+                                                                }}
+                                                                className="ribbon-select font-bold"
+                                                                style={{ width: '38px', color: '#6366f1' }}
+                                                                title="Text Effects and Typography"
+                                                                defaultValue=""
+                                                            >
+                                                                <option value="" disabled>A</option>
+                                                                <option value="glow">Glow Indigo</option>
+                                                                <option value="blue-glow">Glow Blue</option>
+                                                                <option value="shadow">Shadow Block</option>
+                                                                <option value="outline">Outline Purple</option>
+                                                                <option value="clear">Clear Effects</option>
+                                                            </select>
+
+                                                            {/* Highlight Color */}
+                                                            <div className="relative flex items-center h-6 w-6 rounded hover:bg-white/5 cursor-pointer">
+                                                                <input
+                                                                    type="color"
+                                                                    value={editor?.getAttributes('highlight').color || '#fef08a'}
+                                                                    onChange={(e) => editor.chain().focus().toggleHighlight({ color: e.target.value }).run()}
+                                                                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
+                                                                    title="Text Highlight Color"
+                                                                />
+                                                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-slate-350">
+                                                                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                                        <path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4Z" />
+                                                                    </svg>
+                                                                    <div className="w-3.5 h-0.5 mt-0.5" style={{ backgroundColor: editor?.getAttributes('highlight').color || '#fef08a' }} />
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Font Color */}
+                                                            <div className="relative flex items-center h-6 w-6 rounded hover:bg-white/5 cursor-pointer">
+                                                                <input
+                                                                    type="color"
+                                                                    value={editor?.getAttributes('textStyle').color || '#ffffff'}
+                                                                    onChange={(e) => editor.chain().focus().setColor(e.target.value).run()}
+                                                                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
+                                                                    title="Font Color"
+                                                                />
+                                                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                                                    <span className="text-xs font-black text-slate-200">A</span>
+                                                                    <div className="w-3.5 h-0.5 mt-0.5" style={{ backgroundColor: editor?.getAttributes('textStyle').color || '#ef4444' }} />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="ribbon-group-label">Font</div>
+                                                </div>
+
+                                                {/* Group 3: Paragraph */}
+                                                <div className="ribbon-group">
+                                                    <div className="ribbon-controls ribbon-row">
+                                                        {/* Top Row: List structure */}
+                                                        <div className="ribbon-sub-row">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => editor.chain().focus().toggleBulletList().run()}
+                                                                className={`ribbon-btn ribbon-btn-square ${editor?.isActive('bulletList') ? 'active' : ''}`}
+                                                                title="Bullets List"
+                                                            >
+                                                                •List
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => editor.chain().focus().toggleOrderedList().run()}
+                                                                className={`ribbon-btn ribbon-btn-square ${editor?.isActive('orderedList') ? 'active' : ''}`}
+                                                                title="Numbering List"
+                                                            >
+                                                                1.List
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={handleMultilevelList}
+                                                                className="ribbon-btn ribbon-btn-square"
+                                                                title="Multilevel List"
+                                                            >
+                                                                🪜
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={handleOutdent}
+                                                                className="ribbon-btn ribbon-btn-square font-bold"
+                                                                title="Decrease Indent"
+                                                            >
+                                                                ←
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={handleIndent}
+                                                                className="ribbon-btn ribbon-btn-square font-bold"
+                                                                title="Increase Indent"
+                                                            >
+                                                                →
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={sortSelectedLines}
+                                                                className="ribbon-btn ribbon-btn-square"
+                                                                title="Sort selected lines"
+                                                            >
+                                                                ↓Z
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setShowFormattingMarks(!showFormattingMarks)}
+                                                                className={`ribbon-btn ribbon-btn-square ${showFormattingMarks ? 'active' : ''}`}
+                                                                title="Show Formatting Marks"
+                                                            >
+                                                                ¶
+                                                            </button>
+                                                        </div>
+
+                                                        {/* Bottom Row: Align spacing */}
+                                                        <div className="ribbon-sub-row">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => editor.chain().focus().setTextAlign('left').run()}
+                                                                className={`ribbon-btn ribbon-btn-square ${editor?.isActive({ textAlign: 'left' }) ? 'active' : ''}`}
+                                                                title="Align Left"
+                                                            >
+                                                                Align L
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => editor.chain().focus().setTextAlign('center').run()}
+                                                                className={`ribbon-btn ribbon-btn-square ${editor?.isActive({ textAlign: 'center' }) ? 'active' : ''}`}
+                                                                title="Align Center"
+                                                            >
+                                                                Align C
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => editor.chain().focus().setTextAlign('right').run()}
+                                                                className={`ribbon-btn ribbon-btn-square ${editor?.isActive({ textAlign: 'right' }) ? 'active' : ''}`}
+                                                                title="Align Right"
+                                                            >
+                                                                Align R
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => editor.chain().focus().setTextAlign('justify').run()}
+                                                                className={`ribbon-btn ribbon-btn-square ${editor?.isActive({ textAlign: 'justify' }) ? 'active' : ''}`}
+                                                                title="Justify"
+                                                            >
+                                                                Justify
+                                                            </button>
+
+                                                            <select
+                                                                onChange={(e) => {
+                                                                    if (e.target.value === 'clear') {
+                                                                        editor.chain().focus().unsetLineHeight().run();
+                                                                    } else {
+                                                                        editor.chain().focus().setLineHeight(e.target.value).run();
+                                                                    }
+                                                                    e.target.value = '';
+                                                                }}
+                                                                className="ribbon-select text-center font-bold"
+                                                                style={{ width: '38px' }}
+                                                                title="Line and Paragraph Spacing"
+                                                                defaultValue=""
+                                                            >
+                                                                <option value="" disabled>↕</option>
+                                                                <option value="1.0">1.0</option>
+                                                                <option value="1.15">1.15</option>
+                                                                <option value="1.5">1.5</option>
+                                                                <option value="2.0">2.0</option>
+                                                                <option value="2.5">2.5</option>
+                                                                <option value="3.0">3.0</option>
+                                                                <option value="clear">Clear Spacing</option>
+                                                            </select>
+
+                                                            {/* Shading Paint Bucket */}
+                                                            <div className="relative flex items-center h-6 w-6 rounded hover:bg-white/5 cursor-pointer">
+                                                                <input
+                                                                    type="color"
+                                                                    onChange={(e) => setBlockShading(e.target.value)}
+                                                                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
+                                                                    title="Shading Background Block"
+                                                                />
+                                                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-slate-350">
+                                                                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                        <path d="M12 22a7 7 0 0 0 7-7c0-4.3-7-11-7-11S5 10.7 5 15a7 7 0 0 0 7 7z" />
+                                                                    </svg>
+                                                                    <div className="w-3.5 h-0.5 mt-0.5 bg-indigo-500" />
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Borders Dropdown */}
+                                                            <select
+                                                                onChange={(e) => {
+                                                                    if (e.target.value === 'clear') {
+                                                                        setBlockBorder(null);
+                                                                    } else {
+                                                                        setBlockBorder(e.target.value);
+                                                                    }
+                                                                    e.target.value = '';
+                                                                }}
+                                                                className="ribbon-select font-bold text-center"
+                                                                style={{ width: '38px' }}
+                                                                title="Borders"
+                                                                defaultValue=""
+                                                            >
+                                                                <option value="" disabled>田</option>
+                                                                <option value="bottom">Bottom Border</option>
+                                                                <option value="top">Top Border</option>
+                                                                <option value="left">Left Border</option>
+                                                                <option value="box">Box Border</option>
+                                                                <option value="clear">Clear Borders</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div className="ribbon-group-label">Paragraph</div>
+                                                </div>
+
+                                                {/* Group 4: Styles Gallery */}
+                                                <div className="ribbon-group">
+                                                    <div className="ribbon-controls">
+                                                        <div className="ribbon-style-gallery">
+                                                            {STYLES_GALLERY.map((style) => {
+                                                                const active = isStyleActive(style);
+                                                                return (
+                                                                    <button
+                                                                        key={style.name}
+                                                                        type="button"
+                                                                        onClick={style.action}
+                                                                        className={`ribbon-style-item ${active ? 'active' : ''}`}
+                                                                        title={style.label}
+                                                                    >
+                                                                        <span className="ribbon-style-preview">{style.preview}</span>
+                                                                        <span className="ribbon-style-name">{style.name}</span>
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                    <div className="ribbon-group-label">Styles</div>
+                                                </div>
+
+                                                {/* Group 5: Editing */}
+                                                <div className="ribbon-group">
+                                                    <div className="ribbon-controls ribbon-row">
+                                                        <div className="ribbon-sub-row">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setShowFindReplacePanel(true);
+                                                                }}
+                                                                className={`ribbon-btn ribbon-btn-small ${showFindReplacePanel ? 'active' : ''}`}
+                                                                title="Find"
+                                                            >
+                                                                🔍 Find
+                                                            </button>
+                                                        </div>
+                                                        <div className="ribbon-sub-row">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setShowFindReplacePanel(true);
+                                                                }}
+                                                                className="ribbon-btn ribbon-btn-small"
+                                                                title="Replace"
+                                                            >
+                                                                🔄 Replace
+                                                            </button>
+                                                        </div>
+                                                        <div className="ribbon-sub-row">
+                                                            <select
+                                                                onChange={(e) => {
+                                                                    if (e.target.value === 'all') {
+                                                                        editor.commands.selectAll();
+                                                                    } else if (e.target.value === 'clear') {
+                                                                        clearFormatting();
+                                                                    }
+                                                                    e.target.value = '';
+                                                                }}
+                                                                className="ribbon-select text-[10px]"
+                                                                style={{ width: '60px' }}
+                                                                title="Select Options"
+                                                                defaultValue=""
+                                                            >
+                                                                <option value="" disabled>Select</option>
+                                                                <option value="all">Select All</option>
+                                                                <option value="clear">Clear All</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div className="ribbon-group-label">Editing</div>
+                                                </div>
+
+                                                {/* Group 6: Media Insert */}
+                                                <div className="ribbon-group">
+                                                    <div className="ribbon-controls ribbon-row">
+                                                        <div className="ribbon-sub-row">
+                                                            <button
+                                                                type="button"
+                                                                onClick={handleOpenLinkModal}
+                                                                className={`ribbon-btn ribbon-btn-small ${editor?.isActive('link') ? 'active' : ''}`}
+                                                                title="Insert Link"
+                                                            >
+                                                                🔗 Link
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={handleOpenImageModal}
+                                                                className="ribbon-btn ribbon-btn-small"
+                                                                title="Insert Image"
+                                                            >
+                                                                🖼️ Image
+                                                            </button>
+                                                        </div>
+                                                        <div className="ribbon-sub-row">
+                                                            <button
+                                                                type="button"
+                                                                onClick={handleOpenYoutubeModal}
+                                                                className={`ribbon-btn ribbon-btn-small ${editor?.isActive('youtube') ? 'active' : ''}`}
+                                                                title="Insert YouTube Video"
+                                                            >
+                                                                📺 Video
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+                                                                className="ribbon-btn ribbon-btn-small"
+                                                                title="Insert Table (3x3)"
+                                                            >
+                                                                田 Table
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div className="ribbon-group-label">Insert</div>
                                                 </div>
                                             </div>
+
+                                            {/* Find and Replace Panel */}
+                                            {showFindReplacePanel && (
+                                                <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-950 border-t border-purple-500/20 text-xs text-left animate-[fadeIn_150ms_ease-out]">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="font-bold text-slate-400">Find:</span>
+                                                        <input
+                                                            type="text"
+                                                            value={findText}
+                                                            onChange={(e) => setFindText(e.target.value)}
+                                                            placeholder="Text to find..."
+                                                            className="rounded border border-white/10 bg-slate-900 px-2 py-1 text-xs text-white outline-none focus:border-indigo-500 w-36"
+                                                        />
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="font-bold text-slate-400">Replace:</span>
+                                                        <input
+                                                            type="text"
+                                                            value={replaceText}
+                                                            onChange={(e) => setReplaceText(e.target.value)}
+                                                            placeholder="Replace with..."
+                                                            className="rounded border border-white/10 bg-slate-900 px-2 py-1 text-xs text-white outline-none focus:border-indigo-500 w-36"
+                                                        />
+                                                    </div>
+                                                    <div className="flex gap-1">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleFindAndReplace(false)}
+                                                            className="px-2.5 py-1 font-bold rounded bg-indigo-600 text-white hover:bg-indigo-500 transition"
+                                                        >
+                                                            Find / Replace
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleFindAndReplace(true)}
+                                                            className="px-2.5 py-1 font-bold rounded bg-purple-600 text-white hover:bg-purple-500 transition"
+                                                        >
+                                                            Replace All
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setShowFindReplacePanel(false)}
+                                                            className="px-2 py-1 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 transition"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Table Commands Sub-Bar */}
+                                            {isEditorReady && editor.isActive('table') && (
+                                                <div className="flex flex-wrap items-center gap-1.5 p-2 bg-slate-950 border-t border-purple-500/20 text-[10px] text-left animate-[fadeIn_150ms_ease-out] shrink-0">
+                                                    <span className="font-bold text-slate-400 mr-1">Table Tools:</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => editor.chain().focus().addRowBefore().run()}
+                                                        className="px-2 py-1 bg-slate-800 text-slate-200 hover:bg-slate-700 rounded font-semibold"
+                                                        title="Add Row Above"
+                                                    >
+                                                        +Row Above
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => editor.chain().focus().addRowAfter().run()}
+                                                        className="px-2 py-1 bg-slate-800 text-slate-200 hover:bg-slate-700 rounded font-semibold"
+                                                        title="Add Row Below"
+                                                    >
+                                                        +Row Below
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => editor.chain().focus().deleteRow().run()}
+                                                        className="px-2 py-1 bg-rose-950/40 text-rose-300 hover:bg-rose-900 rounded font-semibold"
+                                                        title="Delete Row"
+                                                    >
+                                                        -Row
+                                                    </button>
+                                                    <span className="w-px h-3 bg-white/10 mx-0.5" />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => editor.chain().focus().addColumnBefore().run()}
+                                                        className="px-2 py-1 bg-slate-800 text-slate-200 hover:bg-slate-700 rounded font-semibold"
+                                                        title="Add Column Left"
+                                                    >
+                                                        +Col Left
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => editor.chain().focus().addColumnAfter().run()}
+                                                        className="px-2 py-1 bg-slate-800 text-slate-200 hover:bg-slate-700 rounded font-semibold"
+                                                        title="Add Column Right"
+                                                    >
+                                                        +Col Right
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => editor.chain().focus().deleteColumn().run()}
+                                                        className="px-2 py-1 bg-rose-950/40 text-rose-300 hover:bg-rose-900 rounded font-semibold"
+                                                        title="Delete Column"
+                                                    >
+                                                        -Col
+                                                    </button>
+                                                    <span className="w-px h-3 bg-white/10 mx-0.5" />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => editor.chain().focus().deleteTable().run()}
+                                                        className="px-2 py-1 bg-red-950/50 text-red-400 hover:bg-red-900 rounded font-extrabold"
+                                                        title="Delete Table"
+                                                    >
+                                                        Delete Table
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                         <EditorContent
                                             editor={editor}
-                                            className="prose prose-invert max-w-none min-h-[500px] px-5 py-4 focus:outline-none text-slate-200 text-base outline-none rounded-b-xl w-full blog-content"
+                                            className={`prose prose-invert max-w-none min-h-[500px] px-5 py-4 focus:outline-none text-slate-200 text-base outline-none rounded-b-xl w-full blog-content ${showFormattingMarks ? 'show-formatting-marks' : ''}`}
                                         />
                                     </div>
                                     {fieldErrors.content && <p className="text-xs text-rose-400 mt-1">{fieldErrors.content}</p>}
