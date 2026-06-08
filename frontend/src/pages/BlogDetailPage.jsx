@@ -454,7 +454,7 @@ const RelatedBooks = React.memo(function RelatedBooks({ relatedBooks }) {
                     return (
                         <div key={book._id} className="group relative flex gap-3 p-2 rounded-xl hover:bg-slate-950/45 border border-transparent hover:border-purple-500/10 transition-all">
                             {/* Thumbnail area with save heart */}
-                            <div className="relative aspect-[3/4] w-14 overflow-hidden rounded-xl bg-slate-955/60 ring-1 ring-purple-500/10 shrink-0 shadow-md">
+                            <div className="relative aspect-[3/4] w-14 overflow-hidden rounded-xl bg-slate-900/60 ring-1 ring-purple-500/10 shrink-0 shadow-md">
                                 <img
                                     loading="lazy"
                                     src={getBookThumbnailUrl(book)}

@@ -186,7 +186,7 @@ const SearchBar = React.memo(function SearchBar({
                     <select
                         value={category || 'All Categories'}
                         onChange={handleCategoryChange}
-                        className="w-full cursor-pointer rounded-2xl border border-purple-500/20 bg-slate-955/40 px-4 py-3 text-sm font-semibold text-white outline-none transition duration-300 hover:border-purple-500/40 focus:border-purple-500"
+                        className="w-full cursor-pointer rounded-2xl border border-purple-500/20 bg-slate-950/40 px-4 py-3 text-sm font-semibold text-white outline-none transition duration-300 hover:border-purple-500/40 focus:border-purple-500"
                     >
                         {CATEGORIES.map((cat) => (
                             <option key={cat} value={cat} className="bg-slate-950 text-white font-medium py-1">
@@ -201,7 +201,7 @@ const SearchBar = React.memo(function SearchBar({
                     <select
                         value={sort}
                         onChange={handleSortChange}
-                        className="w-full cursor-pointer rounded-2xl border border-purple-500/20 bg-slate-955/40 px-4 py-3 text-sm font-semibold text-white outline-none transition duration-300 hover:border-purple-500/40 focus:border-purple-500"
+                        className="w-full cursor-pointer rounded-2xl border border-purple-500/20 bg-slate-950/40 px-4 py-3 text-sm font-semibold text-white outline-none transition duration-300 hover:border-purple-500/40 focus:border-purple-500"
                     >
                         <option value="latest" className="bg-slate-950 text-white font-medium py-1">Latest</option>
                         <option value="popular" className="bg-slate-950 text-white font-medium py-1">Most Popular</option>
