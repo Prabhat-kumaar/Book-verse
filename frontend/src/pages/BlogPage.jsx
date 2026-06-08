@@ -505,6 +505,9 @@ export default function BlogPage() {
     // Input state for search
     const [searchInput, setSearchInput] = useState(search);
 
+    // Track previous parameters to determine if a change is search-input-triggered
+    const prevParamsRef = React.useRef({ category, page: currentPage, search });
+
     // Sync input field value when URL parameters change (back button / clear)
     useEffect(() => {
         setSearchInput(search);
@@ -516,7 +519,8 @@ export default function BlogPage() {
             if (searchInput !== search) {
                 const newParams = new URLSearchParams(searchParams);
                 if (searchInput.trim()) {
-                    newParams.set('search', searchInput.trim());
+                    // Navigate with raw searchInput to preserve trailing/multiple spaces while typing
+                    newParams.set('search', searchInput);
                 } else {
                     newParams.delete('search');
                 }
@@ -529,8 +533,12 @@ export default function BlogPage() {
     }, [searchInput, search, searchParams, setSearchParams]);
 
     // Fetch blogs API implementation
-    const fetchBlogs = async () => {
-        setLoading(true);
+    const fetchBlogs = async (isSearchChange = false) => {
+        // Only set loading to true (which renders the skeleton) if it is not a search keystroke update
+        // or if we have no blogs loaded yet.
+        if (!isSearchChange || blogs.length === 0) {
+            setLoading(true);
+        }
         setError('');
 
         try {
@@ -565,7 +573,13 @@ export default function BlogPage() {
 
     // Refetch when url queries change
     useEffect(() => {
-        fetchBlogs();
+        const isSearchChange = prevParamsRef.current.search !== search &&
+                               prevParamsRef.current.category === category &&
+                               prevParamsRef.current.page === currentPage;
+
+        prevParamsRef.current = { category, page: currentPage, search };
+
+        fetchBlogs(isSearchChange);
     }, [currentPage, category, search, sort]);
 
     // Filters update handlers

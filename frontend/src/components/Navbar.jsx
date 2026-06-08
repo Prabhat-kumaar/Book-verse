@@ -65,9 +65,10 @@ export default function Navbar() {
 
   useEffect(() => {
     if (!searchDirty) return
-    const query = search.trim()
+    const trimmed = search.trim()
     const timer = window.setTimeout(() => {
-      navigate(query ? `/books?q=${encodeURIComponent(query)}` : '/books')
+      // Navigate using the raw search value to preserve spaces in the input field
+      navigate(trimmed ? `/books?q=${encodeURIComponent(search)}` : '/books')
     }, 300)
     return () => window.clearTimeout(timer)
   }, [navigate, search, searchDirty])
