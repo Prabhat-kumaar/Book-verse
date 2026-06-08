@@ -239,8 +239,8 @@ const BlogGrid = React.memo(function BlogGrid({ children }) {
 });
 
 /**
- * Sub-component: BlogCard Card item
- // Helper to resolve colored category badges matching I-CARD design
+ * Helper to resolve colored category badges matching I-CARD design
+ */
 const getCategoryBadgeStyles = (cat) => {
     const cleanCat = (cat || '').toLowerCase().trim();
     if (cleanCat.includes('classic')) {
