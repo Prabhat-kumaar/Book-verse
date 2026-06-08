@@ -1,11 +1,35 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { FaFacebook, FaTwitter, FaLinkedin, FaWhatsapp, FaCopy, FaCheck, FaBookOpen } from 'react-icons/fa';
+import { FaFacebook, FaTwitter, FaLinkedin, FaWhatsapp, FaCopy, FaCheck, FaBookOpen, FaRegBookmark, FaRegHeart, FaBookmark, FaHeart } from 'react-icons/fa';
 import SEO from '../components/SEO';
 import MainLayout from '../layout/MainLayout';
 import SaveBookHeart from '../components/SaveBookHeart';
 import { buildApiUrl } from '../lib/apiConfig';
 import { getBookThumbnailUrl } from '../lib/mediaUrls';
+
+// Helper to resolve colored category badges matching I-CARD design
+const getCategoryBadgeStyles = (cat) => {
+    const cleanCat = (cat || '').toLowerCase().trim();
+    if (cleanCat.includes('classic')) {
+        return 'bg-blue-500/10 text-blue-400 border border-blue-500/20';
+    }
+    if (cleanCat.includes('study')) {
+        return 'bg-orange-500/10 text-orange-400 border border-orange-500/20';
+    }
+    if (cleanCat.includes('literary') || cleanCat.includes('analysis')) {
+        return 'bg-pink-500/10 text-pink-400 border border-pink-500/20';
+    }
+    if (cleanCat.includes('guide')) {
+        return 'bg-purple-500/10 text-purple-400 border border-purple-500/20';
+    }
+    if (cleanCat.includes('author') || cleanCat.includes('profile')) {
+        return 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
+    }
+    if (cleanCat.includes('tips') || cleanCat.includes('tricks')) {
+        return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+    }
+    return 'bg-purple-500/10 text-purple-400 border border-purple-500/20';
+};
 
 // Helper to format date
 const formatDate = (dateStr) => {
@@ -946,6 +970,18 @@ export default function BlogDetailPage() {
         };
     }, [blog]);
 
+    const [isBookmarked, setIsBookmarked] = useState(false);
+    const [isLiked, setIsLiked] = useState(false);
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = useCallback(() => {
+        const shareUrl = `${window.location.origin}/blog/${slug}`;
+        navigator.clipboard.writeText(shareUrl).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        });
+    }, [slug]);
+
     return (
         <React.Fragment>
             {/* 1. SEO Helmet Wrapper */}
@@ -969,7 +1005,7 @@ export default function BlogDetailPage() {
 
             {/* 3. MainLayout Wrapper */}
             <MainLayout>
-                <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4">
+                <div className="max-w-3xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-10">
                     {loading ? (
                         <LoadingSkeleton />
                     ) : error ? (
@@ -1007,65 +1043,162 @@ export default function BlogDetailPage() {
                             </Link>
                         </div>
                     ) : (
-                        <div className="flex flex-col gap-6 animate-[fadeIn_250ms_ease-out]">
-                            {/* 4. HeroSection */}
-                            <HeroSection
-                                blog={blog}
-                                readTime={readTime}
-                                formattedDate={formattedDate}
-                            />
+                        <div className="animate-[fadeIn_250ms_ease-out] flex flex-col">
+                            
+                            {/* 4. Header Navigation */}
+                            <div className="flex items-center justify-between mb-6 sm:mb-8 select-none">
+                                <Link
+                                    to="/blog"
+                                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-purple-500/20 bg-slate-900/60 text-slate-300 hover:text-white hover:border-purple-500/40 transition duration-300"
+                                    title="Back to Blog"
+                                >
+                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7 7-7" />
+                                    </svg>
+                                </Link>
+                                <span className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1 text-xs font-extrabold uppercase tracking-widest ${getCategoryBadgeStyles(blog.category)}`}>
+                                    • {blog.category}
+                                </span>
+                            </div>
 
-                            {/* Featured Books Gallery */}
-                            <BookCoversGallery relatedBooks={relatedBooks} slug={slug} />
-
-                            {/* 5. Split Page Columns (70 / 30) */}
-                            <div className="flex flex-col lg:flex-row gap-8 mt-4">
-
-                                {/* Left Content column (70%) */}
-                                <div className="w-full lg:w-[70%] flex flex-col gap-6">
-                                    {/* HTML Content rendering */}
-                                    <BlogContent
-                                        blog={blog}
-                                        readTime={readTime}
-                                        formattedDate={formattedDate}
-                                        headings={headings}
-                                        contentHtml={processedContent}
-                                    />
-
-                                    {/* Start Reading CTA banner */}
-                                    <BlogCTA />
-
-                                    {/* Share Buttons */}
-                                    <ShareButtons
-                                        title={blog.title}
-                                        slug={blog.slug}
+                            {/* 5. Cover Image Illustration box */}
+                            {blog.coverImage && (
+                                <div className="rounded-3xl border border-purple-500/20 bg-slate-900/30 p-4 sm:p-5 mb-6 shadow-2xl relative select-none">
+                                    <img
+                                        src={blog.coverImage}
+                                        alt={blog.title}
+                                        className="w-full aspect-[16/10] sm:aspect-[16/9] object-cover rounded-2xl shadow-lg border border-purple-500/10"
                                     />
                                 </div>
+                            )}
 
-                                {/* Right Sidebar column (30%) */}
-                                <aside className="w-full lg:w-[30%] flex flex-col gap-6">
-                                    {/* Table of Contents (Desktop only) */}
-                                    <div className="hidden lg:block">
-                                        <TableOfContents headings={headings} />
-                                    </div>
-
-                                    {/* Related Books */}
-                                    <RelatedBooks relatedBooks={relatedBooks} />
-
-                                    {/* Related Blog Posts */}
-                                    <RelatedBlogs relatedBlogs={relatedPosts} />
-
-                                    {/* Subscribe Form */}
-                                    <Subscribe />
-                                </aside>
-
+                            {/* 6. Meta Row */}
+                            <div className="flex items-center justify-between text-[11px] font-extrabold text-slate-500 uppercase tracking-widest mb-4">
+                                <span>{formattedDate}</span>
+                                <span>{readTime}</span>
                             </div>
+
+                            {/* 7. Title */}
+                            <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white leading-tight tracking-tight text-left mb-6">
+                                {blog.title}
+                            </h1>
+
+                            {/* 8. Author Block Header */}
+                            <div className="flex items-center gap-3 border-b border-purple-500/10 pb-5 mb-8 text-left">
+                                <div className="h-10 w-10 overflow-hidden rounded-full bg-purple-500/20 ring-2 ring-purple-500/20 flex items-center justify-center font-bold text-purple-300 shrink-0">
+                                    {blog.author?.avatar ? (
+                                        <img src={blog.author.avatar} alt={blog.author?.username} className="h-full w-full object-cover" />
+                                    ) : (
+                                        (blog.author?.username || 'A').charAt(0).toUpperCase()
+                                    )}
+                                </div>
+                                <div>
+                                    <p className="text-white text-xs font-bold">{blog.author?.username || 'Admin'}</p>
+                                    <p className="text-slate-500 text-[10px] mt-0.5">Chief Editor & Curator</p>
+                                </div>
+                            </div>
+
+                            {/* 9. HTML Content Rendering */}
+                            <div
+                                className="blog-content-html blog-content prose-blog text-slate-300 text-base leading-relaxed space-y-6 text-left 
+                                [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:text-white [&_h1]:mb-4 [&_h1]:mt-8
+                                [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:text-purple-300 [&_h2]:mb-3 [&_h2]:mt-8
+                                [&_h3]:text-xl [&_h3]:font-semibold [&_h3]:text-slate-205 [&_h3]:mb-2 [&_h3]:mt-6
+                                [&_p]:text-slate-300 [&_p]:leading-relaxed [&_p]:mb-4
+                                [&_a]:text-purple-400 [&_a]:underline hover:text-purple-300 [&_a]:transition-colors
+                                [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-2 [&_ul]:mb-4 [&_ul]:text-slate-300
+                                [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:space-y-2 [&_ol]:mb-4 [&_ol]:text-slate-300
+                                [&_li]:pl-1
+                                [&_img]:rounded-xl [&_img]:max-w-full [&_img]:my-6 [&_img]:h-auto [&_img]:shadow-lg
+                                [&_blockquote]:border-l-4 [&_blockquote]:border-purple-500 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-slate-400 [&_blockquote]:my-6
+                                [&_pre]:bg-slate-900 [&_pre]:rounded-xl [&_pre]:p-4 [&_pre]:overflow-x-auto [&_pre]:my-6
+                                [&_code]:bg-slate-800 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-purple-300 [&_code]:text-sm
+                                prose prose-invert max-w-none transition-colors duration-300 clearfix"
+                                dangerouslySetInnerHTML={{ __html: processedContent }}
+                            />
+
+                            {/* 10. Tags Row */}
+                            {blog.tags && blog.tags.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mt-8 pt-6 border-t border-purple-500/10">
+                                    {blog.tags.map(tag => (
+                                        <span key={tag} className="text-xs font-semibold text-slate-300 bg-purple-500/5 border border-purple-500/10 px-2.5 py-1 rounded-lg">
+                                            #{tag}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* 11. Bottom Recommendations & widgets */}
+                            <div className="mt-12 space-y-12 border-t border-purple-500/10 pt-10">
+                                {/* About the Author */}
+                                <div className="rounded-2xl border border-purple-500/20 bg-slate-900/85 p-6 flex flex-col sm:flex-row gap-5 items-center text-left hover:border-purple-500/30 transition-all duration-300 animate-[fadeIn_200ms_ease-out]">
+                                    <div className="h-14 w-14 overflow-hidden rounded-full bg-purple-500/20 ring-2 ring-purple-500/30 flex items-center justify-center text-xl font-bold text-purple-300 shrink-0">
+                                        {blog.author?.avatar ? (
+                                            <img src={blog.author.avatar} alt={blog.author?.username} className="h-full w-full object-cover" />
+                                        ) : (
+                                            (blog.author?.username || 'A').charAt(0).toUpperCase()
+                                        )}
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-white">About the Author: {blog.author?.username || 'Admin'}</h4>
+                                        <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+                                            {blog.author?.bio || 'Passionate writer, literary analyst, and curator of the Readify AI journal. Sharing the best reading recommendations, studying insights, and classic book deep dives.'}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Mentioned Books Gallery */}
+                                <BookCoversGallery relatedBooks={relatedBooks} slug={slug} />
+
+                                {/* Related Books detail list */}
+                                <RelatedBooks relatedBooks={relatedBooks} />
+
+                                {/* Related Blog Posts */}
+                                <RelatedBlogs relatedBlogs={relatedPosts} />
+
+                                {/* Reading CTA banner */}
+                                <BlogCTA />
+
+                                {/* Subscribe Form */}
+                                <Subscribe />
+                            </div>
+
                         </div>
                     )}
                 </div>
             </MainLayout>
 
-            {/* 6. Floating Back to Top Button */}
+            {/* 12. Centered Floating Actions Bar */}
+            {!loading && blog && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[80] flex items-center gap-6 rounded-2xl border border-purple-500/30 bg-slate-950/80 backdrop-blur-md px-6 py-3 shadow-2xl transition-all duration-300 animate-[fadeIn_200ms_ease-out]">
+                    <button
+                        type="button"
+                        onClick={() => setIsBookmarked(prev => !prev)}
+                        className="text-slate-400 hover:text-white transition-colors cursor-pointer transform active:scale-75"
+                        title={isBookmarked ? "Remove Bookmark" : "Bookmark Article"}
+                    >
+                        {isBookmarked ? <FaBookmark className="text-purple-400 text-sm" /> : <FaRegBookmark className="text-sm" />}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setIsLiked(prev => !prev)}
+                        className="text-slate-400 hover:text-rose-500 transition-colors cursor-pointer transform active:scale-75"
+                        title={isLiked ? "Unlike Article" : "Like Article"}
+                    >
+                        {isLiked ? <FaHeart className="text-rose-500 text-sm" /> : <FaRegHeart className="text-sm" />}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleCopy}
+                        className="text-slate-400 hover:text-purple-400 transition-colors cursor-pointer transform active:scale-75"
+                        title="Copy Article Link"
+                    >
+                        {copied ? <FaCheck className="text-emerald-500 text-sm" /> : <FaCopy className="text-sm" />}
+                    </button>
+                </div>
+            )}
+
+            {/* 13. Floating Back to Top Button */}
             {showBackToTop && (
                 <button
                     type="button"

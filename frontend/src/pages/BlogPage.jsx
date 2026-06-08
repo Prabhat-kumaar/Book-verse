@@ -738,6 +738,163 @@ const SidebarSubscribe = React.memo(function SidebarSubscribe() {
 });
 
 /**
+ * Sidebar Sub-component: Chief Editor details
+ */
+const SidebarAuthorInfo = React.memo(function SidebarAuthorInfo() {
+    return (
+        <div className="rounded-2xl border border-purple-500/20 bg-slate-900/80 p-4 text-left">
+            <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-3">About the Author</h4>
+            <div className="flex items-center gap-3 border-t border-purple-500/10 pt-3">
+                <div className="h-10 w-10 rounded-full overflow-hidden bg-purple-500/20 ring-1 ring-purple-500/20 flex items-center justify-center font-bold text-purple-300">
+                    PJ
+                </div>
+                <div>
+                    <p className="text-white text-xs font-bold">Praveen Juge</p>
+                    <p className="text-slate-550 text-[10px] mt-0.5">Design Engineer & Chief Editor</p>
+                </div>
+            </div>
+        </div>
+    );
+});
+
+/**
+ * Sidebar Sub-component: Upcoming Tech Events list
+ */
+const SidebarEvents = React.memo(function SidebarEvents() {
+    const events = [
+        { title: "React Conf 2026", date: "June 15-16, 2026", type: "Virtual" },
+        { title: "Local Web Dev Meetup", date: "June 22, 2026", type: "Tech Hub" },
+        { title: "JavaScript Workshop", date: "July 10, 2026", type: "Online" }
+    ];
+    return (
+        <div className="rounded-2xl border border-purple-500/20 bg-slate-900/80 p-4 text-left">
+            <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-3">Upcoming Events</h4>
+            <div className="flex flex-col gap-3.5 border-t border-purple-500/10 pt-3">
+                {events.map((e, idx) => (
+                    <div key={idx} className="text-xs">
+                        <p className="text-white font-bold">{e.title}</p>
+                        <p className="text-slate-400 text-[10px] mt-0.5">{e.date} • {e.type}</p>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+});
+
+/**
+ * Sidebar Sub-component: Reading list with progress statuses
+ */
+const SidebarReadingList = React.memo(function SidebarReadingList() {
+    const items = [
+        { title: "Clean Code: A Handbook of Agile...", status: "In Progress", color: "bg-blue-500/10 text-blue-400" },
+        { title: "Design Patterns: Elements of Re...", status: "Next", color: "bg-slate-800 text-slate-400" },
+        { title: "The Pragmatic Programmer", status: "Next", color: "bg-slate-800 text-slate-400" }
+    ];
+    return (
+        <div className="rounded-2xl border border-purple-500/20 bg-slate-900/80 p-4 text-left">
+            <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-3">Reading List</h4>
+            <div className="flex flex-col gap-2.5 border-t border-purple-500/10 pt-3">
+                {items.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-start gap-2 text-xs">
+                        <p className="text-slate-300 font-medium line-clamp-1">{item.title}</p>
+                        <span className={`px-2 py-0.5 rounded text-[8px] font-bold shrink-0 uppercase tracking-wide ${item.color}`}>
+                            {item.status}
+                        </span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+});
+
+/**
+ * Sidebar Sub-component: Quotes and Testimonials
+ */
+const SidebarTestimonials = React.memo(function SidebarTestimonials() {
+    const quotes = [
+        { text: "This blog has been an invaluable resource in my journey as a developer. The tutorials are clean and clear.", author: "Alex Johnson" },
+        { text: "I've been following this blog for years, and it never fails to keep me updated with web tech.", author: "Sarah Lee" }
+    ];
+    return (
+        <div className="rounded-2xl border border-purple-500/20 bg-slate-900/80 p-4 text-left">
+            <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-3">What Our Readers Say</h4>
+            <div className="flex flex-col gap-3.5 border-t border-purple-500/10 pt-3">
+                {quotes.map((q, idx) => (
+                    <div key={idx} className="text-[11px] leading-relaxed">
+                        <p className="text-slate-400 italic">"{q.text}"</p>
+                        <p className="text-slate-500 font-semibold mt-1">— {q.author}</p>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+});
+
+/**
+ * Sidebar Sub-component: Recent comments list
+ */
+const SidebarRecentComments = React.memo(function SidebarRecentComments() {
+    const comments = [
+        { author: "John Doe", text: "Great article! Thanks for sharing." },
+        { author: "Jane Smith", text: "This helped me solve a tricky problem." }
+    ];
+    return (
+        <div className="rounded-2xl border border-purple-500/20 bg-slate-900/80 p-4 text-left">
+            <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-3">Recent Comments</h4>
+            <div className="flex flex-col gap-3 border-t border-purple-500/10 pt-3">
+                {comments.map((c, idx) => (
+                    <div key={idx} className="text-xs">
+                        <p className="text-white font-bold">{c.author}</p>
+                        <p className="text-slate-400 mt-0.5 line-clamp-1">"{c.text}"</p>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+});
+
+/**
+ * Sidebar Sub-component: Recent/Related posts link list
+ */
+const SidebarRelatedPosts = React.memo(function SidebarRelatedPosts({ blogs }) {
+    if (!blogs || blogs.length === 0) return null;
+    const displayPosts = blogs.slice(0, 3);
+    return (
+        <div className="rounded-2xl border border-purple-500/20 bg-slate-900/80 p-4 text-left">
+            <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-3">Related Posts</h4>
+            <div className="flex flex-col gap-2.5 border-t border-purple-500/10 pt-3">
+                {displayPosts.map(post => (
+                    <Link key={post.slug} to={`/blog/${post.slug}`} className="text-xs font-semibold text-slate-300 hover:text-purple-400 transition-colors line-clamp-1 block py-0.5">
+                        {post.title}
+                    </Link>
+                ))}
+            </div>
+        </div>
+    );
+});
+
+/**
+ * Sidebar Sub-component: Sidebar search input box
+ */
+const SidebarSearch = React.memo(function SidebarSearch({ value, onChange }) {
+    return (
+        <div className="rounded-2xl border border-purple-500/20 bg-slate-900/80 p-4 text-left">
+            <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-3">Search</h4>
+            <div className="relative border-t border-purple-500/10 pt-3">
+                <input
+                    type="text"
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    placeholder="Search posts..."
+                    className="w-full rounded-xl border border-purple-500/20 bg-slate-950/40 py-2 pl-3 pr-8 text-xs font-semibold text-white placeholder-slate-500 outline-none transition focus:border-purple-500"
+                />
+                <span className="absolute right-2.5 top-[23px] text-slate-400 text-xs select-none">🔍</span>
+            </div>
+        </div>
+    );
+});
+
+/**
  * Main BlogPage Component
  * Fulfills requested layout hierarchy:
  * BlogPage -> Helmet (SEO) -> MainLayout -> Hero -> SearchBar -> BlogGrid (with BlogCards) / Loading / Error / Empty -> Pagination
@@ -995,6 +1152,12 @@ export default function BlogPage() {
 
                         {/* Right Sidebar area (30%) */}
                         <aside className="w-full lg:w-[30%] flex flex-col gap-6">
+                            {/* Search Widget */}
+                            <SidebarSearch value={searchInput} onChange={setSearchInput} />
+
+                            {/* About the Author (Chief Editor) */}
+                            <SidebarAuthorInfo />
+
                             {/* Featured Post */}
                             <FeaturedPost blog={blogs[0]} />
 
@@ -1004,6 +1167,15 @@ export default function BlogPage() {
                                 onSelectCategory={selectCategory}
                                 getCount={getCategoryCount}
                             />
+
+                            {/* Related Posts */}
+                            <SidebarRelatedPosts blogs={blogs} />
+
+                            {/* Newsletter Subscribe */}
+                            <SidebarSubscribe />
+
+                            {/* Recent Comments */}
+                            <SidebarRecentComments />
 
                             {/* Popular Posts */}
                             <PopularPosts posts={popularPosts} />
@@ -1018,8 +1190,14 @@ export default function BlogPage() {
                                 totalReads={totalReads}
                             />
 
-                            {/* Newsletter Subscribe */}
-                            <SidebarSubscribe />
+                            {/* Reading List */}
+                            <SidebarReadingList />
+
+                            {/* What Our Readers Say (Testimonials) */}
+                            <SidebarTestimonials />
+
+                            {/* Upcoming Events */}
+                            <SidebarEvents />
                         </aside>
 
                     </div>
