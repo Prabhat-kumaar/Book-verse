@@ -56,27 +56,31 @@ const addOrUpdateReview = async (req, res, next) => {
 
 // Get all reviews for a book
 const getBookReviews = async (req, res, next) => {
+    const { bookId } = req.params;
+    const { sortBy = 'recent' } = req.query; // 'recent' or 'rating'
+    console.log(`[DEBUG] getBookReviews - Incoming bookId param: "${bookId}", sortBy: "${sortBy}"`);
     try {
-        const { bookId } = req.params;
-        const { sortBy = 'recent' } = req.query; // 'recent' or 'rating'
-
         // Determine sort order
         let sortOption = { createdAt: -1 };
         if (sortBy === 'rating') {
             sortOption = { rating: -1, createdAt: -1 };
         }
 
+        console.log(`[DEBUG] getBookReviews - Querying MongoDB: Review.find({ book: "${bookId}" }).sort(${JSON.stringify(sortOption)})`);
         const reviews = await Review.find({ book: bookId })
             .populate('user', 'username avatar')
             .sort(sortOption);
 
+        console.log(`[DEBUG] getBookReviews - Query successful. Count: ${reviews.length}`);
         res.setHeader('Cache-Control', 'public, max-age=3600');
+        console.log(`[DEBUG] getBookReviews - Sending 200 response with data`);
         res.status(200).json({
             success: true,
             count: reviews.length,
             data: reviews,
         });
     } catch (error) {
+        console.error(`[DEBUG] getBookReviews - Error caught:`, error);
         next(error);
     }
 };

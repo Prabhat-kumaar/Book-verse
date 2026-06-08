@@ -354,9 +354,14 @@ const getBooksByCategory = async (req, res, next) => {
 };
 
 const getBookById = async (req, res, next) => {
+    const paramId = req.params.id;
+    console.log(`[DEBUG] getBookById - Incoming parameter: "${paramId}"`);
     try {
-        const book = await Book.findById(req.params.id);
+        console.log(`[DEBUG] getBookById - Querying MongoDB: Book.findById("${paramId}")`);
+        const book = await Book.findById(paramId);
+        console.log(`[DEBUG] getBookById - Query successful. Book found: ${!!book}`);
         if (!book) {
+            console.log(`[DEBUG] getBookById - Sending 404 response: Book not found`);
             return res.status(404).json({ success: false, message: 'Book not found' });
         }
         const formattedBook = {
@@ -366,17 +371,24 @@ const getBookById = async (req, res, next) => {
             coverImage: book.coverImage ? formatUrl(req, book.coverImage) : null
         };
         res.setHeader('Cache-Control', 'public, max-age=3600');
+        console.log(`[DEBUG] getBookById - Sending 200 response with data`);
         res.json({ success: true, data: formattedBook });
     } catch (error) {
+        console.error(`[DEBUG] getBookById - Error caught:`, error);
         next(error);
     }
 };
 
 const getBookBySlug = async (req, res, next) => {
+    const paramSlug = req.params.slug;
+    console.log(`[DEBUG] getBookBySlug - Incoming parameter: "${paramSlug}"`);
     try {
-        const slug = asTrimmedString(req.params.slug).toLowerCase();
+        const slug = asTrimmedString(paramSlug).toLowerCase();
+        console.log(`[DEBUG] getBookBySlug - Querying MongoDB: Book.findOne({ slug: "${slug}" })`);
         const book = await Book.findOne({ slug });
+        console.log(`[DEBUG] getBookBySlug - Query successful. Book found: ${!!book}`);
         if (!book) {
+            console.log(`[DEBUG] getBookBySlug - Sending 404 response: Book not found`);
             return res.status(404).json({ success: false, message: 'Book not found' });
         }
         const formattedBook = {
@@ -386,8 +398,10 @@ const getBookBySlug = async (req, res, next) => {
             coverImage: book.coverImage ? formatUrl(req, book.coverImage) : null
         };
         res.setHeader('Cache-Control', 'public, max-age=3600');
+        console.log(`[DEBUG] getBookBySlug - Sending 200 response with data`);
         res.json({ success: true, data: formattedBook });
     } catch (error) {
+        console.error(`[DEBUG] getBookBySlug - Error caught:`, error);
         next(error);
     }
 };
