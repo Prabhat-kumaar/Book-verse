@@ -91,25 +91,25 @@ const Shine = React.memo(function Shine({ className = '' }) {
  */
 const BlogCardSkeleton = React.memo(function BlogCardSkeleton() {
     return (
-        <article className="overflow-hidden rounded-2xl border border-purple-500/20 bg-slate-950/20">
-            <div className="relative h-[160px] max-h-[160px] overflow-hidden bg-slate-900/60 w-full">
+        <article className="overflow-hidden rounded-2xl border border-purple-500/20 bg-slate-900/40">
+            <div className="relative h-48 overflow-hidden bg-slate-800/40 w-full">
                 <div className="absolute inset-0 -translate-x-full animate-[skeletonShimmer_1.4s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/5 to-transparent" />
             </div>
-            <div className="p-3">
-                <Shine className="h-5 w-4/5 mb-2" />
-                <Shine className="h-3 w-full mb-1.5" />
-                <Shine className="h-3 w-5/6 mb-3" />
-                <div className="flex items-center justify-between border-t border-white/5 pt-3">
-                    <div className="flex items-center gap-2">
-                        <Shine className="h-6 w-6 rounded-full" />
+            <div className="p-5">
+                <Shine className="h-5 w-4/5 mb-3" />
+                <Shine className="h-3 w-full mb-2" />
+                <Shine className="h-3 w-5/6 mb-4" />
+                <div className="flex items-center justify-between border-t border-purple-500/10 pt-4">
+                    <div className="flex items-center gap-2.5">
+                        <Shine className="h-7 w-7 rounded-full" />
                         <div className="space-y-1">
                             <Shine className="h-2.5 w-14" />
                             <Shine className="h-2 w-10" />
                         </div>
                     </div>
-                    <Shine className="h-3.5 w-10" />
+                    <Shine className="h-3.5 w-12" />
                 </div>
-                <Shine className="h-7 w-full rounded-lg mt-3" />
+                <Shine className="h-9 w-full rounded-xl mt-4" />
             </div>
         </article>
     );
@@ -186,7 +186,7 @@ const SearchBar = React.memo(function SearchBar({
                     <select
                         value={category || 'All Categories'}
                         onChange={handleCategoryChange}
-                        className="w-full cursor-pointer rounded-2xl border border-purple-500/20 bg-slate-950/40 px-4 py-3 text-sm font-semibold text-white outline-none transition duration-300 hover:border-purple-500/40 focus:border-purple-500"
+                        className="w-full cursor-pointer rounded-2xl border border-purple-500/20 bg-slate-955/40 px-4 py-3 text-sm font-semibold text-white outline-none transition duration-300 hover:border-purple-500/40 focus:border-purple-500"
                     >
                         {CATEGORIES.map((cat) => (
                             <option key={cat} value={cat} className="bg-slate-950 text-white font-medium py-1">
@@ -201,7 +201,7 @@ const SearchBar = React.memo(function SearchBar({
                     <select
                         value={sort}
                         onChange={handleSortChange}
-                        className="w-full cursor-pointer rounded-2xl border border-purple-500/20 bg-slate-950/40 px-4 py-3 text-sm font-semibold text-white outline-none transition duration-300 hover:border-purple-500/40 focus:border-purple-500"
+                        className="w-full cursor-pointer rounded-2xl border border-purple-500/20 bg-slate-955/40 px-4 py-3 text-sm font-semibold text-white outline-none transition duration-300 hover:border-purple-500/40 focus:border-purple-500"
                     >
                         <option value="latest" className="bg-slate-950 text-white font-medium py-1">Latest</option>
                         <option value="popular" className="bg-slate-950 text-white font-medium py-1">Most Popular</option>
@@ -214,7 +214,7 @@ const SearchBar = React.memo(function SearchBar({
                 <button
                     type="button"
                     onClick={handleClearFilters}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-2xl border border-purple-500/20 bg-purple-500/5 px-5 py-3 text-xs font-bold text-slate-350 transition hover:border-rose-500/30 hover:bg-rose-500/10 hover:text-rose-200"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-2xl border border-purple-500/20 bg-purple-500/5 px-5 py-3 text-xs font-bold text-slate-355 transition hover:border-rose-500/30 hover:bg-rose-500/10 hover:text-rose-200"
                 >
                     <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
@@ -231,7 +231,7 @@ const SearchBar = React.memo(function SearchBar({
  */
 const BlogGrid = React.memo(function BlogGrid({ children }) {
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-[fadeIn_250ms_ease-out]">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-[fadeIn_250ms_ease-out]">
             {children}
         </div>
     );
@@ -246,9 +246,9 @@ const BlogCard = React.memo(function BlogCard({ blog }) {
     const blogUrl = `/blog/${blog.slug}`;
 
     return (
-        <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-purple-500/20 bg-slate-955/30 hover:shadow-2xl hover:shadow-purple-500/20 hover:border-purple-500/40 transition-all duration-300 hover:scale-105">
+        <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-purple-500/20 bg-slate-900/80 hover:shadow-2xl hover:shadow-purple-500/30 hover:border-purple-500/40 transition-all duration-300 hover:scale-[1.02] text-left">
             {/* Cover Image with gradient overlay */}
-            <div className="relative h-[160px] max-h-[160px] w-full overflow-hidden bg-gradient-to-b from-transparent to-gray-900 select-none">
+            <div className="relative h-48 w-full overflow-hidden select-none">
                 <Link to={blogUrl} className="block h-full w-full">
                     {blog.coverImage ? (
                         <img
@@ -263,35 +263,35 @@ const BlogCard = React.memo(function BlogCard({ blog }) {
                         </div>
                     )}
                 </Link>
-                <div className="absolute top-2 left-2 z-10">
-                    <span className="bg-purple-600 text-white px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                <div className="absolute top-3 left-3 z-10">
+                    <span className="bg-purple-600 text-white px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
                         {blog.category}
                     </span>
                 </div>
-                <div className="absolute top-2 right-2 z-10">
-                    <span className="bg-purple-950/80 border border-purple-500/30 text-purple-200 px-2 py-0.5 rounded-full text-[10px] font-bold backdrop-blur-md">
-                        {readTime} min
+                <div className="absolute top-3 right-3 z-10">
+                    <span className="bg-slate-950/80 border border-purple-500/20 text-purple-200 px-2.5 py-1 rounded-full text-[10px] font-bold backdrop-blur-md">
+                        {readTime} min read
                     </span>
                 </div>
                 {/* Overlay gradient */}
-                <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-gray-900 via-gray-900/35 to-transparent" />
+                <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-slate-950 via-slate-950/35 to-transparent" />
             </div>
 
             {/* Content info wrapper */}
-            <div className="p-3 flex flex-col justify-between flex-1">
+            <div className="p-5 flex flex-col justify-between flex-1">
                 <div className="text-left">
-                    <h3 className="text-base font-bold text-white mb-1.5 line-clamp-2 hover:text-purple-400 transition-colors leading-snug">
+                    <h3 className="text-lg font-bold text-white mb-2 line-clamp-2 hover:text-purple-400 transition-colors leading-snug">
                         <Link to={blogUrl}>{blog.title}</Link>
                     </h3>
-                    <p className="text-slate-400 text-xs mb-3 line-clamp-2 leading-relaxed">
+                    <p className="text-slate-400 text-xs mb-4 line-clamp-3 leading-relaxed">
                         {truncateExcerpt(blog.excerpt || 'No description available.')}
                     </p>
                 </div>
 
                 <div className="mt-auto">
-                    <div className="flex items-center justify-between border-t border-purple-500/10 pt-3">
-                        <div className="flex items-center gap-2">
-                            <div className="h-6 w-6 overflow-hidden rounded-full bg-purple-500/20 ring-1 ring-purple-500/20 flex items-center justify-center text-[9px] font-bold text-purple-300 shrink-0">
+                    <div className="flex items-center justify-between border-t border-purple-500/10 pt-3.5 mb-4">
+                        <div className="flex items-center gap-2.5">
+                            <div className="h-7 w-7 overflow-hidden rounded-full bg-purple-500/20 ring-1 ring-purple-500/20 flex items-center justify-center text-[10px] font-bold text-purple-300 shrink-0">
                                 {blog.author?.avatar ? (
                                     <img
                                         src={blog.author.avatar}
@@ -303,21 +303,21 @@ const BlogCard = React.memo(function BlogCard({ blog }) {
                                 )}
                             </div>
                             <div className="text-left">
-                                <p className="text-slate-400 text-[10px] font-semibold leading-none">{blog.author?.username || 'Admin'}</p>
-                                <p className="text-slate-400 text-[10px] mt-0.5">{formatDate(blog.publishedAt || blog.createdAt)}</p>
+                                <p className="text-slate-200 text-xs font-semibold leading-none">{blog.author?.username || 'Admin'}</p>
+                                <p className="text-slate-500 text-[10px] mt-1">{formatDate(blog.publishedAt || blog.createdAt)}</p>
                             </div>
                         </div>
-                        <div className="text-purple-400 text-xs font-semibold flex items-center gap-1 shrink-0 select-none">
+                        <div className="text-purple-400 text-xs font-semibold flex items-center gap-1.5 shrink-0 select-none">
                             <span>👁️</span>
-                            <span>{blog.viewCount || 0}</span>
+                            <span>{blog.viewCount || 0} views</span>
                         </div>
                     </div>
 
                     <Link
                         to={blogUrl}
-                        className="mt-3 block w-full text-center bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white py-1.5 px-3 rounded-lg text-xs font-semibold transition-all duration-300 shadow-md hover:shadow-purple-500/20"
+                        className="mt-3 block w-full text-center bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-350 hover:to-amber-450 text-black font-bold py-2.5 px-4 rounded-xl text-xs transition-all duration-300 shadow-md hover:shadow-yellow-500/10"
                     >
-                        Read More &rarr;
+                        Read full article &rarr;
                     </Link>
                 </div>
             </div>
@@ -330,8 +330,8 @@ const BlogCard = React.memo(function BlogCard({ blog }) {
  */
 const LoadingState = React.memo(function LoadingState() {
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-pulse">
-            {Array.from({ length: 8 }).map((_, idx) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-pulse">
+            {Array.from({ length: 6 }).map((_, idx) => (
                 <BlogCardSkeleton key={idx} />
             ))}
         </div>
@@ -425,7 +425,7 @@ const Pagination = React.memo(function Pagination({ currentPage, totalPages, onP
                         onClick={() => onPageChange(1)}
                         className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl border text-sm font-bold transition duration-300 cursor-pointer ${currentPage === 1
                                 ? 'border-purple-500 bg-purple-650 bg-gradient-to-br from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-500/30'
-                                : 'border-purple-500/20 bg-slate-900/40 text-slate-350 hover:border-purple-500/50 hover:bg-slate-900'
+                                : 'border-purple-500/20 bg-slate-900/40 text-slate-355 hover:border-purple-500/50 hover:bg-slate-900'
                             }`}
                     >
                         1
@@ -443,7 +443,7 @@ const Pagination = React.memo(function Pagination({ currentPage, totalPages, onP
                         onClick={() => onPageChange(pageNum)}
                         className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl border text-sm font-bold transition duration-300 cursor-pointer ${currentPage === pageNum
                                 ? 'border-purple-500 bg-gradient-to-br from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-500/30'
-                                : 'border-purple-500/20 bg-slate-900/40 text-slate-350 hover:border-purple-500/50 hover:bg-slate-900'
+                                : 'border-purple-500/20 bg-slate-900/40 text-slate-355 hover:border-purple-500/50 hover:bg-slate-900'
                             }`}
                     >
                         {pageNum}
@@ -459,7 +459,7 @@ const Pagination = React.memo(function Pagination({ currentPage, totalPages, onP
                         onClick={() => onPageChange(totalPages)}
                         className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl border text-sm font-bold transition duration-300 cursor-pointer ${currentPage === totalPages
                                 ? 'border-purple-500 bg-gradient-to-br from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-500/30'
-                                : 'border-purple-500/20 bg-slate-900/40 text-slate-350 hover:border-purple-500/50 hover:bg-slate-900'
+                                : 'border-purple-500/20 bg-slate-900/40 text-slate-355 hover:border-purple-500/50 hover:bg-slate-900'
                             }`}
                     >
                         {totalPages}
@@ -478,6 +478,200 @@ const Pagination = React.memo(function Pagination({ currentPage, totalPages, onP
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
                 </svg>
             </button>
+        </div>
+    );
+});
+
+/**
+ * Sidebar Sub-component: Featured Post card
+ */
+const FeaturedPost = React.memo(function FeaturedPost({ blog }) {
+    if (!blog) return null;
+    return (
+        <div className="rounded-2xl border border-purple-500/20 bg-slate-900/80 p-4 text-left transition-all duration-300 hover:border-purple-500/40">
+            <h4 className="text-xs font-bold text-purple-400 mb-3 uppercase tracking-wider">★ Featured Article</h4>
+            {blog.coverImage && (
+                <Link to={`/blog/${blog.slug}`} className="block overflow-hidden rounded-xl aspect-[16/9] mb-3">
+                    <img src={blog.coverImage} alt={blog.title} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500 animate-[fadeIn_200ms_ease-out]" />
+                </Link>
+            )}
+            <div className="mb-2">
+                <span className="inline-block bg-purple-650 bg-gradient-to-r from-purple-600 to-purple-700 text-white text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                    {blog.category}
+                </span>
+            </div>
+            <h5 className="text-xs sm:text-sm font-bold text-white mb-2 line-clamp-2 hover:text-purple-400 transition-colors leading-snug">
+                <Link to={`/blog/${blog.slug}`}>{blog.title}</Link>
+            </h5>
+            <p className="text-slate-400 text-xs mb-3.5 line-clamp-3 leading-relaxed">
+                {truncateExcerpt(blog.excerpt)}
+            </p>
+            <Link to={`/blog/${blog.slug}`} className="text-xs font-extrabold text-yellow-400 hover:text-yellow-300 inline-flex items-center gap-1 transition-colors">
+                Read Featured Article &rarr;
+            </Link>
+        </div>
+    );
+});
+
+/**
+ * Sidebar Sub-component: Categories List
+ */
+const SidebarCategories = React.memo(function SidebarCategories({ activeCategory, onSelectCategory, getCount }) {
+    return (
+        <div className="rounded-2xl border border-purple-500/20 bg-slate-900/80 p-4 text-left">
+            <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-3">Categories</h4>
+            <div className="flex flex-col gap-1.5 border-t border-purple-500/10 pt-3">
+                {CATEGORIES.map(cat => {
+                    const active = (cat === 'All Categories' && !activeCategory) || (activeCategory === cat);
+                    return (
+                        <button
+                            key={cat}
+                            type="button"
+                            onClick={() => onSelectCategory(cat)}
+                            className={`flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                                active
+                                    ? 'bg-purple-600 text-white shadow-[0_4px_12px_rgba(99,102,241,0.25)]'
+                                    : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                            }`}
+                        >
+                            <span>{cat}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                                active ? 'bg-white/20 text-white' : 'bg-purple-600/10 border border-purple-500/20 text-purple-300'
+                            }`}>
+                                {getCount(cat)}
+                            </span>
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+});
+
+/**
+ * Sidebar Sub-component: Popular Posts List
+ */
+const PopularPosts = React.memo(function PopularPosts({ posts }) {
+    if (!posts || posts.length === 0) return null;
+    return (
+        <div className="rounded-2xl border border-purple-500/20 bg-slate-900/80 p-4 text-left">
+            <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-3">Popular Articles</h4>
+            <div className="flex flex-col gap-3.5 border-t border-purple-500/10 pt-3">
+                {posts.map(post => (
+                    <Link key={post.slug} to={`/blog/${post.slug}`} className="group flex gap-3 items-center min-w-0">
+                        {post.coverImage ? (
+                            <div className="h-10 w-14 overflow-hidden rounded-lg bg-slate-950/60 border border-purple-500/10 shrink-0 shadow-md">
+                                <img src={post.coverImage} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                            </div>
+                        ) : (
+                            <div className="h-10 w-14 bg-gradient-to-br from-indigo-900/50 to-purple-900/50 rounded-lg shrink-0 flex items-center justify-center text-[9px] text-white font-bold px-1 text-center line-clamp-2">
+                                {post.title}
+                            </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                            <h5 className="text-xs font-bold text-white line-clamp-2 group-hover:text-purple-400 transition-colors leading-tight">
+                                {post.title}
+                            </h5>
+                            <p className="text-[9px] text-slate-500 mt-1">{formatDate(post.publishedAt || post.createdAt)}</p>
+                        </div>
+                    </Link>
+                ))}
+            </div>
+        </div>
+    );
+});
+
+/**
+ * Sidebar Sub-component: Tags cloud list
+ */
+const SidebarTags = React.memo(function SidebarTags({ tags, onSelectTag }) {
+    if (!tags || tags.length === 0) return null;
+    return (
+        <div className="rounded-2xl border border-purple-500/20 bg-slate-900/80 p-4 text-left">
+            <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-3">Popular Tags</h4>
+            <div className="flex flex-wrap gap-2 border-t border-purple-500/10 pt-3">
+                {tags.map(tag => (
+                    <button
+                        key={tag}
+                        type="button"
+                        onClick={() => onSelectTag(tag)}
+                        className="text-[10px] font-bold text-slate-300 bg-purple-500/5 border border-purple-500/10 px-2.5 py-1 rounded-lg transition-all hover:border-purple-500/40 hover:text-white cursor-pointer"
+                    >
+                        #{tag}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+});
+
+/**
+ * Sidebar Sub-component: Blog metrics stats
+ */
+const BlogStats = React.memo(function BlogStats({ totalPosts, totalViews, totalReads }) {
+    return (
+        <div className="rounded-2xl border border-purple-500/20 bg-slate-900/80 p-4 text-left">
+            <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-3">Stats Summary</h4>
+            <div className="grid grid-cols-3 gap-2 border-t border-purple-500/10 pt-3">
+                <div className="bg-slate-950/40 border border-purple-500/10 p-2.5 rounded-xl text-center shadow-inner">
+                    <p className="text-slate-500 text-[8px] font-bold uppercase tracking-wider">Posts</p>
+                    <p className="text-sm font-black text-white mt-1">{totalPosts}</p>
+                </div>
+                <div className="bg-slate-950/40 border border-purple-500/10 p-2.5 rounded-xl text-center shadow-inner">
+                    <p className="text-slate-500 text-[8px] font-bold uppercase tracking-wider">Views</p>
+                    <p className="text-sm font-black text-white mt-1">{totalViews}</p>
+                </div>
+                <div className="bg-slate-950/40 border border-purple-500/10 p-2.5 rounded-xl text-center shadow-inner">
+                    <p className="text-slate-500 text-[8px] font-bold uppercase tracking-wider">Mins</p>
+                    <p className="text-sm font-black text-white mt-1">{totalReads}</p>
+                </div>
+            </div>
+        </div>
+    );
+});
+
+/**
+ * Sidebar Sub-component: Newsletter subscribe widget
+ */
+const SidebarSubscribe = React.memo(function SidebarSubscribe() {
+    const [email, setEmail] = useState('');
+    const [success, setSuccess] = useState(false);
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (email.trim()) {
+            setSuccess(true);
+            setEmail('');
+        }
+    };
+
+    return (
+        <div className="rounded-2xl border border-purple-500/20 bg-slate-900/80 p-4 text-left relative overflow-hidden">
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent" />
+            <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider relative">Stay Inspired</h4>
+            <p className="text-xs text-slate-400 mt-1 relative">Get book guides and summaries weekly.</p>
+            {success ? (
+                <div className="mt-3.5 rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-2.5 text-center text-xs text-emerald-300 font-bold animate-[fadeIn_200ms_ease-out]">
+                    Subscription success! ✓
+                </div>
+            ) : (
+                <form onSubmit={handleSubmit} className="mt-3.5 flex flex-col gap-2 relative">
+                    <input
+                        type="email"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="your@email.com"
+                        className="w-full rounded-xl border border-purple-500/20 bg-slate-950/40 px-3 py-2 text-xs font-semibold text-white placeholder-zinc-500 outline-none transition focus:border-purple-500"
+                    />
+                    <button
+                        type="submit"
+                        className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 py-2 text-xs font-bold text-white transition shadow-md shadow-purple-500/10 cursor-pointer"
+                    >
+                        Subscribe
+                    </button>
+                </form>
+            )}
         </div>
     );
 });
@@ -615,9 +809,69 @@ export default function BlogPage() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }, [searchParams, setSearchParams]);
 
+    // Category click handler from sidebar
+    const selectCategory = useCallback((catName) => {
+        const newParams = new URLSearchParams(searchParams);
+        if (catName && catName !== 'All Categories') {
+            newParams.set('category', catName);
+        } else {
+            newParams.delete('category');
+        }
+        newParams.set('page', '1');
+        setSearchParams(newParams);
+    }, [searchParams, setSearchParams]);
+
+    // Tag click handler from sidebar
+    const selectTag = useCallback((tag) => {
+        setSearchInput(tag);
+        const newParams = new URLSearchParams(searchParams);
+        newParams.set('search', tag);
+        newParams.set('page', '1');
+        setSearchParams(newParams);
+    }, [searchParams, setSearchParams]);
+
+    // Calculate category counts dynamically for loaded list
+    const getCategoryCount = useCallback((catName) => {
+        if (catName === 'All Categories') return blogs.length;
+        return blogs.filter(b => b.category === catName).length;
+    }, [blogs]);
+
     const hasActiveFilters = useMemo(() => {
         return !!(category || search || sort !== 'latest');
     }, [category, search, sort]);
+
+    // Compute sidebar dynamic values
+    const popularPosts = useMemo(() => {
+        if (!blogs || !Array.isArray(blogs)) return [];
+        return [...blogs]
+            .sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0))
+            .slice(0, 3);
+    }, [blogs]);
+
+    const uniqueTags = useMemo(() => {
+        if (!blogs || !Array.isArray(blogs)) return [];
+        const tagsSet = new Set();
+        blogs.forEach(blog => {
+            if (blog.tags && Array.isArray(blog.tags)) {
+                blog.tags.forEach(t => tagsSet.add(t));
+            }
+        });
+        return Array.from(tagsSet).slice(0, 10);
+    }, [blogs]);
+
+    const totalViews = useMemo(() => {
+        if (!blogs || !Array.isArray(blogs)) return 0;
+        return blogs.reduce((sum, b) => sum + (b.viewCount || 0), 0);
+    }, [blogs]);
+
+    const totalReads = useMemo(() => {
+        if (!blogs || !Array.isArray(blogs)) return 0;
+        return blogs.reduce((sum, b) => {
+            const wordCount = b.content ? b.content.split(/\s+/).length : 0;
+            const readTime = Math.ceil(wordCount / 200) || 1;
+            return sum + readTime;
+        }, 0);
+    }, [blogs]);
 
     return (
         <React.Fragment>
@@ -635,42 +889,79 @@ export default function BlogPage() {
                     {/* 3. Hero Section (Title & Subtitle) */}
                     <Hero />
 
-                    {/* 4. SearchBar (Search, Filter, Sort, Clear) */}
-                    <SearchBar
-                        searchInput={searchInput}
-                        setSearchInput={setSearchInput}
-                        category={category}
-                        handleCategoryChange={handleCategoryChange}
-                        sort={sort}
-                        handleSortChange={handleSortChange}
-                        hasActiveFilters={hasActiveFilters}
-                        handleClearFilters={handleClearFilters}
-                    />
+                    {/* Responsive Desktop split layout */}
+                    <div className="flex flex-col lg:flex-row gap-8 mt-4">
 
-                    {/* 5. Main Content conditional states */}
-                    {loading ? (
-                        <LoadingState />
-                    ) : error ? (
-                        <ErrorState error={error} onRetry={fetchBlogs} />
-                    ) : blogs.length === 0 ? (
-                        <EmptyState hasActiveFilters={hasActiveFilters} onClear={handleClearFilters} />
-                    ) : (
-                        <>
-                            {/* 6. BlogGrid of BlogCards */}
-                            <BlogGrid>
-                                {blogs.map((blog) => (
-                                    <BlogCard key={blog._id || blog.slug} blog={blog} />
-                                ))}
-                            </BlogGrid>
-
-                            {/* 7. Pagination */}
-                            <Pagination
-                                currentPage={currentPage}
-                                totalPages={totalPages}
-                                onPageChange={handlePageChange}
+                        {/* Left Main Content area (70%) */}
+                        <div className="w-full lg:w-[70%] flex flex-col gap-6">
+                            {/* 4. SearchBar (Search, Filter, Sort, Clear) */}
+                            <SearchBar
+                                searchInput={searchInput}
+                                setSearchInput={setSearchInput}
+                                category={category}
+                                handleCategoryChange={handleCategoryChange}
+                                sort={sort}
+                                handleSortChange={handleSortChange}
+                                hasActiveFilters={hasActiveFilters}
+                                handleClearFilters={handleClearFilters}
                             />
-                        </>
-                    )}
+
+                            {/* 5. Main Content conditional states */}
+                            {loading ? (
+                                <LoadingState />
+                            ) : error ? (
+                                <ErrorState error={error} onRetry={fetchBlogs} />
+                            ) : blogs.length === 0 ? (
+                                <EmptyState hasActiveFilters={hasActiveFilters} onClear={handleClearFilters} />
+                            ) : (
+                                <>
+                                    {/* 6. BlogGrid of BlogCards */}
+                                    <BlogGrid>
+                                        {blogs.map((blog) => (
+                                            <BlogCard key={blog._id || blog.slug} blog={blog} />
+                                        ))}
+                                    </BlogGrid>
+
+                                    {/* 7. Pagination */}
+                                    <Pagination
+                                        currentPage={currentPage}
+                                        totalPages={totalPages}
+                                        onPageChange={handlePageChange}
+                                    />
+                                </>
+                            )}
+                        </div>
+
+                        {/* Right Sidebar area (30%) */}
+                        <aside className="w-full lg:w-[30%] flex flex-col gap-6">
+                            {/* Featured Post */}
+                            <FeaturedPost blog={blogs[0]} />
+
+                            {/* Categories Filter list */}
+                            <SidebarCategories
+                                activeCategory={category}
+                                onSelectCategory={selectCategory}
+                                getCount={getCategoryCount}
+                            />
+
+                            {/* Popular Posts */}
+                            <PopularPosts posts={popularPosts} />
+
+                            {/* Tags list */}
+                            <SidebarTags tags={uniqueTags} onSelectTag={selectTag} />
+
+                            {/* Stats */}
+                            <BlogStats
+                                totalPosts={blogs.length}
+                                totalViews={totalViews}
+                                totalReads={totalReads}
+                            />
+
+                            {/* Newsletter Subscribe */}
+                            <SidebarSubscribe />
+                        </aside>
+
+                    </div>
                 </div>
             </MainLayout>
         </React.Fragment>

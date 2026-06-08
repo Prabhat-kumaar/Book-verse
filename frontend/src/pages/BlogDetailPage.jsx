@@ -117,7 +117,15 @@ const Breadcrumb = React.memo(function Breadcrumb({ blogTitle }) {
  */
 const HeroSection = React.memo(function HeroSection({ blog, readTime, formattedDate }) {
     return (
-        <div className="relative rounded-3xl overflow-hidden border border-purple-500/20 bg-gradient-to-b from-purple-900 via-gray-900 to-black h-[400px] w-full shadow-2xl flex items-center">
+        <div className="relative rounded-3xl overflow-hidden border border-purple-500/20 bg-gradient-to-b from-[#0a0f24] via-[#1a0f30] to-black h-[400px] w-full shadow-2xl flex items-center">
+            {/* Blurred background cover image overlay */}
+            {blog.coverImage && (
+                <div
+                    className="absolute inset-0 bg-cover bg-center filter blur-lg opacity-15 scale-105 pointer-events-none"
+                    style={{ backgroundImage: `url(${blog.coverImage})` }}
+                />
+            )}
+
             {/* Ambient glow blobs */}
             <div className="absolute -left-10 -top-10 w-40 h-40 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-pink-600/5 rounded-full blur-3xl pointer-events-none" />
@@ -152,10 +160,10 @@ const HeroSection = React.memo(function HeroSection({ blog, readTime, formattedD
 const BlogContent = React.memo(function BlogContent({ blog, readTime, formattedDate, headings, contentHtml }) {
     return (
         <article className="rounded-2xl border border-purple-500/20 bg-slate-950/20 p-6 sm:p-8 backdrop-blur-xl transition-colors duration-300">
-            {/* Author Avatar & Header */}
-            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-purple-500/10 pb-5 mb-8 text-left">
-                <div className="flex items-center gap-4">
-                    <div className="h-16 w-16 overflow-hidden rounded-full bg-purple-500/20 ring-2 ring-purple-500/30 flex items-center justify-center text-lg font-bold text-purple-300 shrink-0">
+            {/* Author Avatar & Header row in clean horizontal layout */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-purple-500/10 pb-5 mb-8 text-left">
+                <div className="flex items-center gap-3.5">
+                    <div className="h-12 w-12 overflow-hidden rounded-full bg-purple-500/20 ring-2 ring-purple-500/30 flex items-center justify-center text-base font-bold text-purple-300 shrink-0">
                         {blog.author?.avatar ? (
                             <img
                                 src={blog.author.avatar}
@@ -167,15 +175,15 @@ const BlogContent = React.memo(function BlogContent({ blog, readTime, formattedD
                         )}
                     </div>
                     <div>
-                        <h4 className="text-base font-bold text-white">{blog.author?.username || 'Admin'}</h4>
-                        <p className="text-xs text-gray-400 mt-1">Published on {formattedDate}</p>
+                        <h4 className="text-sm font-bold text-white">{blog.author?.username || 'Admin'}</h4>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Published on {formattedDate}</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <span className="bg-purple-600/20 border border-purple-500/30 text-purple-300 px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md">
+                <div className="flex flex-wrap items-center gap-2">
+                    <span className="bg-purple-600 text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
                         {blog.category}
                     </span>
-                    <span className="bg-purple-950/80 border border-purple-500/30 text-purple-200 px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md">
+                    <span className="bg-slate-900 border border-purple-500/20 text-purple-200 px-3 py-1 rounded-full text-[10px] font-bold backdrop-blur-md">
                         {readTime}
                     </span>
                 </div>
@@ -183,7 +191,7 @@ const BlogContent = React.memo(function BlogContent({ blog, readTime, formattedD
 
             {/* Blog Cover Image */}
             {blog.coverImage && (
-                <div className="mb-8 overflow-hidden rounded-2xl border border-purple-500/20 shadow-lg max-h-[500px] w-full relative">
+                <div className="mb-8 overflow-hidden rounded-2xl border border-purple-500/20 shadow-lg max-h-[400px] w-full relative">
                     <img
                         src={blog.coverImage}
                         alt={blog.title}
@@ -225,19 +233,20 @@ const BlogContent = React.memo(function BlogContent({ blog, readTime, formattedD
 
             {/* Render HTML content with premium styling rules */}
             <div
-                className="blog-content-html blog-content text-gray-300 text-base leading-relaxed space-y-6 text-left 
-                [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:text-white [&_h1]:mt-8 [&_h1]:mb-4
-                [&_h2]:text-3xl [&_h2]:font-bold [&_h2]:text-white [&_h2]:mt-8 [&_h2]:mb-4
-                [&_h3]:text-2xl [&_h3]:font-bold [&_h3]:mt-6 [&_h3]:mb-3
-                [&_p]:leading-relaxed [&_p]:mb-4 [&_p]:text-gray-300
-                [&_a]:text-purple-400 [&_a]:font-semibold [&_a]:underline hover:text-purple-350 transition-colors
-                [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-2 [&_ul]:mb-4 [&_ul]:text-gray-300
-                [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:space-y-2 [&_ol]:mb-4 [&_ol]:text-gray-300
+                className="blog-content-html blog-content prose-blog text-slate-300 text-base leading-relaxed space-y-6 text-left 
+                [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:text-white [&_h1]:mb-4 [&_h1]:mt-8
+                [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:text-purple-300 [&_h2]:mb-3 [&_h2]:mt-8
+                [&_h3]:text-xl [&_h3]:font-semibold [&_h3]:text-slate-205 [&_h3]:mb-2 [&_h3]:mt-6
+                [&_p]:text-slate-300 [&_p]:leading-relaxed [&_p]:mb-4
+                [&_a]:text-purple-400 [&_a]:underline hover:text-purple-300 [&_a]:transition-colors
+                [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-2 [&_ul]:mb-4 [&_ul]:text-slate-300
+                [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:space-y-2 [&_ol]:mb-4 [&_ol]:text-slate-300
                 [&_li]:pl-1
-                [&_img]:rounded-2xl [&_img]:border [&_img]:border-purple-500/20 [&_img]:my-6 [&_img]:max-w-full [&_img]:h-auto [&_img]:shadow-lg
-                [&_blockquote]:border-l-4 [&_blockquote]:border-purple-500 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-gray-400 [&_blockquote]:my-6
-                [&_pre]:bg-slate-950/80 [&_pre]:p-4 [&_pre]:rounded-xl [&_pre]:border [&_pre]:border-purple-500/20 [&_pre]:overflow-x-auto [&_pre]:my-6
-                [&_code]:bg-slate-900/60 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-purple-300 [&_code]:font-mono [&_code]:text-sm prose prose-invert max-w-none transition-colors duration-300 clearfix"
+                [&_img]:rounded-xl [&_img]:max-w-full [&_img]:my-6 [&_img]:h-auto [&_img]:shadow-lg
+                [&_blockquote]:border-l-4 [&_blockquote]:border-purple-500 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-slate-400 [&_blockquote]:my-6
+                [&_pre]:bg-slate-900 [&_pre]:rounded-xl [&_pre]:p-4 [&_pre]:overflow-x-auto [&_pre]:my-6
+                [&_code]:bg-slate-800 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-purple-300 [&_code]:text-sm
+                prose prose-invert max-w-none transition-colors duration-300 clearfix"
                 dangerouslySetInnerHTML={{ __html: contentHtml }}
             />
 
@@ -245,15 +254,15 @@ const BlogContent = React.memo(function BlogContent({ blog, readTime, formattedD
             {blog.tags && blog.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-8 pt-6 border-t border-purple-500/10">
                     {blog.tags.map(tag => (
-                        <span key={tag} className="text-xs font-semibold text-gray-400 bg-purple-500/5 border border-purple-500/10 px-2.5 py-1 rounded-lg transition-colors hover:border-purple-500/30">
+                        <span key={tag} className="text-xs font-semibold text-slate-300 bg-purple-500/5 border border-purple-500/10 px-2.5 py-1 rounded-lg transition-colors hover:border-purple-500/30">
                             #{tag}
                         </span>
                     ))}
                 </div>
             )}
 
-            {/* Author Bio Section */}
-            <div className="mt-8 rounded-2xl border border-purple-500/20 bg-slate-950/20 p-6 flex flex-col sm:flex-row gap-5 items-center text-left">
+            {/* About the Author Bio Card */}
+            <div className="mt-8 rounded-2xl border border-purple-500/20 bg-slate-900/85 p-6 flex flex-col sm:flex-row gap-5 items-center text-left transition-all duration-300 hover:border-purple-500/30">
                 <div className="h-16 w-16 overflow-hidden rounded-full bg-purple-500/20 ring-2 ring-purple-500/30 flex items-center justify-center text-xl font-bold text-purple-300 shrink-0">
                     {blog.author?.avatar ? (
                         <img src={blog.author.avatar} alt={blog.author?.username} className="h-full w-full object-cover" />
@@ -262,8 +271,8 @@ const BlogContent = React.memo(function BlogContent({ blog, readTime, formattedD
                     )}
                 </div>
                 <div>
-                    <h4 className="text-base font-bold text-white">About the Author: {blog.author?.username || 'Admin'}</h4>
-                    <p className="text-sm text-gray-300 mt-2 leading-relaxed">
+                    <h4 className="text-sm font-bold text-white">About the Author: {blog.author?.username || 'Admin'}</h4>
+                    <p className="text-xs text-slate-300 mt-2 leading-relaxed">
                         {blog.author?.bio || 'Passionate writer, literary analyst, and curator of the Readify AI journal. Sharing the best reading recommendations, studying insights, and classic book deep dives.'}
                     </p>
                 </div>
@@ -273,7 +282,7 @@ const BlogContent = React.memo(function BlogContent({ blog, readTime, formattedD
 });
 
 /**
- * Sub-component: Share Dialog and Copy Link Options
+ * Sub-component: Share Dialog and Copy Link Options (Redesigned)
  */
 const ShareButtons = React.memo(function ShareButtons({ title, slug }) {
     const [copied, setCopied] = useState(false);
@@ -291,25 +300,57 @@ const ShareButtons = React.memo(function ShareButtons({ title, slug }) {
 
     // Social share links
     const shareLinks = {
-        facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
         twitter: `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(title)}`,
         linkedin: `https://www.linkedin.com/shareArticle?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(title)}`,
         whatsapp: `https://api.whatsapp.com/send?text=${encodeURIComponent(title + ' - ' + shareUrl)}`
     };
 
     return (
-        <div className="rounded-2xl border border-purple-500/20 bg-slate-950/20 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left transition-colors">
+        <div className="rounded-2xl border border-purple-500/20 bg-slate-900/80 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left transition-colors">
             <div>
-                <h4 className="text-sm font-bold text-white">Enjoyed the post?</h4>
-                <p className="text-xs text-slate-400 mt-0.5">Share it with your reading circle.</p>
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider text-purple-400">Share This Post</h4>
+                <p className="text-xs text-slate-405 mt-1">Share this article with your reading circle.</p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5">
-                {/* Copy link */}
+                {/* Twitter */}
+                <a
+                    href={shareLinks.twitter}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-sky-500/20 bg-sky-600/10 px-4 py-2 text-xs font-bold text-sky-200 transition hover:bg-sky-600 hover:text-white"
+                >
+                    <FaTwitter className="text-sky-400" />
+                    <span>Twitter</span>
+                </a>
+
+                {/* Linkedin */}
+                <a
+                    href={shareLinks.linkedin}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-blue-600/20 bg-blue-750/10 px-4 py-2 text-xs font-bold text-blue-200 transition hover:bg-blue-600 hover:text-white"
+                >
+                    <FaLinkedin className="text-blue-400" />
+                    <span>LinkedIn</span>
+                </a>
+
+                {/* Whatsapp */}
+                <a
+                    href={shareLinks.whatsapp}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-600/10 px-4 py-2 text-xs font-bold text-emerald-200 transition hover:bg-emerald-600 hover:text-white"
+                >
+                    <FaWhatsapp className="text-emerald-400" />
+                    <span>WhatsApp</span>
+                </a>
+
+                {/* Copy Link */}
                 <button
                     type="button"
                     onClick={handleCopy}
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-purple-500/20 bg-purple-500/5 px-4 py-2.5 text-xs font-bold text-slate-200 transition hover:bg-purple-550/15 hover:border-purple-500/40"
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-purple-500/20 bg-purple-500/5 px-4 py-2 text-xs font-bold text-slate-200 transition hover:bg-purple-600 hover:text-white cursor-pointer"
                     title="Copy Article Link"
                 >
                     {copied ? (
@@ -324,64 +365,20 @@ const ShareButtons = React.memo(function ShareButtons({ title, slug }) {
                         </>
                     )}
                 </button>
-
-                {/* Facebook */}
-                <a
-                    href={shareLinks.facebook}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-blue-500/20 bg-blue-600/10 px-4 py-2.5 text-xs font-bold text-blue-200 transition hover:bg-blue-650/25 hover:text-white"
-                >
-                    <FaFacebook className="text-blue-400" />
-                    <span>Facebook</span>
-                </a>
-
-                {/* Twitter */}
-                <a
-                    href={shareLinks.twitter}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-sky-500/20 bg-sky-600/10 px-4 py-2.5 text-xs font-bold text-sky-200 transition hover:bg-sky-650/25 hover:text-white"
-                >
-                    <FaTwitter className="text-sky-400" />
-                    <span>Twitter</span>
-                </a>
-
-                {/* Linkedin */}
-                <a
-                    href={shareLinks.linkedin}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-blue-600/20 bg-blue-700/10 px-4 py-2.5 text-xs font-bold text-blue-200 transition hover:bg-blue-750/25 hover:text-white"
-                >
-                    <FaLinkedin className="text-blue-400" />
-                    <span>LinkedIn</span>
-                </a>
-
-                {/* Whatsapp */}
-                <a
-                    href={shareLinks.whatsapp}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-600/10 px-4 py-2.5 text-xs font-bold text-emerald-200 transition hover:bg-emerald-650/25 hover:text-white"
-                >
-                    <FaWhatsapp className="text-emerald-400" />
-                    <span>WhatsApp</span>
-                </a>
             </div>
         </div>
     );
 });
 
 /**
- * Sub-component: Table of Contents
+ * Sub-component: Table of Contents (Desktop Sticky TOC)
  */
 const TableOfContents = React.memo(function TableOfContents({ headings }) {
     if (!headings || headings.length === 0) return null;
 
     return (
-        <div className="rounded-2xl border border-purple-500/20 bg-slate-950/20 p-5 text-left transition-all duration-305 hover:border-purple-500/30">
-            <h4 className="text-sm font-bold text-white mb-4">Table of Contents</h4>
+        <div className="rounded-2xl border border-purple-500/20 bg-slate-900/80 p-5 text-left transition-all duration-300 hover:border-purple-500/30">
+            <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-4">Table of Contents</h4>
             <ul className="space-y-2.5 text-xs font-semibold text-slate-350 border-t border-purple-500/10 pt-3">
                 {headings.map((item) => (
                     <li
@@ -446,18 +443,18 @@ const RelatedBooks = React.memo(function RelatedBooks({ relatedBooks }) {
     if (!relatedBooks || relatedBooks.length === 0) return null;
 
     return (
-        <div className="rounded-2xl border border-purple-500/20 bg-slate-950/20 p-5 text-left transition-colors">
-            <h4 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-                <FaBookOpen className="text-purple-400" />
+        <div className="rounded-2xl border border-purple-500/20 bg-slate-900/80 p-5 text-left transition-colors">
+            <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <FaBookOpen className="text-purple-450" />
                 Mentioned in This Post
             </h4>
             <div className="space-y-4 border-t border-purple-500/10 pt-4">
                 {relatedBooks.map((book) => {
                     const readLink = book.slug ? `/read/${book.slug}` : `/book/${book._id}`;
                     return (
-                        <div key={book._id} className="group relative flex gap-3 p-2 rounded-xl hover:bg-slate-955/20 border border-transparent hover:border-purple-500/10 transition-all">
+                        <div key={book._id} className="group relative flex gap-3 p-2 rounded-xl hover:bg-slate-950/45 border border-transparent hover:border-purple-500/10 transition-all">
                             {/* Thumbnail area with save heart */}
-                            <div className="relative aspect-[3/4] w-14 overflow-hidden rounded-xl bg-slate-950/60 ring-1 ring-purple-500/10 shrink-0 shadow-md">
+                            <div className="relative aspect-[3/4] w-14 overflow-hidden rounded-xl bg-slate-955/60 ring-1 ring-purple-500/10 shrink-0 shadow-md">
                                 <img
                                     loading="lazy"
                                     src={getBookThumbnailUrl(book)}
@@ -480,7 +477,7 @@ const RelatedBooks = React.memo(function RelatedBooks({ relatedBooks }) {
 
                                 <Link
                                     to={readLink}
-                                    className="inline-flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-purple-600 to-purple-750 hover:from-purple-700 hover:to-purple-800 text-white py-1.5 text-[10px] font-bold transition-all shadow-md shadow-purple-500/10"
+                                    className="inline-flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-705 hover:to-purple-805 text-white py-1.5 text-[10px] font-bold transition-all shadow-md shadow-purple-500/10"
                                 >
                                     Read Now
                                 </Link>
@@ -500,11 +497,11 @@ const RelatedBlogs = React.memo(function RelatedBlogs({ relatedBlogs }) {
     if (!relatedBlogs || relatedBlogs.length === 0) return null;
 
     return (
-        <div className="rounded-2xl border border-purple-500/20 bg-slate-950/20 p-5 text-left transition-colors">
-            <h4 className="text-sm font-bold text-white mb-4">You Might Also Like</h4>
-            <div className="space-y-4.5 border-t border-purple-500/10 pt-4">
+        <div className="rounded-2xl border border-purple-500/20 bg-slate-900/80 p-5 text-left transition-colors">
+            <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-4">You Might Also Like</h4>
+            <div className="space-y-4 border-t border-purple-500/10 pt-4">
                 {relatedBlogs.map((blog) => (
-                    <article key={blog.slug} className="group flex flex-col gap-2 p-2 rounded-xl hover:bg-slate-955/20 border border-transparent hover:border-purple-500/10 transition-all">
+                    <article key={blog.slug} className="group flex flex-col gap-2 p-2 rounded-xl hover:bg-slate-950/40 border border-transparent hover:border-purple-500/10 transition-all">
                         {/* Cover thumbnail */}
                         <Link to={`/blog/${blog.slug}`} className="aspect-[16/9] w-full overflow-hidden rounded-lg bg-slate-950/60 border border-purple-500/10 relative block">
                             {blog.coverImage ? (
@@ -514,33 +511,33 @@ const RelatedBlogs = React.memo(function RelatedBlogs({ relatedBlogs }) {
                                     alt={blog.title}
                                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                                 />
-                            ) : (
-                                <div className="grid h-full w-full place-items-center bg-gradient-to-br from-indigo-900/50 to-purple-900/50 p-2 text-center text-[10px] font-semibold text-white">
-                                    {blog.title}
-                                </div>
-                            )}
-                        </Link>
+                              ) : (
+                                  <div className="grid h-full w-full place-items-center bg-gradient-to-br from-indigo-900/50 to-purple-900/50 p-2 text-center text-[10px] font-semibold text-white">
+                                      {blog.title}
+                                  </div>
+                              )}
+                          </Link>
 
-                        <div className="text-left">
-                            <h5 className="text-xs font-bold text-white line-clamp-1 group-hover:text-purple-400 transition-colors">
-                                <Link to={`/blog/${blog.slug}`}>{blog.title}</Link>
-                            </h5>
-                            <p className="text-[10px] leading-relaxed text-gray-400 line-clamp-2 mt-1">
-                                {truncateExcerpt(blog.excerpt)}
-                            </p>
-                            <Link
-                                to={`/blog/${blog.slug}`}
-                                className="inline-flex items-center justify-center rounded-lg bg-purple-600/10 border border-purple-500/20 hover:bg-purple-600 hover:text-white text-purple-300 px-3 py-1.5 text-[10px] font-bold transition-all duration-300 mt-2"
-                            >
-                                Read
-                            </Link>
-                        </div>
-                    </article>
-                ))}
-            </div>
-        </div>
-    );
-});
+                          <div className="text-left">
+                              <h5 className="text-xs font-bold text-white line-clamp-1 group-hover:text-purple-400 transition-colors">
+                                  <Link to={`/blog/${blog.slug}`}>{blog.title}</Link>
+                              </h5>
+                              <p className="text-[10px] leading-relaxed text-slate-405 line-clamp-2 mt-1">
+                                  {truncateExcerpt(blog.excerpt)}
+                              </p>
+                              <Link
+                                  to={`/blog/${blog.slug}`}
+                                  className="inline-flex items-center justify-center rounded-lg bg-purple-600/10 border border-purple-500/20 hover:bg-purple-600 hover:text-white text-purple-300 px-3 py-1.5 text-[10px] font-bold transition-all duration-300 mt-2"
+                              >
+                                  Read
+                              </Link>
+                          </div>
+                      </article>
+                  ))}
+              </div>
+          </div>
+      );
+  });
 
 /**
  * Sub-component: Sidebar -> Subscribe Form
@@ -558,10 +555,10 @@ const Subscribe = React.memo(function Subscribe() {
     }, [email]);
 
     return (
-        <div className="rounded-2xl border border-purple-500/20 bg-slate-950/20 p-5 text-left relative overflow-hidden transition-colors">
+        <div className="rounded-2xl border border-purple-500/20 bg-slate-900/80 p-5 text-left relative overflow-hidden transition-colors">
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-purple-500/5 to-purple-500/0" />
 
-            <h4 className="text-sm font-bold text-white relative">Stay Updated</h4>
+            <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider relative">Stay Updated</h4>
             <p className="text-xs text-slate-400 mt-1 relative">
                 Get new blog posts delivered directly to your inbox.
             </p>
@@ -582,7 +579,7 @@ const Subscribe = React.memo(function Subscribe() {
                     />
                     <button
                         type="submit"
-                        className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 py-2.5 text-xs font-bold text-white transition shadow-md shadow-purple-500/10"
+                        className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 py-2.5 text-xs font-bold text-white transition shadow-md shadow-purple-500/10 cursor-pointer"
                     >
                         Subscribe
                     </button>
@@ -666,14 +663,14 @@ const BookCoversGallery = React.memo(function BookCoversGallery({ relatedBooks, 
         : relatedBooks;
 
     return (
-        <div className="rounded-3xl border border-purple-500/20 bg-slate-950/20 backdrop-blur-xl px-6 py-10 shadow-2xl animate-[fadeIn_300ms_ease-out]">
-            <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">
+        <div className="rounded-3xl border border-purple-500/20 bg-slate-900/80 px-6 py-10 shadow-2xl animate-[fadeIn_300ms_ease-out] text-left">
+            <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">
                 Featured Books in This Post
             </h2>
-            <p className="text-gray-400 mb-8 text-sm">
+            <p className="text-slate-400 mb-8 text-xs font-semibold uppercase tracking-wider">
                 All {books.length} classic books mentioned in this article
             </p>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
                 {books.map((book) => {
                     const readLink = book.slug ? `/read/${book.slug}` : `/book/${book._id}`;
                     const coverUrl = book.coverImage || getBookThumbnailUrl(book);
@@ -681,14 +678,14 @@ const BookCoversGallery = React.memo(function BookCoversGallery({ relatedBooks, 
                     return (
                         <div key={book.slug || book._id} className="group cursor-pointer flex flex-col justify-between">
                             <div>
-                                <div className="relative mb-3 overflow-hidden rounded-lg shadow-lg hover:shadow-2xl hover:shadow-purple-500/50 transition-all duration-300">
+                                <div className="relative mb-3 overflow-hidden rounded-lg shadow-lg hover:shadow-2xl hover:shadow-purple-500/50 transition-all duration-305">
                                     <img
                                         src={coverUrl}
                                         alt={book.title}
                                         className="w-full aspect-[3/4] object-cover group-hover:scale-110 transition-transform duration-500"
                                     />
                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                                        <Link to={readLink} className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 shadow-lg shadow-purple-600/30 text-xs sm:text-sm transition-all hover:scale-105 active:scale-95">
+                                        <Link to={readLink} className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 shadow-lg shadow-purple-600/30 text-xs transition-all hover:scale-105 active:scale-95">
                                             Read Now
                                         </Link>
                                     </div>
@@ -697,7 +694,7 @@ const BookCoversGallery = React.memo(function BookCoversGallery({ relatedBooks, 
                                     <Link to={readLink}>{book.title}</Link>
                                 </h4>
                             </div>
-                            <p className="text-gray-400 text-xs font-semibold mt-1">{book.author}</p>
+                            <p className="text-slate-400 text-xs font-semibold mt-1.5">{book.author}</p>
                         </div>
                     );
                 })}
@@ -815,9 +812,9 @@ export default function BlogDetailPage() {
         try {
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
-            const headings = doc.querySelectorAll('h2, h3');
+            const docHeadings = doc.querySelectorAll('h2, h3');
 
-            headings.forEach((heading) => {
+            docHeadings.forEach((heading) => {
                 const headingText = heading.textContent || '';
                 const headingClean = headingText.toLowerCase().replace(/[^a-z0-9]/g, '');
                 if (!headingClean) return;
