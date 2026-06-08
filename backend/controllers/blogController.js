@@ -71,7 +71,12 @@ const getAllBlogs = async (req, res, next) => {
  */
 const getBlogBySlug = async (req, res, next) => {
     try {
-        const { slug } = req.params;
+        let { slug } = req.params;
+
+        // Redirect old legacy/outdated slug to the new canonical slug
+        if (slug === 'current-best-selling-books-10-outstanding-titles-worth-reading') {
+            slug = 'top-10-best-free-books-to-read-online-2026';
+        }
 
         const blog = await Blog.findOne({ slug })
             .populate('author', 'username avatar')

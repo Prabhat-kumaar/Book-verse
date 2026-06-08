@@ -682,7 +682,7 @@ const FEATURED_BOOKS_DATA = [
  */
 const BookCoversGallery = React.memo(function BookCoversGallery({ relatedBooks, slug }) {
     // Determine the source of books (fallback to the static 10 books for this specific post)
-    const books = slug === 'top-10-best-free-books-to-read-online-2026' || !relatedBooks || relatedBooks.length === 0
+    const books = slug === 'top-10-best-free-books-to-read-online-2026' || slug === 'current-best-selling-books-10-outstanding-titles-worth-reading' || !relatedBooks || relatedBooks.length === 0
         ? FEATURED_BOOKS_DATA
         : relatedBooks;
 
@@ -774,6 +774,12 @@ export default function BlogDetailPage() {
                     throw new Error('Blog not found');
                 }
                 throw new Error(data.message || 'Failed to fetch article details');
+            }
+
+            // Client-side redirect if the returned blog slug does not match the URL slug
+            if (data.blog && data.blog.slug !== slug) {
+                navigate(`/blog/${data.blog.slug}`, { replace: true });
+                return;
             }
 
             setBlog(data.blog || null);
