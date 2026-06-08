@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
+import { FaRegBookmark, FaRegHeart, FaBookmark, FaHeart } from 'react-icons/fa';
 import SEO from '../components/SEO';
 import MainLayout from '../layout/MainLayout';
 import { buildApiUrl } from '../lib/apiConfig';
@@ -239,86 +240,146 @@ const BlogGrid = React.memo(function BlogGrid({ children }) {
 
 /**
  * Sub-component: BlogCard Card item
+ // Helper to resolve colored category badges matching I-CARD design
+const getCategoryBadgeStyles = (cat) => {
+    const cleanCat = (cat || '').toLowerCase().trim();
+    if (cleanCat.includes('classic')) {
+        return 'bg-blue-500/10 text-blue-400 border border-blue-500/20';
+    }
+    if (cleanCat.includes('study')) {
+        return 'bg-orange-500/10 text-orange-400 border border-orange-500/20';
+    }
+    if (cleanCat.includes('literary') || cleanCat.includes('analysis')) {
+        return 'bg-pink-500/10 text-pink-400 border border-pink-500/20';
+    }
+    if (cleanCat.includes('guide')) {
+        return 'bg-purple-500/10 text-purple-400 border border-purple-500/20';
+    }
+    if (cleanCat.includes('author') || cleanCat.includes('profile')) {
+        return 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
+    }
+    if (cleanCat.includes('tips') || cleanCat.includes('tricks')) {
+        return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+    }
+    return 'bg-purple-500/10 text-purple-400 border border-purple-500/20';
+};
+
+/**
+ * Sub-component: BlogCard Card item redesigned to match I-CARD spec
  */
 const BlogCard = React.memo(function BlogCard({ blog }) {
     const wordCount = blog.content ? blog.content.split(/\s+/).length : 0;
     const readTime = Math.ceil(wordCount / 200) || 1;
     const blogUrl = `/blog/${blog.slug}`;
 
+    const [isBookmarked, setIsBookmarked] = useState(false);
+    const [isLiked, setIsLiked] = useState(false);
+
     return (
-        <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-purple-500/20 bg-slate-900/80 hover:shadow-2xl hover:shadow-purple-500/30 hover:border-purple-500/40 transition-all duration-300 hover:scale-[1.02] text-left">
-            {/* Cover Image with gradient overlay */}
-            <div className="relative h-48 w-full overflow-hidden select-none">
-                <Link to={blogUrl} className="block h-full w-full">
-                    {blog.coverImage ? (
-                        <img
-                            loading="lazy"
-                            src={blog.coverImage}
-                            alt={blog.title}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                        />
-                    ) : (
-                        <div className="grid h-full w-full place-items-center bg-gradient-to-br from-indigo-900 via-slate-900 to-purple-900 p-3 text-center text-xs font-semibold text-white">
-                            {blog.title}
-                        </div>
-                    )}
-                </Link>
-                <div className="absolute top-3 left-3 z-10">
-                    <span className="bg-purple-600 text-white px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
+        <article className="group relative flex flex-col p-4 sm:p-5 rounded-3xl border border-purple-500/20 bg-slate-900/50 hover:shadow-2xl hover:shadow-purple-500/25 hover:border-purple-500/35 transition-all duration-300 hover:scale-[1.01] text-left h-full justify-between">
+            <div>
+                {/* Rounded Cover Image container */}
+                <div className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl bg-slate-950/60 mb-4 select-none">
+                    <Link to={blogUrl} className="block h-full w-full">
+                        {blog.coverImage ? (
+                            <img
+                                loading="lazy"
+                                src={blog.coverImage}
+                                alt={blog.title}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            />
+                        ) : (
+                            <div className="grid h-full w-full place-items-center bg-gradient-to-br from-indigo-900 via-slate-900 to-purple-900 p-3 text-center text-xs font-semibold text-white">
+                                {blog.title}
+                            </div>
+                        )}
+                    </Link>
+                    {/* Read time badge on cover */}
+                    <div className="absolute top-3 right-3 z-10">
+                        <span className="bg-slate-950/80 border border-purple-500/25 text-purple-200 px-2.5 py-1 rounded-full text-[9px] font-extrabold tracking-wide uppercase backdrop-blur-md">
+                            {readTime} min read
+                        </span>
+                    </div>
+                </div>
+
+                {/* Category & Icons row */}
+                <div className="flex items-center justify-between mb-3.5">
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold tracking-widest uppercase border ${getCategoryBadgeStyles(blog.category)}`}>
                         {blog.category}
                     </span>
+                    <div className="flex items-center gap-3 text-slate-405 select-none">
+                        <button
+                            type="button"
+                            onClick={() => setIsBookmarked(prev => !prev)}
+                            className="focus:outline-none transition-all duration-200 hover:text-white transform active:scale-75 cursor-pointer"
+                            title={isBookmarked ? "Remove Bookmark" : "Bookmark Post"}
+                        >
+                            {isBookmarked ? (
+                                <FaBookmark className="text-purple-400 animate-[pulse_0.2s_ease-out] text-xs" />
+                            ) : (
+                                <FaRegBookmark className="text-xs" />
+                            )}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setIsLiked(prev => !prev)}
+                            className="focus:outline-none transition-all duration-200 hover:text-rose-400 transform active:scale-75 cursor-pointer"
+                            title={isLiked ? "Unlike" : "Like Post"}
+                        >
+                            {isLiked ? (
+                                <FaHeart className="text-rose-500 animate-[pulse_0.2s_ease-out] text-xs" />
+                            ) : (
+                                <FaRegHeart className="text-xs" />
+                            )}
+                        </button>
+                    </div>
                 </div>
-                <div className="absolute top-3 right-3 z-10">
-                    <span className="bg-slate-950/80 border border-purple-500/20 text-purple-200 px-2.5 py-1 rounded-full text-[10px] font-bold backdrop-blur-md">
-                        {readTime} min read
-                    </span>
-                </div>
-                {/* Overlay gradient */}
-                <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-slate-950 via-slate-950/35 to-transparent" />
+
+                {/* Blog title */}
+                <h3 className="text-base sm:text-lg font-bold text-white mb-2 line-clamp-2 hover:text-purple-400 transition-colors leading-snug">
+                    <Link to={blogUrl}>{blog.title}</Link>
+                </h3>
+
+                {/* Blog Excerpt */}
+                <p className="text-slate-405 text-xs mb-4 line-clamp-3 leading-relaxed">
+                    {truncateExcerpt(blog.excerpt || 'No description available.')}
+                </p>
             </div>
 
-            {/* Content info wrapper */}
-            <div className="p-5 flex flex-col justify-between flex-1">
-                <div className="text-left">
-                    <h3 className="text-lg font-bold text-white mb-2 line-clamp-2 hover:text-purple-400 transition-colors leading-snug">
-                        <Link to={blogUrl}>{blog.title}</Link>
-                    </h3>
-                    <p className="text-slate-400 text-xs mb-4 line-clamp-3 leading-relaxed">
-                        {truncateExcerpt(blog.excerpt || 'No description available.')}
-                    </p>
-                </div>
-
-                <div className="mt-auto">
-                    <div className="flex items-center justify-between border-t border-purple-500/10 pt-3.5 mb-4">
-                        <div className="flex items-center gap-2.5">
-                            <div className="h-7 w-7 overflow-hidden rounded-full bg-purple-500/20 ring-1 ring-purple-500/20 flex items-center justify-center text-[10px] font-bold text-purple-300 shrink-0">
-                                {blog.author?.avatar ? (
-                                    <img
-                                        src={blog.author.avatar}
-                                        alt={blog.author?.username || 'Author'}
-                                        className="h-full w-full object-cover"
-                                    />
-                                ) : (
-                                    (blog.author?.username || 'A').charAt(0).toUpperCase()
-                                )}
-                            </div>
-                            <div className="text-left">
-                                <p className="text-slate-200 text-xs font-semibold leading-none">{blog.author?.username || 'Admin'}</p>
-                                <p className="text-slate-500 text-[10px] mt-1">{formatDate(blog.publishedAt || blog.createdAt)}</p>
-                            </div>
-                        </div>
-                        <div className="text-purple-400 text-xs font-semibold flex items-center gap-1.5 shrink-0 select-none">
-                            <span>👁️</span>
-                            <span>{blog.viewCount || 0} views</span>
-                        </div>
-                    </div>
-
+            <div>
+                {/* Read full article button (aligned to the right) */}
+                <div className="flex justify-end mb-4">
                     <Link
                         to={blogUrl}
-                        className="mt-3 block w-full text-center bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-350 hover:to-amber-450 text-black font-bold py-2.5 px-4 rounded-xl text-xs transition-all duration-300 shadow-md hover:shadow-yellow-500/10"
+                        className="bg-yellow-400 hover:bg-yellow-350 text-black text-[11px] font-extrabold px-5 py-2.5 rounded-full transition-all duration-300 shadow-md hover:shadow-yellow-500/10 flex items-center gap-1 select-none"
                     >
                         Read full article &rarr;
                     </Link>
+                </div>
+
+                {/* Author Block Row */}
+                <div className="flex items-center justify-between border-t border-purple-500/10 pt-3.5">
+                    <div className="flex items-center gap-2.5">
+                        <div className="h-8 w-8 overflow-hidden rounded-full bg-purple-500/20 ring-1 ring-purple-500/20 flex items-center justify-center text-[10px] font-bold text-purple-300 shrink-0">
+                            {blog.author?.avatar ? (
+                                <img
+                                    src={blog.author.avatar}
+                                    alt={blog.author?.username || 'Author'}
+                                    className="h-full w-full object-cover"
+                                />
+                            ) : (
+                                (blog.author?.username || 'A').charAt(0).toUpperCase()
+                            )}
+                        </div>
+                        <div className="text-left">
+                            <p className="text-slate-200 text-xs font-bold leading-none">{blog.author?.username || 'Admin'}</p>
+                            <p className="text-slate-500 text-[10px] mt-1">{formatDate(blog.publishedAt || blog.createdAt)}</p>
+                        </div>
+                    </div>
+                    <div className="text-purple-400 text-xs font-semibold flex items-center gap-1.5 shrink-0 select-none">
+                        <span>👁️</span>
+                        <span>{blog.viewCount || 0} views</span>
+                    </div>
                 </div>
             </div>
         </article>
