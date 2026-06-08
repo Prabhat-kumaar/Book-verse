@@ -232,7 +232,7 @@ const SearchBar = React.memo(function SearchBar({
  */
 const BlogGrid = React.memo(function BlogGrid({ children }) {
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-[fadeIn_250ms_ease-out]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5 animate-[fadeIn_250ms_ease-out]">
             {children}
         </div>
     );
@@ -391,7 +391,7 @@ const BlogCard = React.memo(function BlogCard({ blog }) {
  */
 const LoadingState = React.memo(function LoadingState() {
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-pulse">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5 animate-pulse">
             {Array.from({ length: 6 }).map((_, idx) => (
                 <BlogCardSkeleton key={idx} />
             ))}
@@ -944,7 +944,7 @@ export default function BlogPage() {
             />
 
             {/* 2. MainLayout Wrapper */}
-            <MainLayout>
+            <MainLayout wide={true}>
                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 sm:p-7 backdrop-blur-xl">
 
                     {/* 3. Hero Section (Title & Subtitle) */}
