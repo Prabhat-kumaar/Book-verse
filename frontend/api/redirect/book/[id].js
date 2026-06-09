@@ -64,7 +64,7 @@ export default async function handler(req, res) {
         } catch (dbErr) {
             console.error('[SSR REDIRECT] DB lookup failed, will attempt HTTP fallback if configured', dbErr && dbErr.message)
             // Fallback: try HTTP fetch from BACKEND_API_URL if provided
-            const backendApi = process.env.BACKEND_API_URL || process.env.FRONTEND_BASE_URL
+            const backendApi = process.env.BACKEND_API_URL || process.env.FRONTEND_BASE_URL || 'https://book-verse-production.up.railway.app';
             if (backendApi) {
                 try {
                     const fetchUrl = `${backendApi.replace(/\/$/, '')}/api/books/${encodeURIComponent(id)}`
