@@ -271,7 +271,7 @@ export default function BookDetailPage() {
   useEffect(() => {
     if (book?.slug) {
       console.log('[CLIENT REDIRECT] redirecting to read page', book.slug)
-      window.location.replace(`/read/${encodeURIComponent(book.slug)}/`)
+      // window.location.replace(`/read/${encodeURIComponent(book.slug)}/`)
     }
   }, [book])
 
