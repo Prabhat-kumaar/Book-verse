@@ -38,3 +38,4 @@ uploads/
 # IDEs
 .vscode/
 .idea/
+.vercel

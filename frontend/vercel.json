@@ -1,7 +1,11 @@
 {
   "rewrites": [
     {
-      "source": "/((?!api/|assets/|favicon.svg|icons.svg|sitemap.xml|sitemap-.*.xml|robots.txt).*)",
+      "source": "/book/:id",
+      "destination": "/api/redirect/book/:id"
+    },
+    {
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ],
