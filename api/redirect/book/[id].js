@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const Book = require('../../../../backend/models/Book');
+const Book = require('../../../backend/models/Book');
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -18,10 +18,7 @@ async function connect() {
     }
 
     if (!cached.connected) {
-        await mongoose.connect(MONGODB_URI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-        })
+        await mongoose.connect(MONGODB_URI)
         cached.connected = true
         cached.conn = mongoose
     }
@@ -35,14 +32,38 @@ module.exports = async (req, res) => {
     console.log('[SSR REDIRECT] incoming request for /book/:id', { id, url: req.url })
 
     try {
-        await connect()
+        let book = null
 
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            console.warn('[SSR REDIRECT] invalid ObjectId', { id })
-            return res.status(404).send('Book not found')
+        try {
+            await connect()
+
+            if (!mongoose.Types.ObjectId.isValid(id)) {
+                console.warn('[SSR REDIRECT] invalid ObjectId', { id })
+                return res.status(404).send('Book not found')
+            }
+
+            book = await Book.findById(id).select('slug title').lean()
+        } catch (dbErr) {
+            console.error('[SSR REDIRECT] DB lookup failed, will attempt HTTP fallback if configured', dbErr && dbErr.message)
+            // Fallback: try HTTP fetch from BACKEND_API_URL if provided
+            const backendApi = process.env.BACKEND_API_URL || process.env.FRONTEND_BASE_URL
+            if (backendApi) {
+                try {
+                    const fetchUrl = `${backendApi.replace(/\/$/, '')}/api/books/${encodeURIComponent(id)}`
+                    console.log('[SSR REDIRECT] attempting HTTP fallback fetch', { fetchUrl })
+                    const resp = await fetch(fetchUrl)
+                    if (resp.ok) {
+                        const payload = await resp.json()
+                        // payload may be { success:true, data: book } or similar
+                        book = payload?.data || payload?.book || payload
+                    } else {
+                        console.warn('[SSR REDIRECT] HTTP fallback fetch returned non-ok', resp.status)
+                    }
+                } catch (httpErr) {
+                    console.error('[SSR REDIRECT] HTTP fallback failed', httpErr && httpErr.message)
+                }
+            }
         }
-
-        const book = await Book.findById(id).select('slug title').lean()
 
         if (!book) {
             console.warn('[SSR REDIRECT] book not found', { id })
