@@ -5,7 +5,7 @@
       "destination": "/api/redirect/book/:id"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!api/|assets/|favicon.svg|icons.svg|sitemap.xml|sitemap-.*.xml|robots.txt).*)",
       "destination": "/index.html"
     }
   ],
