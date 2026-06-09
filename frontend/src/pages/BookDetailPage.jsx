@@ -255,7 +255,20 @@ export default function BookDetailPage() {
         setError('')
         const response = await apiClient.get(`/books/${id}`)
         if (response.data?.success) {
-          setBook(response.data.data)
+          const fetched = response.data.data
+
+          // If this is a legacy /book/:id link, redirect to canonical /read/:slug/
+          if (fetched?.slug) {
+            try {
+              console.log('[CLIENT REDIRECT] legacy /book/:id detected', { id, slug: fetched.slug })
+              window.location.replace(`/read/${encodeURIComponent(fetched.slug)}/`)
+              return
+            } catch (redirErr) {
+              console.error('[CLIENT REDIRECT] failed to redirect', redirErr)
+            }
+          }
+
+          setBook(fetched)
         } else {
           setError('Book details could not be retrieved.')
         }
