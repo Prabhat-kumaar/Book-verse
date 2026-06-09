@@ -142,7 +142,7 @@ export default function BookReadPage() {
           <title>{seo.pageTitle}</title>
           <meta name="description" content={seo.description} />
           <meta name="keywords" content={seo.keywords} />
-          <meta name="robots" content="noindex, nofollow" />
+          <meta name="robots" content="index, follow" />
           <link rel="canonical" href={seo.canonicalUrl} />
 
           <meta property="og:type" content="book" />
