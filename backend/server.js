@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
@@ -288,23 +288,83 @@ app.use('/api/users', userRoutes);
 app.use('/api/blogs', blogRoutes);
 app.use('/api', savedRoutes);
 
+const generateSlugFromTitle = (title = '') => {
+    return String(title)
+        .normalize('NFKD')
+        .replace(/[^a-zA-Z0-9\s-]/g, '')
+        .toLowerCase()
+        .trim()
+        .replace(/[\s_-]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        || 'book';
+};
+
 // ================= REDIRECTS =================
 app.get('/book/:id', async (req, res, next) => {
+    const { id } = req.params;
+    const dbState = mongoose.connection.readyState;
+    const dbStatus = dbStateLabels[dbState] || 'unknown';
+
+    console.log('[BOOK REDIRECT] received request', {
+        route: '/book/:id',
+        originalUrl: req.originalUrl,
+        params: req.params,
+        mongooseState: dbState,
+        mongooseStatus: dbStatus,
+    });
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        console.warn('[BOOK REDIRECT] invalid ObjectId', { id });
+        console.log('[BOOK REDIRECT] response', { id, statusCode: 404, location: null });
+        return apiResponse.error(res, 'Book not found', 404);
+    }
+
     try {
-        const { id } = req.params;
+        const book = await Book.findById(id).select('slug title').lean();
 
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return apiResponse.error(res, `Book not found`, 404);
+        if (!book) {
+            console.warn('[BOOK REDIRECT] book not found', { id });
+            console.log('[BOOK REDIRECT] response', { id, statusCode: 404, location: null });
+            return apiResponse.error(res, 'Book not found', 404);
         }
 
-        const book = await Book.findById(id).select('slug').lean();
+        console.log('[BOOK REDIRECT] book found', { id, slug: book.slug, title: book.title });
 
-        if (!book || !book.slug) {
-            return apiResponse.error(res, `Book not found`, 404);
+        let targetSlug = book.slug;
+        let fallbackUsed = false;
+
+        if (!targetSlug) {
+            if (book.title) {
+                fallbackUsed = true;
+                targetSlug = generateSlugFromTitle(book.title);
+                console.warn('[BOOK REDIRECT] missing slug, generated fallback slug from title', { id, title: book.title, generatedSlug: targetSlug });
+            } else {
+                console.warn('[BOOK REDIRECT] missing slug and title for book, redirecting to /books', { id });
+                console.log('[BOOK REDIRECT] response', { id, statusCode: 301, location: '/books' });
+                return res.redirect(301, '/books');
+            }
         }
 
-        return res.redirect(301, `/read/${encodeURIComponent(book.slug)}/`);
+        const redirectLocation = `/read/${encodeURIComponent(targetSlug)}/`;
+
+        console.log('[BOOK REDIRECT] sending redirect', {
+            id,
+            targetSlug,
+            fallbackUsed,
+            redirectLocation,
+        });
+
+        res.on('finish', () => {
+            console.log('[BOOK REDIRECT] response finished', {
+                id,
+                statusCode: res.statusCode,
+                location: res.getHeader('Location'),
+            });
+        });
+
+        return res.redirect(301, redirectLocation);
     } catch (error) {
+        console.error('[BOOK REDIRECT] error while resolving book', { id, error: error.message });
         return next(error);
     }
 });
@@ -368,3 +428,4 @@ const startServer = () => {
 };
 
 startServer();
+
