@@ -14,6 +14,7 @@ const isDev = process.env.NODE_ENV !== 'production';
 
 const connectDB = require('./config/db');
 const apiResponse = require('./utils/apiResponse');
+const Book = require('./models/Book');
 
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
@@ -286,6 +287,27 @@ app.use('/api/goals', goalRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/blogs', blogRoutes);
 app.use('/api', savedRoutes);
+
+// ================= REDIRECTS =================
+app.get('/book/:id', async (req, res, next) => {
+    try {
+        const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return apiResponse.error(res, `Book not found`, 404);
+        }
+
+        const book = await Book.findById(id).select('slug').lean();
+
+        if (!book || !book.slug) {
+            return apiResponse.error(res, `Book not found`, 404);
+        }
+
+        return res.redirect(301, `/read/${encodeURIComponent(book.slug)}/`);
+    } catch (error) {
+        return next(error);
+    }
+});
 
 // ================= API 404 =================
 app.use('/api', (req, res) => {
