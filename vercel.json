@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/book/:id",
+      "destination": "/api/redirect/book/:id"
+    },
+    {
       "source": "/((?!api/|assets/|favicon.svg|icons.svg|sitemap.xml|sitemap-.*.xml|robots.txt).*)",
       "destination": "/index.html"
     }
