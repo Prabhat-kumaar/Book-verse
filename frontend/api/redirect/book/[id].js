@@ -1,8 +1,8 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
-// Define minimal Book schema/model locally to avoid requiring files outside frontend/
+// Define minimal Book schema/model locally
 const bookSchema = new mongoose.Schema({
     title: {
         type: String,
@@ -41,10 +41,10 @@ async function connect() {
         cached.conn = mongoose
     }
 
-    return cached.conn
+    return cached.conn;
 }
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
     const { id } = req.query || {}
 
     console.log('[SSR REDIRECT] incoming request for /book/:id', { id, url: req.url })
