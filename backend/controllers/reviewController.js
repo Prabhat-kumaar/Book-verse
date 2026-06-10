@@ -72,7 +72,7 @@ const getBookReviews = async (req, res, next) => {
             .sort(sortOption);
 
         console.log(`[DEBUG] getBookReviews - Query successful. Count: ${reviews.length}`);
-        res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
         console.log(`[DEBUG] getBookReviews - Sending 200 response with data`);
         res.status(200).json({
             success: true,

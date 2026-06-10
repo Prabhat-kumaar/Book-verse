@@ -6,6 +6,7 @@ import useReadingAnalytics from '../hooks/useReadingAnalytics'
 import useProgress from '../hooks/useProgress'
 import apiClient from '../lib/apiClient'
 import { buildReaderHash } from '../lib/readerLink'
+import { getBookThumbnailUrl } from '../lib/mediaUrls'
 
 const isDev = import.meta.env.DEV
 
@@ -543,7 +544,7 @@ export default function ProfileDashboardPage() {
                           {book.thumbnail ? (
                             <img
                               loading="lazy"
-                              src={book.thumbnail}
+                              src={getBookThumbnailUrl(book)}
                               alt={book.title}
                               className="h-full w-full object-cover"
                             />
@@ -1006,7 +1007,7 @@ export default function ProfileDashboardPage() {
                       {book.thumbnail ? (
                         <img
                           loading="lazy"
-                          src={book.thumbnail}
+                          src={getBookThumbnailUrl(book)}
                           alt={book.title}
                           className="h-full w-full object-cover"
                         />

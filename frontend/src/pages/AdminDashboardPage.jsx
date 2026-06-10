@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { MdPeople, MdLibraryBooks, MdVisibility, MdGroup, MdBook, MdAccessTime, MdTrendingDown } from 'react-icons/md'
 import AdminSidebar from '../components/AdminSidebar'
 import apiClient from '../lib/apiClient'
+import { getBookThumbnailUrl } from '../lib/mediaUrls'
 
 const isDev = import.meta.env.DEV
 
@@ -344,7 +345,7 @@ export default function AdminDashboardPage() {
                         <div key={book.id} className="flex gap-3 items-center border-b border-white/5 pb-2 last:border-0 last:pb-0 hover:bg-white/[0.01] transition-colors p-1 rounded-lg">
                           <div className="h-12 w-9 flex-shrink-0 overflow-hidden rounded bg-slate-800">
                             {book.thumbnail ? (
-                              <img loading="lazy" src={book.thumbnail} alt={book.title} className="h-full w-full object-cover animate-[fadeIn_200ms_ease]" />
+                              <img loading="lazy" src={getBookThumbnailUrl(book)} alt={book.title} className="h-full w-full object-cover animate-[fadeIn_200ms_ease]" />
                             ) : (
                               <div className="grid h-full place-items-center text-[8px] text-slate-500 text-center font-bold">{book.title}</div>
                             )}

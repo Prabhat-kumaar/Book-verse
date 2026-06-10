@@ -298,7 +298,7 @@ const getAllBooks = async (req, res, next) => {
             thumbnail: book.thumbnail ? formatUrl(req, book.thumbnail) : null,
             coverImage: book.coverImage ? formatUrl(req, book.coverImage) : null,
         }));
-        res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
         res.json({
             success: true,
             books: formattedBooks,
@@ -336,7 +336,7 @@ const getBooksByCategory = async (req, res, next) => {
             thumbnail: book.thumbnail ? formatUrl(req, book.thumbnail) : null,
             coverImage: book.coverImage ? formatUrl(req, book.coverImage) : null,
         }));
-        res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
         res.json({
             success: true,
             books: formattedBooks,
@@ -370,7 +370,7 @@ const getBookById = async (req, res, next) => {
             thumbnail: book.thumbnail ? formatUrl(req, book.thumbnail) : null,
             coverImage: book.coverImage ? formatUrl(req, book.coverImage) : null
         };
-        res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
         console.log(`[DEBUG] getBookById - Sending 200 response with data`);
         res.json({ success: true, data: formattedBook });
     } catch (error) {
@@ -397,7 +397,7 @@ const getBookBySlug = async (req, res, next) => {
             thumbnail: book.thumbnail ? formatUrl(req, book.thumbnail) : null,
             coverImage: book.coverImage ? formatUrl(req, book.coverImage) : null
         };
-        res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
         console.log(`[DEBUG] getBookBySlug - Sending 200 response with data`);
         res.json({ success: true, data: formattedBook });
     } catch (error) {
@@ -495,7 +495,7 @@ const getRecommendations = async (req, res, next) => {
             thumbnail: book.thumbnail ? formatUrl(req, book.thumbnail) : null,
             coverImage: book.coverImage ? formatUrl(req, book.coverImage) : null
         }));
-        res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
         res.json({ success: true, data: formattedBooks });
     } catch (error) {
         next(error);

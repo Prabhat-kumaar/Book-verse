@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { stripCloudinaryTransforms } from '../lib/mediaUrls'
 
 /**
  * Parses and returns a low-resolution placeholder URL for the blur-up strategy.
@@ -11,7 +12,8 @@ function getLowResPlaceholder(src = '') {
   }
   // 2. Cloudinary: resize to width 40 and apply heavy blur
   if (src.includes('res.cloudinary.com')) {
-    return src.replace('/upload/', '/upload/w_40,h_60,c_fill,e_blur:200,q_auto,f_auto/')
+    const cleanSrc = stripCloudinaryTransforms(src)
+    return cleanSrc.replace('/upload/', '/upload/w_40,h_60,c_fill,e_blur:200,q_auto,f_auto/')
   }
   // 3. Fallback: return the source itself (or inline empty SVG)
   return src
@@ -34,7 +36,7 @@ function getSrcSetAndSizes(src = '') {
 
   // Cloudinary supports dynamic width parameters
   if (src.includes('res.cloudinary.com')) {
-    const base = src.replace(/\/upload\/[^/]+\//, '/upload/') // Strip custom transforms
+    const base = stripCloudinaryTransforms(src)
     return {
       srcSet: `
         ${base.replace('/upload/', '/upload/w_180,h_270,c_fill,q_auto,f_auto/')} 180w,

@@ -12,7 +12,7 @@ const normalizeBook = (book = {}) => ({
   ...book,
   fileUrl: normalizeMediaUrl(book?.fileUrl || book?.pdf || ''),
   pdf: normalizeMediaUrl(book?.pdf || ''),
-  thumbnail: getBookThumbnailUrl(book),
+  thumbnail: normalizeMediaUrl(book?.thumbnail || ''),
 })
 
 const normalizeText = (value) => (value || '').toString().trim().toLowerCase()
@@ -220,7 +220,7 @@ export default function AdminManageBooksPage() {
                 >
                   <div className="mb-3 h-36 overflow-hidden rounded-xl bg-slate-900/60">
                     {book.thumbnail ? (
-                      <img loading="lazy" src={book.thumbnail} onError={applyThumbnailFallback} alt={book.title} className="h-full w-full object-cover" />
+                      <img loading="lazy" src={getBookThumbnailUrl(book)} onError={applyThumbnailFallback} alt={book.title} className="h-full w-full object-cover" />
                     ) : (
                       <div className="grid h-full place-items-center text-sm text-slate-400">No Thumbnail</div>
                     )}

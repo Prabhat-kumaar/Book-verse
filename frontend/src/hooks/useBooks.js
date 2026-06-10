@@ -43,7 +43,7 @@ function normalizeBooks(payload) {
     ...book,
     fileUrl: normalizeMediaUrl(book?.fileUrl || ''),
     pdf: normalizeMediaUrl(book?.pdf || ''),
-    thumbnail: getBookThumbnailUrl(book),
+    thumbnail: normalizeMediaUrl(book?.thumbnail || ''),
   }))
 }
 
