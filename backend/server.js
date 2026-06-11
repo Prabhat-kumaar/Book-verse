@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
@@ -278,6 +278,22 @@ app.get('/health', (_req, res) => {
 // ================= API ROUTES =================
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+
+// 301 Redirect from old /book/:id to new /read/:slug
+// Add this BEFORE all other routes (near top of app.use statements)
+app.get('/book/:id', async (req, res) => {
+  try {
+    const book = await Book.findById(req.params.id);
+    if (book && book.slug) {
+      return res.redirect(301, `/read/${book.slug}`);
+    }
+    return res.status(404).json({ success: false, message: 'Book not found' });
+  } catch (error) {
+    console.error('[Redirect Error]', error);
+    return res.status(404).json({ success: false, message: 'Book not found' });
+  }
+});
+
 app.use('/api/books', bookRoutes);
 app.use('/api/progress', progressRoutes);
 app.use('/api/streak', streakRoutes);
@@ -287,87 +303,6 @@ app.use('/api/goals', goalRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/blogs', blogRoutes);
 app.use('/api', savedRoutes);
-
-const generateSlugFromTitle = (title = '') => {
-    return String(title)
-        .normalize('NFKD')
-        .replace(/[^a-zA-Z0-9\s-]/g, '')
-        .toLowerCase()
-        .trim()
-        .replace(/[\s_-]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-        || 'book';
-};
-
-// ================= REDIRECTS =================
-app.get('/book/:id', async (req, res, next) => {
-    const { id } = req.params;
-    const dbState = mongoose.connection.readyState;
-    const dbStatus = dbStateLabels[dbState] || 'unknown';
-
-    console.log('[BOOK REDIRECT] received request', {
-        route: '/book/:id',
-        originalUrl: req.originalUrl,
-        params: req.params,
-        mongooseState: dbState,
-        mongooseStatus: dbStatus,
-    });
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-        console.warn('[BOOK REDIRECT] invalid ObjectId', { id });
-        console.log('[BOOK REDIRECT] response', { id, statusCode: 404, location: null });
-        return apiResponse.error(res, 'Book not found', 404);
-    }
-
-    try {
-        const book = await Book.findById(id).select('slug title').lean();
-
-        if (!book) {
-            console.warn('[BOOK REDIRECT] book not found', { id });
-            console.log('[BOOK REDIRECT] response', { id, statusCode: 404, location: null });
-            return apiResponse.error(res, 'Book not found', 404);
-        }
-
-        console.log('[BOOK REDIRECT] book found', { id, slug: book.slug, title: book.title });
-
-        let targetSlug = book.slug;
-        let fallbackUsed = false;
-
-        if (!targetSlug) {
-            if (book.title) {
-                fallbackUsed = true;
-                targetSlug = generateSlugFromTitle(book.title);
-                console.warn('[BOOK REDIRECT] missing slug, generated fallback slug from title', { id, title: book.title, generatedSlug: targetSlug });
-            } else {
-                console.warn('[BOOK REDIRECT] missing slug and title for book, redirecting to /books', { id });
-                console.log('[BOOK REDIRECT] response', { id, statusCode: 301, location: '/books' });
-                return res.redirect(301, '/books');
-            }
-        }
-
-        const redirectLocation = `/read/${encodeURIComponent(targetSlug)}/`;
-
-        console.log('[BOOK REDIRECT] sending redirect', {
-            id,
-            targetSlug,
-            fallbackUsed,
-            redirectLocation,
-        });
-
-        res.on('finish', () => {
-            console.log('[BOOK REDIRECT] response finished', {
-                id,
-                statusCode: res.statusCode,
-                location: res.getHeader('Location'),
-            });
-        });
-
-        return res.redirect(301, redirectLocation);
-    } catch (error) {
-        console.error('[BOOK REDIRECT] error while resolving book', { id, error: error.message });
-        return next(error);
-    }
-});
 
 // ================= API 404 =================
 app.use('/api', (req, res) => {
