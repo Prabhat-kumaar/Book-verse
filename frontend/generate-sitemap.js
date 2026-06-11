@@ -5,7 +5,8 @@ import { fileURLToPath } from 'url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const TARGET_DIR = path.resolve(__dirname, 'public')
-const API_URL = 'https://book-verse-production.up.railway.app/api/books?limit=500'
+const BOOKS_API_URL = 'https://book-verse-production.up.railway.app/api/books/all'
+const BLOGS_API_URL = 'https://book-verse-production.up.railway.app/api/blogs?limit=1000'
 const PRODUCTION_DOMAIN = 'https://readifyai.vercel.app'
 const MAX_URLS_PER_FILE = 45000
 const MAIN_SITEMAP = 'sitemap.xml'
@@ -25,13 +26,6 @@ const escapeXml = (value = '') => String(value)
   .replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;')
   .replace(/'/g, '&apos;')
-
-const staticRoutes = [
-  { loc: `${PRODUCTION_DOMAIN}/`, changefreq: 'weekly', priority: '1.0' },
-  { loc: `${PRODUCTION_DOMAIN}/books`, changefreq: 'weekly', priority: '1.0' },
-  { loc: `${PRODUCTION_DOMAIN}/categories`, changefreq: 'weekly', priority: '1.0' },
-  { loc: `${PRODUCTION_DOMAIN}/recommended`, changefreq: 'weekly', priority: '1.0' },
-]
 
 const buildUrlEntry = ({ loc, lastmod, changefreq, priority }) => {
   return [
@@ -84,9 +78,9 @@ const writeFile = (fileName, content) => {
   fs.writeFileSync(path.join(TARGET_DIR, fileName), content, 'utf8')
 }
 
-const fetchBooks = async () => {
+const httpGet = async (url) => {
   if (typeof fetch === 'function') {
-    const response = await fetch(API_URL)
+    const response = await fetch(url)
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`)
     }
@@ -95,7 +89,7 @@ const fetchBooks = async () => {
 
   const https = await import('https')
   return new Promise((resolve, reject) => {
-    https.get(API_URL, (res) => {
+    https.get(url, (res) => {
       let data = ''
       res.on('data', (chunk) => { data += chunk })
       res.on('end', () => {
@@ -121,23 +115,27 @@ const normalizeBooks = (payload) => {
   return items.filter((book) => book && book.slug)
 }
 
-const buildBookRoutes = (books) => books.map((book) => ({
-  loc: `${PRODUCTION_DOMAIN}/read/${book.slug}`,
-  lastmod: sanitizeDate(book?.updatedAt || book?.createdAt),
-  changefreq: 'monthly',
-  priority: '0.8',
-}))
+const normalizeBlogs = (payload) => {
+  const items = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.blogs)
+      ? payload.blogs
+      : Array.isArray(payload?.data)
+        ? payload.data
+        : []
 
-const buildSitemaps = (books) => {
-  const routes = [...staticRoutes, ...buildBookRoutes(books)]
+  return items.filter((blog) => blog && blog.slug)
+}
+
+const buildSitemaps = (allUrls) => {
   const chunks = []
 
-  for (let i = 0; i < routes.length; i += MAX_URLS_PER_FILE) {
-    chunks.push(routes.slice(i, i + MAX_URLS_PER_FILE))
+  for (let i = 0; i < allUrls.length; i += MAX_URLS_PER_FILE) {
+    chunks.push(allUrls.slice(i, i + MAX_URLS_PER_FILE))
   }
 
-  if (chunks.length === 1) {
-    writeFile(MAIN_SITEMAP, buildUrlSet(chunks[0]))
+  if (chunks.length <= 1) {
+    writeFile(MAIN_SITEMAP, buildUrlSet(chunks[0] || []))
     return [MAIN_SITEMAP]
   }
 
@@ -155,18 +153,71 @@ const buildSitemaps = (books) => {
 }
 
 const main = async () => {
-  try {
-    console.log(`Fetching books from ${API_URL}...`)
-    const payload = await fetchBooks()
-    const books = normalizeBooks(payload)
-    console.log(`Found ${books.length} book URLs to index.`)
+  const today = sanitizeDate()
+  const staticUrls = [
+    { loc: `${PRODUCTION_DOMAIN}/`, priority: '1.0', changefreq: 'daily', lastmod: today },
+    { loc: `${PRODUCTION_DOMAIN}/blog`, priority: '0.9', changefreq: 'daily', lastmod: today },
+    { loc: `${PRODUCTION_DOMAIN}/books`, priority: '0.9', changefreq: 'daily', lastmod: today },
+    { loc: `${PRODUCTION_DOMAIN}/categories`, priority: '0.7', changefreq: 'weekly', lastmod: today },
+    { loc: `${PRODUCTION_DOMAIN}/recommended`, priority: '0.8', changefreq: 'weekly', lastmod: today }
+  ]
 
-    const files = buildSitemaps(books)
+  let books = []
+  try {
+    console.log(`Fetching books from ${BOOKS_API_URL}...`)
+    const payload = await httpGet(BOOKS_API_URL)
+    books = normalizeBooks(payload)
+    console.log(`Found ${books.length} book URLs to index.`)
+  } catch (error) {
+    console.warn(`Book API fetch failed: ${error.message}. Trying local fallback...`)
+    try {
+      const payload = await httpGet('http://localhost:5000/api/books/all')
+      books = normalizeBooks(payload)
+      console.log(`Found ${books.length} book URLs to index from local backend.`)
+    } catch (localError) {
+      console.warn(`Local fallback failed: ${localError.message}. Proceeding without books.`)
+    }
+  }
+
+  let blogs = []
+  try {
+    console.log(`Fetching blogs from ${BLOGS_API_URL}...`)
+    const payload = await httpGet(BLOGS_API_URL)
+    blogs = normalizeBlogs(payload)
+    console.log(`Found ${blogs.length} blog URLs to index.`)
+  } catch (error) {
+    console.warn(`Blog API fetch failed: ${error.message}. Trying local fallback...`)
+    try {
+      const payload = await httpGet('http://localhost:5000/api/blogs?limit=1000')
+      blogs = normalizeBlogs(payload)
+      console.log(`Found ${blogs.length} blog URLs to index from local backend.`)
+    } catch (localError) {
+      console.warn(`Local fallback failed: ${localError.message}. Proceeding without blogs.`)
+    }
+  }
+
+  const bookUrls = books.map((book) => ({
+    loc: `${PRODUCTION_DOMAIN}/read/${book.slug}`,
+    lastmod: sanitizeDate(book.updatedAt || book.createdAt),
+    changefreq: 'monthly',
+    priority: '0.8'
+  }))
+
+  const blogUrls = blogs.map((blog) => ({
+    loc: `${PRODUCTION_DOMAIN}/blog/${blog.slug}`,
+    lastmod: sanitizeDate(blog.publishedAt || blog.updatedAt || blog.createdAt),
+    changefreq: 'weekly',
+    priority: '0.8'
+  }))
+
+  const allUrls = [...staticUrls, ...bookUrls, ...blogUrls]
+  console.log(`Total URLs to write to sitemap: ${allUrls.length}`)
+
+  try {
+    const files = buildSitemaps(allUrls)
     console.log(`Wrote ${files.length} sitemap file(s) into ${TARGET_DIR}`)
   } catch (error) {
-    console.warn(`Book API fetch failed: ${error.message}. Writing fallback sitemap.`)
-    buildSitemaps([])
-    console.log(`Fallback sitemap written into ${TARGET_DIR}`)
+    console.error(`Failed to write sitemap: ${error.message}`)
   }
 }
 

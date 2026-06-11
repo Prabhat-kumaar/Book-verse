@@ -30,6 +30,16 @@ router.get('/', getAllBooks);
 router.get('/recommendations', getRecommendations);
 router.get('/category/:category', getBooksByCategory);
 router.get('/slug/:slug', getBookBySlug);
+router.get('/all', async (req, res, next) => {
+    try {
+        const Book = require('../models/Book');
+        const books = await Book.find({}).select('slug title updatedAt createdAt').lean();
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        res.json(books);
+    } catch (error) {
+        next(error);
+    }
+});
 router.get('/:id', getBookById);
 router.put(
     '/:id',
