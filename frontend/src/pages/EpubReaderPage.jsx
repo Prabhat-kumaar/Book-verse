@@ -501,6 +501,13 @@ export default function EpubReaderPage({ book = null }) {
         if (isDestroyed || !viewerRef.current) return
         bookRef.current = book
 
+        // Strip scripts to prevent sandbox blocked script execution warnings
+        book.spine.hooks.content.register((doc) => {
+          if (!doc) return
+          const scripts = doc.querySelectorAll('script')
+          scripts.forEach((script) => script.remove())
+        })
+
         const rendition = book.renderTo(viewerRef.current, {
           manager: 'continuous',
           flow: 'scrolled',
