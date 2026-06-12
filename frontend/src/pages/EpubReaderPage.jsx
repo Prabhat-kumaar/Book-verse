@@ -501,13 +501,6 @@ export default function EpubReaderPage({ book = null }) {
         if (isDestroyed || !viewerRef.current) return
         bookRef.current = book
 
-        // Strip scripts to prevent sandbox blocked script execution warnings
-        book.spine.hooks.content.register((doc) => {
-          if (!doc) return
-          const scripts = doc.querySelectorAll('script')
-          scripts.forEach((script) => script.remove())
-        })
-
         const rendition = book.renderTo(viewerRef.current, {
           manager: 'continuous',
           flow: 'scrolled',
@@ -519,6 +512,13 @@ export default function EpubReaderPage({ book = null }) {
         })
         if (isDestroyed) return
         renditionRef.current = rendition
+
+        // Strip scripts to prevent sandbox blocked script execution warnings (runs after rendition's own hook to catch injected scripts too)
+        book.spine.hooks.content.register((doc) => {
+          if (!doc) return
+          const scripts = doc.querySelectorAll('script')
+          scripts.forEach((script) => script.remove())
+        })
 
         applyReaderStyles(rendition, theme, fontSize, isDesktopRef.current)
         rendition.themes.override('div', {
