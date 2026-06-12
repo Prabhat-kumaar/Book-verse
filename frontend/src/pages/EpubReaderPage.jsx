@@ -193,6 +193,8 @@ function applyReaderStyles(rendition, theme, fontSize, isDesktop) {
   })
   rendition.themes.override('html', {
     background: 'transparent !important',
+    'scroll-behavior': 'smooth !important',
+    '-webkit-overflow-scrolling': 'touch !important',
   })
   rendition.themes.override('body', {
     margin: '0 !important',
@@ -203,6 +205,8 @@ function applyReaderStyles(rendition, theme, fontSize, isDesktop) {
     'line-height': '1.8 !important',
     'box-sizing': 'border-box !important',
     'overflow-anchor': 'none !important',
+    'scroll-behavior': 'smooth !important',
+    '-webkit-overflow-scrolling': 'touch !important',
   })
 }
 
@@ -962,32 +966,35 @@ export default function EpubReaderPage({ book = null }) {
                   <MdMoreVert />
                 </button>
                 {menuOpen && (
-                  <div
-                    className={`absolute right-0 top-11 w-[260px] animate-reader-fade-in rounded-lg border p-3 shadow-2xl backdrop-blur-xl
-                      ${theme === 'dark'
-                        ? 'border-white/10 bg-[#171717]/95 text-slate-100'
-                        : theme === 'sepia'
-                          ? 'border-[#5c4a1e]/15 bg-[#f1e3c2]/95 text-[#5c4a1e]'
-                          : 'border-black/10 bg-white/95 text-slate-900'
-                      }`}
-                  >
-                    <div className="flex items-center justify-between gap-2 border-b border-current/10 pb-3">
-                      <span className="text-xs font-bold uppercase opacity-55">Font size</span>
-                      <div className="flex items-center gap-2">
-                        <button type="button" onClick={decreaseFontSize} className="h-9 rounded-md px-4 text-sm font-bold hover:bg-current/10" aria-label="Decrease font size">
-                          A-
-                        </button>
-                        <button type="button" onClick={increaseFontSize} className="h-9 rounded-md px-4 text-base font-bold hover:bg-current/10" aria-label="Increase font size">
-                          A+
-                        </button>
+                  <>
+                    <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setMenuOpen(false)} />
+                    <div
+                      className={`absolute right-0 top-11 z-50 w-[260px] animate-reader-fade-in rounded-lg border p-3 shadow-2xl backdrop-blur-xl
+                        ${theme === 'dark'
+                          ? 'border-white/10 bg-[#171717]/95 text-slate-100'
+                          : theme === 'sepia'
+                            ? 'border-[#5c4a1e]/15 bg-[#f1e3c2]/95 text-[#5c4a1e]'
+                            : 'border-black/10 bg-white/95 text-slate-900'
+                        }`}
+                    >
+                      <div className="flex items-center justify-between gap-2 border-b border-current/10 pb-3">
+                        <span className="text-xs font-bold uppercase opacity-55">Font size</span>
+                        <div className="flex items-center gap-2">
+                          <button type="button" onClick={decreaseFontSize} className="h-9 rounded-md px-4 text-sm font-bold hover:bg-current/10" aria-label="Decrease font size">
+                            A-
+                          </button>
+                          <button type="button" onClick={increaseFontSize} className="h-9 rounded-md px-4 text-base font-bold hover:bg-current/10" aria-label="Increase font size">
+                            A+
+                          </button>
+                        </div>
                       </div>
-                    </div>
 
-                    <button type="button" onClick={toggleSaveToLibrary} className="mt-1 flex h-10 w-full items-center justify-center gap-2 rounded-md text-sm font-bold hover:bg-current/10" aria-pressed={isBookSaved}>
-                      {isBookSaved ? <MdFavorite className="text-lg text-rose-500" /> : <MdFavoriteBorder className="text-lg" />}
-                      Save to Library
-                    </button>
-                  </div>
+                      <button type="button" onClick={toggleSaveToLibrary} className="mt-1 flex h-10 w-full items-center justify-center gap-2 rounded-md text-sm font-bold hover:bg-current/10" aria-pressed={isBookSaved}>
+                        {isBookSaved ? <MdFavorite className="text-lg text-rose-500" /> : <MdFavoriteBorder className="text-lg" />}
+                        Save to Library
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
               <button type="button" onClick={toggleFullscreen}
@@ -1049,7 +1056,7 @@ export default function EpubReaderPage({ book = null }) {
 
         <div className="relative flex h-screen w-full">
           <div
-            className={`fixed inset-0 z-30 bg-black/50 backdrop-blur-sm transition-opacity md:hidden
+            className={`fixed inset-0 z-30 bg-black/50 backdrop-blur-sm transition-opacity
               ${sidebarOpen ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
             onClick={() => setSidebarOpen(false)}
           />
@@ -1180,29 +1187,7 @@ export default function EpubReaderPage({ book = null }) {
           </aside>          <main className="h-full w-full overflow-hidden">
             <div className="flex h-full w-full flex-col pt-14 pb-24 md:pb-28">
 
-              {loadingState === 'loading' && (
-                <div className="grid h-44 place-items-center">
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent opacity-50" />
-                    <p className="text-sm opacity-60">Loading book...</p>
-                  </div>
-                </div>
-              )}
-
-              {loadingState === 'error' && (
-                <div className="p-8 text-center">
-                  <p className="mb-4 opacity-80">{errorMessage}</p>
-                  <button
-                    type="button"
-                    className="rounded-full bg-primary/20 px-5 py-2 text-sm font-medium hover:bg-primary/30 transition"
-                    onClick={() => window.location.reload()}
-                  >
-                    Try Again
-                  </button>
-                </div>
-              )}
-
-              <div className="flex-1 h-full w-full overflow-hidden">
+              <div className="relative flex-1 h-full w-full overflow-hidden px-5 sm:px-10">
                 <div
                   id="viewer"
                   ref={viewerRef}
@@ -1211,6 +1196,34 @@ export default function EpubReaderPage({ book = null }) {
                   onTouchStart={handleTouchStart}
                   onTouchEnd={handleTouchEnd}
                 />
+
+                {loadingState === 'loading' && (
+                  <div className={`absolute inset-0 z-10 grid place-items-center
+                    ${theme === 'dark' ? 'bg-[#0f0f0f] text-slate-400' : theme === 'sepia' ? 'bg-[#f4ecd8] text-[#5c4a1e]/80' : 'bg-[#faf8f4] text-slate-500'}`}
+                  >
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent opacity-50" />
+                      <p className="text-sm opacity-60 font-semibold">Loading book...</p>
+                    </div>
+                  </div>
+                )}
+
+                {loadingState === 'error' && (
+                  <div className={`absolute inset-0 z-10 grid place-items-center p-8 text-center
+                    ${theme === 'dark' ? 'bg-[#0f0f0f] text-red-400' : theme === 'sepia' ? 'bg-[#f4ecd8] text-red-800' : 'bg-[#faf8f4] text-red-600'}`}
+                  >
+                    <div>
+                      <p className="mb-4 opacity-80 font-semibold">{errorMessage}</p>
+                      <button
+                        type="button"
+                        className="rounded-full bg-primary/20 px-5 py-2.5 text-sm font-bold hover:bg-primary/30 transition text-current"
+                        onClick={() => window.location.reload()}
+                      >
+                        Try Again
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {loadingState === 'ready' && (

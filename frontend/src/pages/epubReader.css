@@ -120,17 +120,21 @@
 .epub-viewer > div { width: 100% !important; }
 .epub-viewer iframe { width: 100% !important; border: none !important; min-height: calc(100vh - 160px); }
 
-/* Prevent browser scroll anchoring shifts and jumps in continuous manager */
+/* Prevent browser scroll anchoring shifts and jumps in continuous manager & enable smooth scrolling */
 #viewer,
 .epub-viewer,
 .epub-container {
   overflow-anchor: none !important;
+  -webkit-overflow-scrolling: touch !important;
+  scroll-behavior: smooth !important;
 }
 
 #viewer {
   background: transparent !important;
   max-width: none !important;
   width: 100% !important;
+  -webkit-overflow-scrolling: touch !important;
+  scroll-behavior: smooth !important;
 }
 
 #viewer iframe,
@@ -139,6 +143,8 @@
   background: transparent !important;
   max-width: none !important;
   width: 100% !important;
+  -webkit-overflow-scrolling: touch !important;
+  scroll-behavior: smooth !important;
 }
 
 .reader-nav {
