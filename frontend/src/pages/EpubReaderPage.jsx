@@ -506,7 +506,7 @@ export default function EpubReaderPage({ book = null }) {
           flow: 'scrolled',
           width: '100%',
           height: '100%',
-          allowScriptedContent: true,
+          allowScriptedContent: false,
           allowPopups: false,
           spread: 'none',
         })
