@@ -197,7 +197,7 @@ const main = async () => {
   }
 
   const bookUrls = books.map((book) => ({
-    loc: `${PRODUCTION_DOMAIN}/read/${book.slug}`,
+    loc: `${PRODUCTION_DOMAIN}/read/${book.slug}/`,
     lastmod: sanitizeDate(book.updatedAt || book.createdAt),
     changefreq: 'monthly',
     priority: '0.8'

@@ -355,13 +355,13 @@ const getBooksByCategory = async (req, res, next) => {
 
 const getBookById = async (req, res, next) => {
     const paramId = req.params.id;
-    console.log(`[DEBUG] getBookById - Incoming parameter: "${paramId}"`);
+    devLog(`[DEBUG] getBookById - Incoming parameter: "${paramId}"`);
     try {
-        console.log(`[DEBUG] getBookById - Querying MongoDB: Book.findById("${paramId}")`);
+        devLog(`[DEBUG] getBookById - Querying MongoDB: Book.findById("${paramId}")`);
         const book = await Book.findById(paramId);
-        console.log(`[DEBUG] getBookById - Query successful. Book found: ${!!book}`);
+        devLog(`[DEBUG] getBookById - Query successful. Book found: ${!!book}`);
         if (!book) {
-            console.log(`[DEBUG] getBookById - Sending 404 response: Book not found`);
+            devLog(`[DEBUG] getBookById - Sending 404 response: Book not found`);
             return res.status(404).json({ success: false, message: 'Book not found' });
         }
         const formattedBook = {
@@ -371,7 +371,7 @@ const getBookById = async (req, res, next) => {
             coverImage: book.coverImage ? formatUrl(req, book.coverImage) : null
         };
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-        console.log(`[DEBUG] getBookById - Sending 200 response with data`);
+        devLog(`[DEBUG] getBookById - Sending 200 response with data`);
         res.json({ success: true, data: formattedBook });
     } catch (error) {
         console.error(`[DEBUG] getBookById - Error caught:`, error);
@@ -381,14 +381,14 @@ const getBookById = async (req, res, next) => {
 
 const getBookBySlug = async (req, res, next) => {
     const paramSlug = req.params.slug;
-    console.log(`[DEBUG] getBookBySlug - Incoming parameter: "${paramSlug}"`);
+    devLog(`[DEBUG] getBookBySlug - Incoming parameter: "${paramSlug}"`);
     try {
         const slug = asTrimmedString(paramSlug).toLowerCase();
-        console.log(`[DEBUG] getBookBySlug - Querying MongoDB: Book.findOne({ slug: "${slug}" })`);
+        devLog(`[DEBUG] getBookBySlug - Querying MongoDB: Book.findOne({ slug: "${slug}" })`);
         const book = await Book.findOne({ slug });
-        console.log(`[DEBUG] getBookBySlug - Query successful. Book found: ${!!book}`);
+        devLog(`[DEBUG] getBookBySlug - Query successful. Book found: ${!!book}`);
         if (!book) {
-            console.log(`[DEBUG] getBookBySlug - Sending 404 response: Book not found`);
+            devLog(`[DEBUG] getBookBySlug - Sending 404 response: Book not found`);
             return res.status(404).json({ success: false, message: 'Book not found' });
         }
         const formattedBook = {
@@ -397,8 +397,8 @@ const getBookBySlug = async (req, res, next) => {
             thumbnail: book.thumbnail ? formatUrl(req, book.thumbnail) : null,
             coverImage: book.coverImage ? formatUrl(req, book.coverImage) : null
         };
-        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-        console.log(`[DEBUG] getBookBySlug - Sending 200 response with data`);
+        res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600');
+        devLog(`[DEBUG] getBookBySlug - Sending 200 response with data`);
         res.json({ success: true, data: formattedBook });
     } catch (error) {
         console.error(`[DEBUG] getBookBySlug - Error caught:`, error);
