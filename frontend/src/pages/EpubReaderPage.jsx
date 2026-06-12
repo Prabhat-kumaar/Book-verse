@@ -1185,13 +1185,13 @@ export default function EpubReaderPage({ book = null }) {
               ))}
             </div>
           </aside>          <main className="h-full w-full overflow-hidden">
-            <div className="flex h-full w-full flex-col pt-14 pb-24 md:pb-28">
+            <div className="flex h-full w-full flex-col pt-14 pb-6 md:pb-8">
 
-              <div className="relative flex-1 h-full w-full overflow-hidden px-5 sm:px-10">
+              <div className="relative flex-1 w-full overflow-hidden px-5 sm:px-10 pt-4 pb-2">
                 <div
                   id="viewer"
                   ref={viewerRef}
-                  className="h-full w-full flex-1 text-[18px] leading-[1.8] md:text-[16px]"
+                  className="h-full w-full text-[18px] leading-[1.8] md:text-[16px]"
                   style={{ visibility: loadingState === 'ready' ? 'visible' : 'hidden' }}
                   onTouchStart={handleTouchStart}
                   onTouchEnd={handleTouchEnd}
