@@ -62,6 +62,7 @@ const OptimizedImage = React.memo(function OptimizedImage({
   const [isLoaded, setIsLoaded] = useState(false)
   const [currentSrc, setCurrentSrc] = useState(src)
   const [hasError, setHasError] = useState(false)
+  const imgRef = React.useRef(null)
 
   // Sync state if source changes
   useEffect(() => {
@@ -69,6 +70,13 @@ const OptimizedImage = React.memo(function OptimizedImage({
     setIsLoaded(false)
     setHasError(false)
   }, [src])
+
+  // Check if image is already completed (cached)
+  useEffect(() => {
+    if (imgRef.current && imgRef.current.complete) {
+      setIsLoaded(true)
+    }
+  }, [currentSrc])
 
   const placeholderUrl = getLowResPlaceholder(currentSrc)
   const { srcSet, sizes } = getSrcSetAndSizes(currentSrc)
@@ -118,6 +126,7 @@ const OptimizedImage = React.memo(function OptimizedImage({
 
       {/* 2. High-res target image */}
       <img
+        ref={imgRef}
         src={currentSrc}
         srcSet={srcSet || undefined}
         sizes={sizes || undefined}
