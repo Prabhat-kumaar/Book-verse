@@ -74,12 +74,13 @@ const buildBreadcrumbSchema = (title, pagePath) => ({
     ],
 })
 
-export function createBookSchema(book = {}, pagePath = '/book', imageUrl) {
-    const canonicalUrl = `${PRODUCTION_DOMAIN}${pagePath}`
+export function createBookSchema(book = {}, canonicalPath = '/book', imageUrl, breadcrumbPath) {
+    const canonicalUrl = `${PRODUCTION_DOMAIN}${canonicalPath}`
+    const crumbPath = breadcrumbPath || canonicalPath
 
     return [
         buildBookSchema(book, canonicalUrl, imageUrl),
-        buildBreadcrumbSchema(book.title, pagePath),
+        buildBreadcrumbSchema(book.title, crumbPath),
         buildOrganizationSchema(),
     ]
 }

@@ -7,6 +7,20 @@ import './index.css'
 import App from './App.jsx'
 
 if (typeof window !== 'undefined') {
+  // Suppress errors logged by console.error (e.g. from dev tools or page scripts)
+  const originalConsoleError = console.error
+  console.error = function (...args) {
+    const msg = args.map(arg => String(arg?.message || arg || '')).join(' ')
+    if (
+      msg.includes('message channel closed') ||
+      msg.includes('asynchronous response') ||
+      msg.includes('listener indicated')
+    ) {
+      return
+    }
+    originalConsoleError.apply(console, args)
+  }
+
   window.addEventListener('unhandledrejection', (event) => {
     const msg = String(event.reason?.message || event.reason || '')
     if (

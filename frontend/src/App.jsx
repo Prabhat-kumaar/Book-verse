@@ -51,6 +51,7 @@ const BlogPage = lazyWithRetry(() => import('./pages/BlogPage'))
 const BlogDetailPage = lazyWithRetry(() => import('./pages/BlogDetailPage'))
 const AdminBlogPage = lazyWithRetry(() => import('./pages/admin/AdminBlogPage'))
 const AdminBlogCreateEditPage = lazyWithRetry(() => import('./pages/admin/AdminBlogCreateEditPage'))
+const AdminBlogAutoGeneratePage = lazyWithRetry(() => import('./pages/admin/AdminBlogAutoGeneratePage'))
 const AdminBlogAnalyticsPage = lazyWithRetry(() => import('./pages/admin/AdminBlogAnalyticsPage'))
 const CategoriesPage = lazyWithRetry(() => import('./pages/CategoriesPage'))
 const RecommendedPage = lazyWithRetry(() => import('./pages/RecommendedPage'))
@@ -306,6 +307,7 @@ function App() {
               <Route path="blogs" element={<AdminBlogPage />} />
               <Route path="blogs/create" element={<AdminBlogCreateEditPage />} />
               <Route path="blogs/:id/edit" element={<AdminBlogCreateEditPage />} />
+              <Route path="blog/auto-generate" element={<AdminBlogAutoGeneratePage />} />
               <Route path="blogs/analytics" element={<AdminBlogAnalyticsPage />} />
               <Route path="analytics" element={<AdminAnalyticsPage />} />
               <Route path="users" element={<AdminUsersPage />} />

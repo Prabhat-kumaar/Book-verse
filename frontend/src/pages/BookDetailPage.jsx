@@ -116,15 +116,21 @@ export default function BookDetailPage() {
 
     const title = book.title ? `${book.title} by ${book.author || 'Unknown Author'} | Readify AI` : 'Readify AI'
     const description = (book.description || 'Read the full book online for free with Readify AI.').replace(/\s+/g, ' ').trim().slice(0, 160)
-    const pagePath = `/book/${id}`
     const image = book.thumbnail ? getBookThumbnailUrl(book) : `${PRODUCTION_DOMAIN}/favicon.svg`
+
+    // Use slug-based canonical (matches sitemap + reader page)
+    const canonicalPath = book?.slug 
+      ? `/read/${encodeURIComponent(book.slug)}/` 
+      : `/book/${id}`
+
+    const displayPath = `/book/${id}` // keep for breadcrumb display
 
     return {
       title,
       description,
       image,
-      path: pagePath,
-      schema: createBookSchema(book, pagePath, image),
+      path: canonicalPath,  // canonical points to /read/slug/
+      schema: createBookSchema(book, canonicalPath, image, displayPath),
     }
   }, [book, id])
 
