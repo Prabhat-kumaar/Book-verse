@@ -1,4 +1,11 @@
 {
+  "redirects": [
+    {
+      "source": "/book/:path*",
+      "destination": "/books",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/((?!api/|assets/|favicon.svg|icons.svg|sitemap.xml|sitemap-.*.xml|robots.txt).*)",
