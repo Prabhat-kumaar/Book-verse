@@ -287,6 +287,10 @@ const BlogCard = React.memo(function BlogCard({ blog }) {
                                 src={blog.coverImage}
                                 alt={blog.title}
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src = '/placeholder-blog.webp';
+                                }}
                             />
                         ) : (
                             <div className="grid h-full w-full place-items-center bg-gradient-to-br from-indigo-900 via-slate-900 to-purple-900 p-3 text-center text-xs font-semibold text-white">
@@ -553,7 +557,15 @@ const FeaturedPost = React.memo(function FeaturedPost({ blog }) {
             <h4 className="text-xs font-bold text-purple-400 mb-3 uppercase tracking-wider">★ Featured Article</h4>
             {blog.coverImage && (
                 <Link to={`/blog/${blog.slug}`} className="block overflow-hidden rounded-xl aspect-[16/9] mb-3">
-                    <img src={blog.coverImage} alt={blog.title} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500 animate-[fadeIn_200ms_ease-out]" />
+                    <img 
+                        src={blog.coverImage} 
+                        alt={blog.title} 
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-500 animate-[fadeIn_200ms_ease-out]" 
+                        onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = '/placeholder-blog.webp';
+                        }}
+                    />
                 </Link>
             )}
             <div className="mb-2">
@@ -622,7 +634,15 @@ const PopularPosts = React.memo(function PopularPosts({ posts }) {
                     <Link key={post.slug} to={`/blog/${post.slug}`} className="group flex gap-3 items-center min-w-0">
                         {post.coverImage ? (
                             <div className="h-10 w-14 overflow-hidden rounded-lg bg-slate-950/60 border border-purple-500/10 shrink-0 shadow-md">
-                                <img src={post.coverImage} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                <img 
+                                    src={post.coverImage} 
+                                    alt={post.title} 
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                                    onError={(e) => {
+                                        e.target.onerror = null;
+                                        e.target.src = '/placeholder-blog.webp';
+                                    }}
+                                />
                             </div>
                         ) : (
                             <div className="h-10 w-14 bg-gradient-to-br from-indigo-900/50 to-purple-900/50 rounded-lg shrink-0 flex items-center justify-center text-[9px] text-white font-bold px-1 text-center line-clamp-2">

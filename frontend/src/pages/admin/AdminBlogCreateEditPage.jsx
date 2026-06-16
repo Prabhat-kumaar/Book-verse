@@ -764,16 +764,21 @@ export default function AdminBlogCreateEditPage() {
 
             const response = await apiClient.post('/api/blogs/admin/upload-cover', uploadForm);
 
-            if (response.data?.url) {
-                updateFormField('coverImage', response.data.url);
+            // Verify Cloudinary upload was successful (response has secure_url)
+            const secureUrl = response.data?.secure_url || response.data?.url;
+            if (response.data?.success && secureUrl) {
+                updateFormField('coverImage', secureUrl);
                 setToast('Cover image uploaded successfully.');
                 setTimeout(() => setToast(''), 2200);
             } else {
-                throw new Error('Upload succeeded but no URL returned.');
+                setToast('Image upload failed: Cloudinary secure URL not found.');
+                updateFormField('coverImage', '');
+                throw new Error('Upload succeeded but no secure URL was returned.');
             }
         } catch (err) {
             console.error('[AdminBlogCreateEditPage] File upload error:', err);
-            setToast('');
+            setToast('Image upload failed. Please try again.');
+            updateFormField('coverImage', '');
             setFieldErrors(prev => ({
                 ...prev,
                 coverImage: err.response?.data?.message || err.message || 'Image upload failed.'

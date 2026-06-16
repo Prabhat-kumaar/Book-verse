@@ -68,7 +68,7 @@ router.post('/admin/upload-cover', protect, admin, upload.single('thumbnail'), a
             fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
         }
 
-        res.json({ success: true, url: fileUrl });
+        res.json({ success: true, url: fileUrl, secure_url: fileUrl });
     } catch (error) {
         next(error);
     }

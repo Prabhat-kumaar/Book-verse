@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { FaFacebook, FaTwitter, FaLinkedin, FaWhatsapp, FaCopy, FaCheck, FaBookOpen, FaRegBookmark, FaRegHeart, FaBookmark, FaHeart } from 'react-icons/fa';
+import { FaTwitter, FaLinkedin, FaCopy, FaCheck, FaBookOpen, FaRegBookmark, FaRegHeart, FaBookmark, FaHeart } from 'react-icons/fa';
 import SEO from '../components/SEO';
 import MainLayout from '../layout/MainLayout';
-import SaveBookHeart from '../components/SaveBookHeart';
 import { buildApiUrl } from '../lib/apiConfig';
-import { getBookThumbnailUrl } from '../lib/mediaUrls';
+import { getBookThumbnailUrl, FALLBACK_THUMBNAIL } from '../lib/mediaUrls';
 
-// Helper to resolve colored category badges matching I-CARD design
+// Helper to resolve colored category badges matching brand design
 const getCategoryBadgeStyles = (cat) => {
     const cleanCat = (cat || '').toLowerCase().trim();
     if (cleanCat.includes('classic')) {
@@ -64,346 +63,51 @@ const Shine = React.memo(function Shine({ className = '' }) {
 });
 
 /**
- * Loading Skeleton Screen matching page layout
+ * Loading Skeleton Screen matching new magazine layout
  */
 const LoadingSkeleton = React.memo(function LoadingSkeleton() {
     return (
-        <div className="animate-pulse flex flex-col gap-6">
+        <div className="animate-pulse flex flex-col gap-6 w-full max-w-[720px] mx-auto py-10">
             {/* Hero skeleton */}
-            <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-slate-950/20 h-[280px] w-full p-6 flex flex-col justify-end">
+            <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-slate-950/20 h-[300px] w-full p-6 flex flex-col justify-end">
                 <div className="h-4 w-40 mb-3"><Shine /></div>
-                <div className="h-8 w-2/3 mb-2"><Shine /></div>
+                <div className="h-10 w-2/3 mb-2"><Shine /></div>
                 <div className="h-4 w-1/3"><Shine /></div>
             </div>
 
-            {/* Split layout skeleton */}
-            <div className="flex flex-col lg:flex-row gap-8 mt-4">
-                {/* Main Content */}
-                <div className="w-full lg:w-[70%] rounded-2xl border border-white/10 bg-white/[0.02] p-5 sm:p-7 flex flex-col gap-4">
-                    <div className="flex items-center gap-3 border-b border-white/5 pb-4 mb-4">
-                        <div className="h-10 w-10 rounded-full overflow-hidden"><Shine /></div>
-                        <div className="space-y-2">
-                            <div className="h-3.5 w-24"><Shine /></div>
-                            <div className="h-3 w-36"><Shine /></div>
-                        </div>
-                    </div>
-                    <div className="h-4 w-full"><Shine /></div>
-                    <div className="h-4 w-full"><Shine /></div>
-                    <div className="h-4 w-5/6"><Shine /></div>
-                    <div className="h-4 w-4/5"><Shine /></div>
-                    <div className="h-[200px] w-full rounded-xl my-4"><Shine /></div>
-                    <div className="h-4 w-full"><Shine /></div>
-                    <div className="h-4 w-11/12"><Shine /></div>
-                </div>
-
-                {/* Sidebar */}
-                <div className="w-full lg:w-[30%] flex flex-col gap-6">
-                    {/* Books */}
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
-                        <div className="h-5 w-48 mb-4"><Shine /></div>
-                        <div className="space-y-4">
-                            {[1, 2].map(i => (
-                                <div key={i} className="flex gap-3">
-                                    <div className="h-20 w-14 rounded-lg overflow-hidden"><Shine /></div>
-                                    <div className="flex-1 space-y-2 py-1">
-                                        <div className="h-3.5 w-24"><Shine /></div>
-                                        <div className="h-3 w-16"><Shine /></div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+            {/* Content block skeletons */}
+            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 sm:p-7 flex flex-col gap-4">
+                <div className="flex items-center gap-3 border-b border-white/5 pb-4 mb-4">
+                    <div className="h-10 w-10 rounded-full overflow-hidden"><Shine /></div>
+                    <div className="space-y-2">
+                        <div className="h-3.5 w-24"><Shine /></div>
+                        <div className="h-3 w-36"><Shine /></div>
                     </div>
                 </div>
+                <div className="h-4 w-full"><Shine /></div>
+                <div className="h-4 w-full"><Shine /></div>
+                <div className="h-4 w-5/6"><Shine /></div>
+                <div className="h-[200px] w-full rounded-xl my-4"><Shine /></div>
+                <div className="h-4 w-full"><Shine /></div>
+                <div className="h-4 w-11/12"><Shine /></div>
             </div>
         </div>
     );
 });
 
 /**
- * Sub-component: Breadcrumb navigation
- */
-const Breadcrumb = React.memo(function Breadcrumb({ blogTitle }) {
-    return (
-        <nav className="flex items-center gap-2 text-xs font-bold text-slate-350 select-none">
-            <Link to="/" className="hover:text-purple-400 transition-colors">Home</Link>
-            <span>/</span>
-            <Link to="/blog" className="hover:text-purple-400 transition-colors">Blog</Link>
-            <span>/</span>
-            <span className="text-white line-clamp-1 max-w-[200px] sm:max-w-[300px]">
-                {blogTitle}
-            </span>
-        </nav>
-    );
-});
-
-/**
- * Sub-component: Hero Section (with overlay & breadcrumb)
- */
-const HeroSection = React.memo(function HeroSection({ blog, readTime, formattedDate }) {
-    return (
-        <div className="relative rounded-3xl overflow-hidden border border-purple-500/20 bg-gradient-to-b from-[#0a0f24] via-[#1a0f30] to-black h-[400px] w-full shadow-2xl flex items-center">
-            {/* Blurred background cover image overlay */}
-            {blog.coverImage && (
-                <div
-                    className="absolute inset-0 bg-cover bg-center filter blur-lg opacity-15 scale-105 pointer-events-none"
-                    style={{ backgroundImage: `url(${blog.coverImage})` }}
-                />
-            )}
-
-            {/* Ambient glow blobs */}
-            <div className="absolute -left-10 -top-10 w-40 h-40 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-pink-600/5 rounded-full blur-3xl pointer-events-none" />
-
-            <div className="max-w-4xl mx-auto px-6 sm:px-10 w-full text-left relative z-10">
-                <div className="mb-4">
-                    <Breadcrumb blogTitle={blog.title} />
-                </div>
-                <div className="mb-4">
-                    <span className="inline-block bg-purple-600 text-white px-4 py-1 rounded-full text-sm font-semibold uppercase tracking-wider shadow-lg shadow-purple-600/25">
-                        {blog.category}
-                    </span>
-                </div>
-                <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white mb-4 tracking-tight leading-tight">
-                    {blog.title}
-                </h1>
-                <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-400 font-bold uppercase tracking-wider">
-                    <span>BY {blog.author?.username?.toUpperCase() || 'ADMIN'}</span>
-                    <span>•</span>
-                    <span>{formattedDate.toUpperCase()}</span>
-                    <span>•</span>
-                    <span>{readTime.toUpperCase()}</span>
-                </div>
-            </div>
-        </div>
-    );
-});
-
-/**
- * Sub-component: Render HTML blog content
- */
-const BlogContent = React.memo(function BlogContent({ blog, readTime, formattedDate, headings, contentHtml }) {
-    return (
-        <article className="rounded-2xl border border-purple-500/20 bg-slate-950/20 p-6 sm:p-8 backdrop-blur-xl transition-colors duration-300">
-            {/* Author Avatar & Header row in clean horizontal layout */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-purple-500/10 pb-5 mb-8 text-left">
-                <div className="flex items-center gap-3.5">
-                    <div className="h-12 w-12 overflow-hidden rounded-full bg-purple-500/20 ring-2 ring-purple-500/30 flex items-center justify-center text-base font-bold text-purple-300 shrink-0">
-                        {blog.author?.avatar ? (
-                            <img
-                                src={blog.author.avatar}
-                                alt={blog.author?.username || 'Author'}
-                                className="h-full w-full object-cover"
-                            />
-                        ) : (
-                            (blog.author?.username || 'A').charAt(0).toUpperCase()
-                        )}
-                    </div>
-                    <div>
-                        <h4 className="text-sm font-bold text-white">{blog.author?.username || 'Admin'}</h4>
-                        <p className="text-[11px] text-slate-400 mt-0.5">Published on {formattedDate}</p>
-                    </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                    <span className="bg-purple-600 text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
-                        {blog.category}
-                    </span>
-                    <span className="bg-slate-900 border border-purple-500/20 text-purple-200 px-3 py-1 rounded-full text-[10px] font-bold backdrop-blur-md">
-                        {readTime}
-                    </span>
-                </div>
-            </div>
-
-            {/* Blog Cover Image */}
-            {blog.coverImage && (
-                <div className="mb-8 overflow-hidden rounded-2xl border border-purple-500/20 shadow-lg max-h-[400px] w-full relative">
-                    <img
-                        src={blog.coverImage}
-                        alt={blog.title}
-                        className="w-full h-full object-cover hover:scale-[1.01] transition-transform duration-500"
-                    />
-                </div>
-            )}
-
-            {/* Mobile Table of Contents */}
-            {headings && headings.length > 0 && (
-                <div className="mb-6 rounded-xl border border-purple-500/10 bg-slate-950/40 p-4 lg:hidden text-left transition-colors">
-                    <details className="group">
-                        <summary className="flex items-center justify-between text-xs font-bold text-slate-200 cursor-pointer select-none">
-                            <span>Table of Contents</span>
-                            <span className="transition-transform duration-200 group-open:rotate-180">▼</span>
-                        </summary>
-                        <ul className="mt-3 space-y-2.5 text-xs font-semibold text-slate-400 border-t border-purple-500/10 pt-3">
-                            {headings.map((item) => (
-                                <li
-                                    key={item.id}
-                                    style={{ paddingLeft: `${(item.level - 2) * 12}px` }}
-                                >
-                                    <a
-                                        href={`#${item.id}`}
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            document.getElementById(item.id)?.scrollIntoView({ behavior: 'smooth' });
-                                        }}
-                                        className="hover:text-purple-400 transition-colors"
-                                    >
-                                        {item.text}
-                                    </a>
-                                </li>
-                            ))}
-                        </ul>
-                    </details>
-                </div>
-            )}
-
-            {/* Render HTML content with premium styling rules */}
-            <div
-                className="blog-content-html blog-content prose-blog text-slate-300 text-base leading-relaxed space-y-6 text-left 
-                [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:text-white [&_h1]:mb-4 [&_h1]:mt-8
-                [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:text-purple-300 [&_h2]:mb-3 [&_h2]:mt-8
-                [&_h3]:text-xl [&_h3]:font-semibold [&_h3]:text-slate-205 [&_h3]:mb-2 [&_h3]:mt-6
-                [&_p]:text-slate-300 [&_p]:leading-relaxed [&_p]:mb-4
-                [&_a]:text-purple-400 [&_a]:underline hover:text-purple-300 [&_a]:transition-colors
-                [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-2 [&_ul]:mb-4 [&_ul]:text-slate-300
-                [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:space-y-2 [&_ol]:mb-4 [&_ol]:text-slate-300
-                [&_li]:pl-1
-                [&_img]:rounded-xl [&_img]:max-w-full [&_img]:my-6 [&_img]:h-auto [&_img]:shadow-lg
-                [&_blockquote]:border-l-4 [&_blockquote]:border-purple-500 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-slate-400 [&_blockquote]:my-6
-                [&_pre]:bg-slate-900 [&_pre]:rounded-xl [&_pre]:p-4 [&_pre]:overflow-x-auto [&_pre]:my-6
-                [&_code]:bg-slate-800 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-purple-300 [&_code]:text-sm
-                prose prose-invert max-w-none transition-colors duration-300 clearfix"
-                dangerouslySetInnerHTML={{ __html: contentHtml }}
-            />
-
-            {/* Tags wrapper */}
-            {blog.tags && blog.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-8 pt-6 border-t border-purple-500/10">
-                    {blog.tags.map(tag => (
-                        <span key={tag} className="text-xs font-semibold text-slate-300 bg-purple-500/5 border border-purple-500/10 px-2.5 py-1 rounded-lg transition-colors hover:border-purple-500/30">
-                            #{tag}
-                        </span>
-                    ))}
-                </div>
-            )}
-
-            {/* About the Author Bio Card */}
-            <div className="mt-8 rounded-2xl border border-purple-500/20 bg-slate-900/85 p-6 flex flex-col sm:flex-row gap-5 items-center text-left transition-all duration-300 hover:border-purple-500/30">
-                <div className="h-16 w-16 overflow-hidden rounded-full bg-purple-500/20 ring-2 ring-purple-500/30 flex items-center justify-center text-xl font-bold text-purple-300 shrink-0">
-                    {blog.author?.avatar ? (
-                        <img src={blog.author.avatar} alt={blog.author?.username} className="h-full w-full object-cover" />
-                    ) : (
-                        (blog.author?.username || 'A').charAt(0).toUpperCase()
-                    )}
-                </div>
-                <div>
-                    <h4 className="text-sm font-bold text-white">About the Author: {blog.author?.username || 'Admin'}</h4>
-                    <p className="text-xs text-slate-300 mt-2 leading-relaxed">
-                        {blog.author?.bio || 'Passionate writer, literary analyst, and curator of the Readify AI journal. Sharing the best reading recommendations, studying insights, and classic book deep dives.'}
-                    </p>
-                </div>
-            </div>
-        </article>
-    );
-});
-
-/**
- * Sub-component: Share Dialog and Copy Link Options (Redesigned)
- */
-const ShareButtons = React.memo(function ShareButtons({ title, slug }) {
-    const [copied, setCopied] = useState(false);
-
-    const shareUrl = useMemo(() => {
-        return `${window.location.origin}/blog/${slug}`;
-    }, [slug]);
-
-    const handleCopy = useCallback(() => {
-        navigator.clipboard.writeText(shareUrl).then(() => {
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        });
-    }, [shareUrl]);
-
-    // Social share links
-    const shareLinks = {
-        twitter: `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(title)}`,
-        linkedin: `https://www.linkedin.com/shareArticle?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(title)}`,
-        whatsapp: `https://api.whatsapp.com/send?text=${encodeURIComponent(title + ' - ' + shareUrl)}`
-    };
-
-    return (
-        <div className="rounded-2xl border border-purple-500/20 bg-slate-900/80 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left transition-colors">
-            <div>
-                <h4 className="text-xs font-bold text-white uppercase tracking-wider text-purple-400">Share This Post</h4>
-                <p className="text-xs text-slate-405 mt-1">Share this article with your reading circle.</p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2.5">
-                {/* Twitter */}
-                <a
-                    href={shareLinks.twitter}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-sky-500/20 bg-sky-600/10 px-4 py-2 text-xs font-bold text-sky-200 transition hover:bg-sky-600 hover:text-white"
-                >
-                    <FaTwitter className="text-sky-400" />
-                    <span>Twitter</span>
-                </a>
-
-                {/* Linkedin */}
-                <a
-                    href={shareLinks.linkedin}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-blue-600/20 bg-blue-750/10 px-4 py-2 text-xs font-bold text-blue-200 transition hover:bg-blue-600 hover:text-white"
-                >
-                    <FaLinkedin className="text-blue-400" />
-                    <span>LinkedIn</span>
-                </a>
-
-                {/* Whatsapp */}
-                <a
-                    href={shareLinks.whatsapp}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-600/10 px-4 py-2 text-xs font-bold text-emerald-200 transition hover:bg-emerald-600 hover:text-white"
-                >
-                    <FaWhatsapp className="text-emerald-400" />
-                    <span>WhatsApp</span>
-                </a>
-
-                {/* Copy Link */}
-                <button
-                    type="button"
-                    onClick={handleCopy}
-                    className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-purple-500/20 bg-purple-500/5 px-4 py-2 text-xs font-bold text-slate-200 transition hover:bg-purple-600 hover:text-white cursor-pointer"
-                    title="Copy Article Link"
-                >
-                    {copied ? (
-                        <>
-                            <FaCheck className="text-emerald-500 animate-[fadeIn_200ms_ease-out]" />
-                            <span className="text-emerald-500">Copied!</span>
-                        </>
-                    ) : (
-                        <>
-                            <FaCopy className="text-purple-400" />
-                            <span>Copy Link</span>
-                        </>
-                    )}
-                </button>
-            </div>
-        </div>
-    );
-});
-
-/**
- * Sub-component: Table of Contents (Desktop Sticky TOC)
+ * Sub-component: Table of Contents (Desktop Sticky TOC Style, rendered inline before content)
  */
 const TableOfContents = React.memo(function TableOfContents({ headings }) {
     if (!headings || headings.length === 0) return null;
 
     return (
-        <div className="rounded-2xl border border-purple-500/20 bg-slate-900/80 p-5 text-left transition-all duration-300 hover:border-purple-500/30">
-            <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-4">Table of Contents</h4>
-            <ul className="space-y-2.5 text-xs font-semibold text-slate-350 border-t border-purple-500/10 pt-3">
+        <details className="group border border-purple-500/20 bg-[#1a1d2e] rounded-xl p-4 sm:p-5 mb-8 text-left transition-all">
+            <summary className="text-sm font-bold text-purple-400 uppercase tracking-wider cursor-pointer list-none flex items-center justify-between select-none">
+                <span>Table of Contents</span>
+                <span className="text-xs transition-transform duration-200 group-open:rotate-180">▼</span>
+            </summary>
+            <ul className="space-y-2.5 text-xs font-semibold text-slate-300 border-t border-purple-500/10 pt-3 mt-3">
                 {headings.map((item) => (
                     <li
                         key={item.id}
@@ -422,149 +126,12 @@ const TableOfContents = React.memo(function TableOfContents({ headings }) {
                     </li>
                 ))}
             </ul>
-        </div>
+        </details>
     );
 });
 
 /**
- * Sub-component: Premium CTA Box after blog content
- */
-const BlogCTA = React.memo(function BlogCTA() {
-    return (
-        <div className="relative rounded-2xl border border-purple-500/20 bg-gradient-to-br from-[#0c1033] via-[#3c1e78] to-[#090514] p-6 sm:p-8 text-center overflow-hidden transition-all duration-300 shadow-md hover:shadow-lg">
-            <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-purple-500/10 via-purple-500/5 to-transparent" />
-
-            <span className="text-3.5xl">📚</span>
-            <h3 className="mt-4 text-lg sm:text-xl font-extrabold text-white tracking-tight">
-                Ready to Start Reading?
-            </h3>
-            <p className="mt-2 text-xs sm:text-sm text-slate-300 max-w-lg mx-auto leading-relaxed">
-                Dive into our curated selection of digital books, track your streaks, and read interactively with AI assistance.
-            </p>
-
-            <div className="mt-6 flex flex-wrap justify-center gap-3 relative z-10">
-                <Link
-                    to="/books"
-                    className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 px-6 py-2.5 text-xs font-bold text-white transition shadow-md shadow-purple-500/20"
-                >
-                    Explore All Books
-                </Link>
-                <Link
-                    to="/blog"
-                    className="inline-flex items-center justify-center rounded-xl border border-purple-500/30 bg-purple-550/5 px-6 py-2.5 text-xs font-bold text-purple-200 transition hover:bg-purple-500/10 hover:text-white"
-                >
-                    Browse More Articles
-                </Link>
-            </div>
-        </div>
-    );
-});
-
-/**
- * Sub-component: Sidebar -> Related Books
- */
-const RelatedBooks = React.memo(function RelatedBooks({ relatedBooks }) {
-    if (!relatedBooks || relatedBooks.length === 0) return null;
-
-    return (
-        <div className="rounded-2xl border border-purple-500/20 bg-slate-900/80 p-5 text-left transition-colors">
-            <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                <FaBookOpen className="text-purple-450" />
-                Mentioned in This Post
-            </h4>
-            <div className="space-y-4 border-t border-purple-500/10 pt-4">
-                {relatedBooks.map((book) => {
-                    const readLink = book.slug ? `/read/${book.slug}` : `/book/${book._id}`;
-                    return (
-                        <div key={book._id} className="group relative flex gap-3 p-2 rounded-xl hover:bg-slate-950/45 border border-transparent hover:border-purple-500/10 transition-all">
-                            {/* Thumbnail area with save heart */}
-                            <div className="relative aspect-[3/4] w-14 overflow-hidden rounded-xl bg-slate-900/60 ring-1 ring-purple-500/10 shrink-0 shadow-md">
-                                <img
-                                    loading="lazy"
-                                    src={getBookThumbnailUrl(book)}
-                                    alt={book.title}
-                                    className="h-full w-full object-cover"
-                                />
-                                <SaveBookHeart bookId={book._id} book={book} className="scale-75 right-1.5 top-1.5" />
-                            </div>
-
-                            {/* Details & link */}
-                            <div className="flex-1 flex flex-col justify-between py-0.5 min-w-0 text-left">
-                                <div>
-                                    <h5 className="text-xs font-bold text-white line-clamp-1 group-hover:text-purple-400 transition-colors">
-                                        <Link to={`/book/${book._id}`}>{book.title}</Link>
-                                    </h5>
-                                    <p className="text-[10px] text-gray-400 font-medium line-clamp-1 mt-0.5">
-                                        {book.author}
-                                    </p>
-                                </div>
-
-                                <Link
-                                    to={readLink}
-                                    className="inline-flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-705 hover:to-purple-805 text-white py-1.5 text-[10px] font-bold transition-all shadow-md shadow-purple-500/10"
-                                >
-                                    Read Now
-                                </Link>
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
-        </div>
-    );
-});
-
-/**
- * Sub-component: Sidebar -> Related Blog Posts
- */
-const RelatedBlogs = React.memo(function RelatedBlogs({ relatedBlogs }) {
-    if (!relatedBlogs || relatedBlogs.length === 0) return null;
-
-    return (
-        <div className="rounded-2xl border border-purple-500/20 bg-slate-900/80 p-5 text-left transition-colors">
-            <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-4">You Might Also Like</h4>
-            <div className="space-y-4 border-t border-purple-500/10 pt-4">
-                {relatedBlogs.map((blog) => (
-                    <article key={blog.slug} className="group flex flex-col gap-2 p-2 rounded-xl hover:bg-slate-950/40 border border-transparent hover:border-purple-500/10 transition-all">
-                        {/* Cover thumbnail */}
-                        <Link to={`/blog/${blog.slug}`} className="aspect-[16/9] w-full overflow-hidden rounded-lg bg-slate-950/60 border border-purple-500/10 relative block">
-                            {blog.coverImage ? (
-                                <img
-                                    loading="lazy"
-                                    src={blog.coverImage}
-                                    alt={blog.title}
-                                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                />
-                              ) : (
-                                  <div className="grid h-full w-full place-items-center bg-gradient-to-br from-indigo-900/50 to-purple-900/50 p-2 text-center text-[10px] font-semibold text-white">
-                                      {blog.title}
-                                  </div>
-                              )}
-                          </Link>
-
-                          <div className="text-left">
-                              <h5 className="text-xs font-bold text-white line-clamp-1 group-hover:text-purple-400 transition-colors">
-                                  <Link to={`/blog/${blog.slug}`}>{blog.title}</Link>
-                              </h5>
-                              <p className="text-[10px] leading-relaxed text-slate-405 line-clamp-2 mt-1">
-                                  {truncateExcerpt(blog.excerpt)}
-                              </p>
-                              <Link
-                                  to={`/blog/${blog.slug}`}
-                                  className="inline-flex items-center justify-center rounded-lg bg-purple-600/10 border border-purple-500/20 hover:bg-purple-600 hover:text-white text-purple-300 px-3 py-1.5 text-[10px] font-bold transition-all duration-300 mt-2"
-                              >
-                                  Read
-                              </Link>
-                          </div>
-                      </article>
-                  ))}
-              </div>
-          </div>
-      );
-  });
-
-/**
- * Sub-component: Sidebar -> Subscribe Form
+ * Sub-component: Newsletter CTA & Subscribe Form (Full width, dark purple gradient)
  */
 const Subscribe = React.memo(function Subscribe() {
     const [email, setEmail] = useState('');
@@ -579,41 +146,46 @@ const Subscribe = React.memo(function Subscribe() {
     }, [email]);
 
     return (
-        <div className="rounded-2xl border border-purple-500/20 bg-slate-900/80 p-5 text-left relative overflow-hidden transition-colors">
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-purple-500/5 to-purple-500/0" />
+        <div className="mt-16 w-full relative overflow-hidden rounded-3xl border border-purple-500/20 bg-gradient-to-r from-[#1a0f3c] via-[#0d0f1a] to-[#2b104c] px-6 py-12 text-center shadow-2xl">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-purple-500/5 to-transparent pointer-events-none" />
+            
+            <div className="relative z-10">
+                <span className="text-4xl">📧</span>
+                <h3 className="mt-4 text-2xl font-black text-white tracking-tight sm:text-3xl">
+                    Get Weekly Book Summaries
+                </h3>
+                <p className="mt-2 text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
+                    Join thousands of Indian students reading smarter. Receive classic summaries, study guides, and literary reviews directly in your inbox weekly.
+                </p>
 
-            <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider relative">Stay Updated</h4>
-            <p className="text-xs text-slate-400 mt-1 relative">
-                Get new blog posts delivered directly to your inbox.
-            </p>
-
-            {success ? (
-                <div className="mt-4 rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-3.5 text-center text-xs text-emerald-300 font-bold animate-[fadeIn_200ms_ease-out]">
-                    Subscription success! ✓
-                </div>
-            ) : (
-                <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-2 relative">
-                    <input
-                        type="email"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="your@email.com"
-                        className="w-full rounded-xl border border-purple-500/20 bg-slate-950/40 px-3 py-2.5 text-xs font-semibold text-white placeholder-zinc-500 outline-none transition focus:border-purple-500"
-                    />
-                    <button
-                        type="submit"
-                        className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 py-2.5 text-xs font-bold text-white transition shadow-md shadow-purple-500/10 cursor-pointer"
-                    >
-                        Subscribe
-                    </button>
-                </form>
-            )}
+                {success ? (
+                    <div className="mt-6 max-w-md mx-auto rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-center text-sm text-emerald-300 font-bold animate-[fadeIn_200ms_ease-out]">
+                        Subscription success! ✓ You're on the list.
+                    </div>
+                ) : (
+                    <form onSubmit={handleSubmit} className="mt-6 max-w-md mx-auto flex flex-col sm:flex-row gap-3">
+                        <input
+                            type="email"
+                            required
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="Enter your email address"
+                            className="flex-1 rounded-xl border border-purple-500/20 bg-slate-950/60 px-4 py-3 text-sm font-semibold text-white placeholder-zinc-500 outline-none transition focus:border-purple-500"
+                        />
+                        <button
+                            type="submit"
+                            className="rounded-xl bg-gradient-to-r from-purple-600 to-purple-750 hover:from-purple-700 hover:to-purple-800 px-6 py-3 text-sm font-bold text-white transition shadow-lg shadow-purple-500/20 cursor-pointer shrink-0"
+                        >
+                            Subscribe
+                        </button>
+                    </form>
+                )}
+            </div>
         </div>
     );
 });
 
-// Static Data Source containing all 10 classic books featured in the post
+// Static Data Source containing fallback books featured in some articles
 const FEATURED_BOOKS_DATA = [
     {
         title: "Pride and Prejudice",
@@ -677,59 +249,6 @@ const FEATURED_BOOKS_DATA = [
     }
 ];
 
-/**
- * Sub-component: Gallery of featured books in this post
- */
-const BookCoversGallery = React.memo(function BookCoversGallery({ relatedBooks, slug }) {
-    // Determine the source of books (fallback to the static 10 books for this specific post)
-    const books = slug === 'top-10-best-free-books-to-read-online-2026' || slug === 'current-best-selling-books-10-outstanding-titles-worth-reading' || !relatedBooks || relatedBooks.length === 0
-        ? FEATURED_BOOKS_DATA
-        : relatedBooks;
-
-    return (
-        <div className="rounded-3xl border border-purple-500/20 bg-slate-900/80 px-6 py-10 shadow-2xl animate-[fadeIn_300ms_ease-out] text-left">
-            <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">
-                Featured Books in This Post
-            </h2>
-            <p className="text-slate-400 mb-8 text-xs font-semibold uppercase tracking-wider">
-                All {books.length} classic books mentioned in this article
-            </p>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-                {books.map((book) => {
-                    const readLink = book.slug ? `/read/${book.slug}` : `/book/${book._id}`;
-                    const coverUrl = book.coverImage || getBookThumbnailUrl(book);
-
-                    return (
-                        <div key={book.slug || book._id} className="group cursor-pointer flex flex-col justify-between">
-                            <div>
-                                <div className="relative mb-3 overflow-hidden rounded-lg shadow-lg hover:shadow-2xl hover:shadow-purple-500/50 transition-all duration-305">
-                                    <img
-                                        src={coverUrl}
-                                        alt={book.title}
-                                        className="w-full aspect-[3/4] object-cover group-hover:scale-110 transition-transform duration-500"
-                                    />
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                                        <Link to={readLink} className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 shadow-lg shadow-purple-600/30 text-xs transition-all hover:scale-105 active:scale-95">
-                                            Read Now
-                                        </Link>
-                                    </div>
-                                </div>
-                                <h4 className="text-white font-bold text-sm line-clamp-2 group-hover:text-purple-400 transition-colors leading-snug">
-                                    <Link to={readLink}>{book.title}</Link>
-                                </h4>
-                            </div>
-                            <p className="text-slate-400 text-xs font-semibold mt-1.5">{book.author}</p>
-                        </div>
-                    );
-                })}
-            </div>
-        </div>
-    );
-});
-
-/**
- * Main BlogDetailPage Component
- */
 export default function BlogDetailPage() {
     const { slug } = useParams();
     const navigate = useNavigate();
@@ -742,6 +261,9 @@ export default function BlogDetailPage() {
     const [error, setError] = useState('');
     const [scrollPercent, setScrollPercent] = useState(0);
     const [showBackToTop, setShowBackToTop] = useState(false);
+    const [isBookmarked, setIsBookmarked] = useState(false);
+    const [isLiked, setIsLiked] = useState(false);
+    const [copied, setCopied] = useState(false);
 
     // Reading Progress Listener
     useEffect(() => {
@@ -834,7 +356,7 @@ export default function BlogDetailPage() {
             return `<h${level} id="${id}" ${attrs}>${text}</h${level}>`;
         });
 
-        // 2. Parse and inject book cover layout on the right (Option B)
+        // 2. Parse and inject book cover layout on the right
         if (typeof window === 'undefined' || !window.DOMParser) {
             return html;
         }
@@ -842,6 +364,40 @@ export default function BlogDetailPage() {
         try {
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
+
+            // Merge consecutive short paragraphs that do not end in sentence punctuation (copy-paste newline fix)
+            const paragraphs = Array.from(doc.querySelectorAll('p'));
+            const isPseudoHeading = (el) => {
+                const cleanText = el.textContent.trim();
+                return el.children.length === 1 && 
+                       (el.children[0].tagName === 'STRONG' || el.children[0].tagName === 'B') && 
+                       cleanText === el.children[0].textContent.trim();
+            };
+
+            for (let i = 0; i < paragraphs.length; i++) {
+                const p = paragraphs[i];
+                if (!p.parentNode) continue;
+                if (p.parentNode.tagName !== 'BODY' && p.parentNode.tagName !== 'DIV') continue;
+                if (isPseudoHeading(p)) continue;
+
+                while (true) {
+                    const next = p.nextElementSibling;
+                    if (!next || next.tagName !== 'P') break;
+
+                    const text = p.textContent.trim();
+                    if (!text) break;
+
+                    const endsWithPunctuation = /[.!?]['"”’]?$/.test(text);
+                    if (endsWithPunctuation || text.length > 110 || isPseudoHeading(next)) break;
+
+                    p.appendChild(doc.createTextNode(' '));
+                    while (next.firstChild) {
+                        p.appendChild(next.firstChild);
+                    }
+                    next.parentNode.removeChild(next);
+                }
+            }
+
             const docHeadings = doc.querySelectorAll('h2, h3');
 
             docHeadings.forEach((heading) => {
@@ -890,6 +446,9 @@ export default function BlogDetailPage() {
                     img.src = resolvedCoverUrl;
                     img.alt = matchedBook.title;
                     img.className = "w-full h-auto rounded-lg shadow-lg border border-purple-500/10 hover:scale-[1.02] transition-transform duration-300";
+                    // Fallback to mediaUrls static FALLBACK_THUMBNAIL SVG on error (escaped single quotes for html safety)
+                    const escapedFallback = (FALLBACK_THUMBNAIL || '').replace(/'/g, "\\'");
+                    img.setAttribute('onerror', `this.onerror=null; this.src='${escapedFallback}';`);
                     coverCol.appendChild(img);
 
                     // Book Details Column
@@ -976,10 +535,7 @@ export default function BlogDetailPage() {
         };
     }, [blog]);
 
-    const [isBookmarked, setIsBookmarked] = useState(false);
-    const [isLiked, setIsLiked] = useState(false);
-    const [copied, setCopied] = useState(false);
-
+    // Link Copy Action
     const handleCopy = useCallback(() => {
         const shareUrl = `${window.location.origin}/blog/${slug}`;
         navigator.clipboard.writeText(shareUrl).then(() => {
@@ -990,6 +546,81 @@ export default function BlogDetailPage() {
 
     return (
         <React.Fragment>
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
+                
+                .blog-content {
+                    font-family: Georgia, Cambria, "Times New Roman", Times, serif !important;
+                }
+                .blog-content p {
+                    margin-bottom: 1.5rem !important;
+                    line-height: 1.8 !important;
+                    font-size: 1.25rem !important;
+                    color: #cbd5e1 !important;
+                    text-align: left !important;
+                }
+                .blog-content p:empty {
+                    display: none !important;
+                }
+                .blog-content h2, .blog-content h3, .blog-content h4, .blog-content h5, .blog-content h6 {
+                    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+                    text-align: left !important;
+                }
+                .blog-content ul, .blog-content ol, .blog-content li, .blog-content blockquote {
+                    text-align: left !important;
+                }
+                .blog-content h2 {
+                    font-size: 1.75rem !important;
+                    font-weight: 700 !important;
+                    color: #f1f5f9 !important;
+                    margin: 2.5rem 0 1rem !important;
+                    line-height: 1.3 !important;
+                }
+                .blog-content h3 {
+                    font-size: 1.35rem !important;
+                    font-weight: 600 !important;
+                    color: #e2e8f0 !important;
+                    margin: 2rem 0 0.75rem !important;
+                    line-height: 1.3 !important;
+                }
+                .blog-content ul, .blog-content ol {
+                    padding-left: 1.5rem !important;
+                    margin-bottom: 1.25rem !important;
+                    color: #cbd5e1 !important;
+                }
+                .blog-content li {
+                    margin-bottom: 0.5rem !important;
+                    line-height: 1.8 !important;
+                    font-size: 1.25rem !important;
+                }
+                .blog-content blockquote {
+                    border-left: 4px solid #7c3aed !important;
+                    padding: 1rem 1.5rem !important;
+                    background: #1a1d2e !important;
+                    border-radius: 0 8px 8px 0 !important;
+                    margin: 2rem 0 !important;
+                    font-style: italic !important;
+                    color: #a78bfa !important;
+                }
+                .blog-content a {
+                    color: #a855f7 !important;
+                    text-decoration: underline !important;
+                }
+                .blog-content strong {
+                    color: #f1f5f9 !important;
+                }
+                @media (max-width: 640px) {
+                    .blog-content p {
+                        font-size: 1.125rem !important;
+                        line-height: 1.7 !important;
+                    }
+                    .blog-content li {
+                        font-size: 1.125rem !important;
+                        line-height: 1.7 !important;
+                    }
+                }
+            `}</style>
+
             {/* 1. SEO Helmet Wrapper */}
             {blog && (
                 <SEO
@@ -1004,141 +635,146 @@ export default function BlogDetailPage() {
             {/* 2. Reading Progress Indicator */}
             {!loading && blog && (
                 <div
-                    className="fixed top-0 left-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 z-[100] transition-all duration-100 ease-out"
+                    className="fixed top-0 left-0 h-1 bg-gradient-to-r from-purple-600 via-purple-500 to-fuchsia-500 z-[100] transition-all duration-100 ease-out"
                     style={{ width: `${scrollPercent}%` }}
                 />
             )}
 
-            {/* 3. MainLayout Wrapper */}
+            {/* 3. Main Page Container */}
             <MainLayout>
-                <div className="max-w-3xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-10">
+                <div className="w-full min-h-screen bg-[#0d0f1a] text-slate-100 flex flex-col items-center">
                     {loading ? (
-                        <LoadingSkeleton />
+                        <div className="max-w-3xl mx-auto w-full px-4 py-16">
+                            <LoadingSkeleton />
+                        </div>
                     ) : error ? (
-                        <div className="rounded-2xl border border-rose-300/20 bg-rose-500/10 p-8 text-center max-w-md mx-auto my-12 animate-[fadeIn_200ms_ease-out]">
-                            <span className="text-3xl">⚠️</span>
-                            <h3 className="mt-3 text-base font-bold text-white">Could not load article</h3>
-                            <p className="mt-2 text-xs text-rose-300/80 leading-relaxed">{error}</p>
-
-                            <div className="mt-6 flex justify-center gap-3">
-                                <button
-                                    type="button"
-                                    onClick={fetchBlogDetail}
-                                    className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 px-5 py-2.5 text-xs font-bold text-white transition shadow-md shadow-purple-500/10 cursor-pointer"
-                                >
-                                    Retry
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => navigate('/blog')}
-                                    className="inline-flex items-center justify-center rounded-xl border border-purple-500/20 bg-purple-500/5 px-5 py-2.5 text-xs font-bold text-purple-200 transition hover:bg-purple-500/10 hover:text-white"
-                                >
-                                    Back to Blog
-                                </button>
+                        <div className="max-w-md mx-auto px-4 py-16 text-center my-12">
+                            <div className="rounded-2xl border border-rose-300/20 bg-rose-500/10 p-8 shadow-xl">
+                                <span className="text-3xl">⚠️</span>
+                                <h3 className="mt-3 text-base font-bold text-white">Could not load article</h3>
+                                <p className="mt-2 text-xs text-rose-300/80 leading-relaxed">{error}</p>
+                                <div className="mt-6 flex justify-center gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={fetchBlogDetail}
+                                        className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 px-5 py-2.5 text-xs font-bold text-white transition shadow-md shadow-purple-500/10 cursor-pointer"
+                                    >
+                                        Retry
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => navigate('/blog')}
+                                        className="inline-flex items-center justify-center rounded-xl border border-purple-500/20 bg-purple-500/5 px-5 py-2.5 text-xs font-bold text-purple-200 transition hover:bg-purple-500/10 hover:text-white"
+                                    >
+                                        Back to Blog
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     ) : !blog ? (
-                        <div className="rounded-2xl border border-purple-500/20 bg-slate-950/20 py-16 text-center max-w-md mx-auto">
-                            <span className="text-3xl">📭</span>
-                            <h3 className="mt-3 text-sm font-bold text-white">Article not found</h3>
-                            <Link
-                                to="/blog"
-                                className="mt-4 inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 px-5 py-2.5 text-xs font-bold text-white transition shadow-md shadow-purple-500/10"
-                            >
-                                Back to Blog
-                            </Link>
-                        </div>
-                    ) : (
-                        <div className="animate-[fadeIn_250ms_ease-out] flex flex-col">
-                            
-                            {/* 4. Header Navigation */}
-                            <div className="flex items-center justify-between mb-6 sm:mb-8 select-none">
+                        <div className="max-w-md mx-auto px-4 py-16 text-center">
+                            <div className="rounded-2xl border border-purple-500/20 bg-slate-950/20 py-16 shadow-xl">
+                                <span className="text-3xl">📭</span>
+                                <h3 className="mt-3 text-sm font-bold text-white">Article not found</h3>
                                 <Link
                                     to="/blog"
-                                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-purple-500/20 bg-slate-900/60 text-slate-300 hover:text-white hover:border-purple-500/40 transition duration-300"
-                                    title="Back to Blog"
+                                    className="mt-4 inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 px-5 py-2.5 text-xs font-bold text-white transition shadow-md shadow-purple-500/10"
                                 >
-                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7 7-7" />
-                                    </svg>
+                                    Back to Blog
                                 </Link>
-                                <span className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1 text-xs font-extrabold uppercase tracking-widest ${getCategoryBadgeStyles(blog.category)}`}>
-                                    • {blog.category}
-                                </span>
                             </div>
-
-                            {/* 5. Cover Image Illustration box */}
-                            {blog.coverImage && (
-                                <div className="rounded-3xl border border-purple-500/20 bg-slate-900/30 p-4 sm:p-5 mb-6 shadow-2xl relative select-none">
+                        </div>
+                    ) : (
+                        <div className="w-full flex flex-col animate-[fadeIn_250ms_ease-out]">
+                            {/* 1. Full-Width Hero Section */}
+                            <div className="relative w-full h-[60vh] min-h-[400px] overflow-hidden select-none">
+                                {blog.coverImage ? (
                                     <img
                                         src={blog.coverImage}
                                         alt={blog.title}
-                                        className="w-full aspect-[16/10] sm:aspect-[16/9] object-cover rounded-2xl shadow-lg border border-purple-500/10"
+                                        className="absolute inset-0 w-full h-full object-cover"
+                                        onError={(e) => {
+                                            e.target.onerror = null;
+                                            e.target.src = '/placeholder-blog.webp';
+                                        }}
                                     />
+                                ) : (
+                                    /* Deep purple gradient fallback hero */
+                                    <div className="absolute inset-0 bg-gradient-to-br from-[#1e0f3c] via-[#0d0f1a] to-[#25104a]" />
+                                )}
+                                
+                                {/* Dark gradient overlay at the bottom */}
+                                <div className="absolute inset-0 bg-gradient-to-t from-[#0d0f1a] via-[#0d0f1a]/50 to-transparent z-10" />
+                                
+                                {/* Back button */}
+                                <div className="absolute top-6 left-6 z-20">
+                                    <Link
+                                        to="/blog"
+                                        className="inline-flex h-10 px-4 items-center justify-center gap-2 rounded-xl border border-white/10 bg-slate-950/60 text-slate-200 hover:text-white hover:bg-slate-950/80 transition duration-300 text-xs font-bold backdrop-blur-md"
+                                    >
+                                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7 7-7" />
+                                        </svg>
+                                        <span>Back to Journal</span>
+                                    </Link>
                                 </div>
-                            )}
 
-                            {/* 6. Meta Row */}
-                            <div className="flex items-center justify-between text-[11px] font-extrabold text-slate-500 uppercase tracking-widest mb-4">
-                                <span>{formattedDate}</span>
-                                <span>{readTime}</span>
-                            </div>
-
-                            {/* 7. Title */}
-                            <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white leading-tight tracking-tight text-left mb-6">
-                                {blog.title}
-                            </h1>
-
-                            {/* 8. Author Block Header */}
-                            <div className="flex items-center gap-3 border-b border-purple-500/10 pb-5 mb-8 text-left">
-                                <div className="h-10 w-10 overflow-hidden rounded-full bg-purple-500/20 ring-2 ring-purple-500/20 flex items-center justify-center font-bold text-purple-300 shrink-0">
-                                    {blog.author?.avatar ? (
-                                        <img src={blog.author.avatar} alt={blog.author?.username} className="h-full w-full object-cover" />
-                                    ) : (
-                                        (blog.author?.username || 'A').charAt(0).toUpperCase()
-                                    )}
-                                </div>
-                                <div>
-                                    <p className="text-white text-xs font-bold">{blog.author?.username || 'Admin'}</p>
-                                    <p className="text-slate-500 text-[10px] mt-0.5">Chief Editor & Curator</p>
-                                </div>
-                            </div>
-
-                            {/* 9. HTML Content Rendering */}
-                            <div
-                                className="blog-content-html blog-content prose-blog text-slate-300 text-base leading-relaxed space-y-6 text-left 
-                                [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:text-white [&_h1]:mb-4 [&_h1]:mt-8
-                                [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:text-purple-300 [&_h2]:mb-3 [&_h2]:mt-8
-                                [&_h3]:text-xl [&_h3]:font-semibold [&_h3]:text-slate-205 [&_h3]:mb-2 [&_h3]:mt-6
-                                [&_p]:text-slate-300 [&_p]:leading-relaxed [&_p]:mb-4
-                                [&_a]:text-purple-400 [&_a]:underline hover:text-purple-300 [&_a]:transition-colors
-                                [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-2 [&_ul]:mb-4 [&_ul]:text-slate-300
-                                [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:space-y-2 [&_ol]:mb-4 [&_ol]:text-slate-300
-                                [&_li]:pl-1
-                                [&_img]:rounded-xl [&_img]:max-w-full [&_img]:my-6 [&_img]:h-auto [&_img]:shadow-lg
-                                [&_blockquote]:border-l-4 [&_blockquote]:border-purple-500 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-slate-400 [&_blockquote]:my-6
-                                [&_pre]:bg-slate-900 [&_pre]:rounded-xl [&_pre]:p-4 [&_pre]:overflow-x-auto [&_pre]:my-6
-                                [&_code]:bg-slate-800 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-purple-300 [&_code]:text-sm
-                                prose prose-invert max-w-none transition-colors duration-300 clearfix"
-                                dangerouslySetInnerHTML={{ __html: processedContent }}
-                            />
-
-                            {/* 10. Tags Row */}
-                            {blog.tags && blog.tags.length > 0 && (
-                                <div className="flex flex-wrap gap-2 mt-8 pt-6 border-t border-purple-500/10">
-                                    {blog.tags.map(tag => (
-                                        <span key={tag} className="text-xs font-semibold text-slate-300 bg-purple-500/5 border border-purple-500/10 px-2.5 py-1 rounded-lg">
-                                            #{tag}
+                                {/* Hero text details */}
+                                <div className="absolute bottom-0 left-0 w-full z-15 px-4 sm:px-6 py-10">
+                                    <div className="max-w-[720px] mx-auto w-full text-left">
+                                        <span className={`inline-block mb-4 rounded-full border px-3 py-1 text-xs font-extrabold uppercase tracking-widest ${getCategoryBadgeStyles(blog.category)}`}>
+                                            • {blog.category}
                                         </span>
-                                    ))}
+                                        <h1 className="text-3xl sm:text-4xl md:text-5xl font-sans font-black text-white leading-tight tracking-tight mb-6">
+                                            {blog.title}
+                                        </h1>
+                                        <div className="flex items-center gap-3.5 text-slate-355 text-xs sm:text-sm">
+                                            <div className="h-8 w-8 overflow-hidden rounded-full bg-purple-500/20 ring-2 ring-purple-500/30 flex items-center justify-center font-bold text-purple-300 shrink-0">
+                                                {blog.author?.avatar ? (
+                                                    <img src={blog.author.avatar} alt={blog.author?.username} className="h-full w-full object-cover" />
+                                                ) : (
+                                                    (blog.author?.username || 'A').charAt(0).toUpperCase()
+                                                )}
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-semibold">
+                                                <span className="text-white uppercase tracking-wider">BY {blog.author?.username || 'Admin'}</span>
+                                                <span className="text-slate-500">•</span>
+                                                <span>{formattedDate}</span>
+                                                <span className="text-slate-500">•</span>
+                                                <span className="bg-purple-500/20 text-purple-300 px-2.5 py-0.5 rounded text-xs font-bold">{readTime}</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                            )}
+                            </div>
 
-                            {/* 11. Bottom Recommendations & widgets */}
-                            <div className="mt-12 space-y-12 border-t border-purple-500/10 pt-10">
-                                {/* About the Author */}
-                                <div className="rounded-2xl border border-purple-500/20 bg-slate-900/85 p-6 flex flex-col sm:flex-row gap-5 items-center text-left hover:border-purple-500/30 transition-all duration-300 animate-[fadeIn_200ms_ease-out]">
-                                    <div className="h-14 w-14 overflow-hidden rounded-full bg-purple-500/20 ring-2 ring-purple-500/30 flex items-center justify-center text-xl font-bold text-purple-300 shrink-0">
+                            {/* 2. Centered Article Content Area */}
+                            <div className="w-full max-w-[720px] mx-auto px-4 sm:px-6 py-10 flex flex-col">
+                                {/* Table of Contents (collapsible) */}
+                                {headings && headings.length > 0 && (
+                                    <TableOfContents headings={headings} />
+                                )}
+
+                                {/* Main Blog Content Body */}
+                                <div
+                                    className="blog-content text-left"
+                                    dangerouslySetInnerHTML={{ __html: processedContent }}
+                                />
+
+                                {/* 3. Tags Row */}
+                                {blog.tags && blog.tags.length > 0 && (
+                                    <div className="flex flex-wrap gap-2 mt-8 pb-8 border-b border-white/5">
+                                        {blog.tags.map(tag => (
+                                            <span key={tag} className="text-xs font-semibold text-purple-300 bg-purple-500/10 border border-purple-500/20 px-3 py-1 rounded-full hover:bg-purple-500/20 transition-all cursor-pointer">
+                                                #{tag}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* 4. Author Card (Elegant Surface styled) */}
+                                <div className="mt-8 rounded-xl border-l-4 border-purple-500 bg-[#1a1d2e] p-6 flex flex-col sm:flex-row gap-5 items-start text-left shadow-lg">
+                                    <div className="h-16 w-16 overflow-hidden rounded-full bg-purple-500/20 ring-2 ring-purple-500/30 flex items-center justify-center text-xl font-bold text-purple-300 shrink-0">
                                         {blog.author?.avatar ? (
                                             <img src={blog.author.avatar} alt={blog.author?.username} className="h-full w-full object-cover" />
                                         ) : (
@@ -1146,35 +782,154 @@ export default function BlogDetailPage() {
                                         )}
                                     </div>
                                     <div>
-                                        <h4 className="text-sm font-bold text-white">About the Author: {blog.author?.username || 'Admin'}</h4>
-                                        <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+                                        <h4 className="text-base font-bold text-white">About the Author: {blog.author?.username || 'Admin'}</h4>
+                                        <p className="text-sm text-slate-300 mt-2 leading-relaxed">
                                             {blog.author?.bio || 'Passionate writer, literary analyst, and curator of the Readify AI journal. Sharing the best reading recommendations, studying insights, and classic book deep dives.'}
                                         </p>
                                     </div>
                                 </div>
 
-                                {/* Mentioned Books Gallery */}
-                                <BookCoversGallery relatedBooks={relatedBooks} slug={slug} />
+                                {/* 5. Share Bar */}
+                                <div className="mt-8 py-5 border-t border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left">
+                                    <span className="text-sm font-bold text-slate-300">Share this article:</span>
+                                    <div className="flex items-center gap-3">
+                                        {/* Twitter */}
+                                        <a
+                                            href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(blog.title)}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1a1d2e] border border-white/5 text-slate-300 hover:text-sky-400 hover:border-sky-500/30 transition-all duration-200"
+                                            title="Share on Twitter"
+                                        >
+                                            <FaTwitter className="text-base" />
+                                        </a>
+                                        {/* LinkedIn */}
+                                        <a
+                                            href={`https://www.linkedin.com/shareArticle?url=${encodeURIComponent(window.location.href)}&title=${encodeURIComponent(blog.title)}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1a1d2e] border border-white/5 text-slate-300 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-200"
+                                            title="Share on LinkedIn"
+                                        >
+                                            <FaLinkedin className="text-base" />
+                                        </a>
+                                        {/* Copy Link */}
+                                        <button
+                                            type="button"
+                                            onClick={handleCopy}
+                                            className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1a1d2e] border border-white/5 text-slate-300 hover:text-purple-400 hover:border-purple-500/30 transition-all duration-200 cursor-pointer"
+                                            title="Copy Link"
+                                        >
+                                            {copied ? <FaCheck className="text-emerald-400 text-base" /> : <FaCopy className="text-base" />}
+                                        </button>
+                                    </div>
+                                </div>
 
-                                {/* Related Books detail list */}
-                                <RelatedBooks relatedBooks={relatedBooks} />
+                                {/* 6. Featured Books in This Post */}
+                                {((relatedBooks && relatedBooks.length > 0) || slug === 'top-10-best-free-books-to-read-online-2026') && (
+                                    <div className="mt-12 text-left">
+                                        <h3 className="text-xl font-bold text-white mb-2 tracking-tight">Featured Books in This Post</h3>
+                                        <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-6">Read free classic books mentioned in this article</p>
+                                        
+                                        <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-purple-600/30 scrollbar-track-transparent snap-x">
+                                            {(slug === 'top-10-best-free-books-to-read-online-2026' ? FEATURED_BOOKS_DATA : relatedBooks).map((book) => {
+                                                const readLink = book.slug ? `/read/${book.slug}` : `/book/${book._id}`;
+                                                const coverUrl = book.coverImage || getBookThumbnailUrl(book);
+                                                
+                                                return (
+                                                    <div key={book.slug || book._id} className="w-40 snap-start shrink-0 flex flex-col justify-between bg-[#1a1d2e] border border-white/5 rounded-2xl p-3 hover:border-purple-500/30 transition-all duration-300">
+                                                        <div>
+                                                            <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-slate-900 mb-3">
+                                                                <img
+                                                                    src={coverUrl}
+                                                                    alt={book.title}
+                                                                    className="w-full h-full object-cover"
+                                                                    onError={(e) => {
+                                                                        e.target.onerror = null;
+                                                                        e.target.src = '/placeholder-blog.webp';
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                            <h4 className="text-white font-bold text-sm line-clamp-2 leading-tight mb-2">
+                                                                {book.title}
+                                                            </h4>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-slate-400 text-xs truncate mb-3">{book.author}</p>
+                                                            <Link 
+                                                                to={readLink} 
+                                                                className="w-full inline-flex h-8 items-center justify-center rounded-lg bg-gradient-to-r from-purple-600 to-fuchsia-500 hover:brightness-110 text-white font-bold text-xs transition shadow-md shadow-purple-500/20"
+                                                            >
+                                                                Read Free
+                                                            </Link>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
 
-                                {/* Related Blog Posts */}
-                                <RelatedBlogs relatedBlogs={relatedPosts} />
+                                {/* 7. You May Also Like */}
+                                {relatedPosts && relatedPosts.length > 0 && (
+                                    <div className="mt-16 text-left">
+                                        <h3 className="text-xl font-bold text-white mb-6 tracking-tight">You May Also Like</h3>
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                                            {relatedPosts.slice(0, 3).map((post) => {
+                                                const formattedPostDate = formatDate(post.publishedAt || post.createdAt);
+                                                const postWordCount = post.content ? post.content.split(/\s+/).length : 0;
+                                                const postReadTime = `${Math.ceil(postWordCount / 200) || 1} min read`;
+                                                
+                                                return (
+                                                    <article key={post.slug} className="group bg-[#1a1d2e] border border-white/5 hover:border-purple-500/30 rounded-2xl overflow-hidden transition-all duration-300 flex flex-col justify-between h-full shadow-lg">
+                                                        <div>
+                                                            <Link to={`/blog/${post.slug}`} className="block aspect-[16/10] overflow-hidden bg-slate-900/60 relative">
+                                                                <img
+                                                                    src={post.coverImage || '/placeholder-blog.webp'}
+                                                                    alt={post.title}
+                                                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                                                    onError={(e) => {
+                                                                        e.target.onerror = null;
+                                                                        e.target.src = '/placeholder-blog.webp';
+                                                                    }}
+                                                                />
+                                                            </Link>
+                                                            
+                                                            <div className="p-4">
+                                                                <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                                                                    <span>{formattedPostDate}</span>
+                                                                    <span>{postReadTime}</span>
+                                                                </div>
+                                                                <h4 className="text-sm sm:text-base font-bold text-white line-clamp-2 hover:text-purple-400 transition-colors leading-snug">
+                                                                    <Link to={`/blog/${post.slug}`}>{post.title}</Link>
+                                                                </h4>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div className="px-4 pb-4">
+                                                            <Link
+                                                                to={`/blog/${post.slug}`}
+                                                                className="inline-flex w-full h-8 items-center justify-center rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-300 font-bold text-xs hover:bg-purple-600 hover:text-white transition-all duration-300"
+                                                            >
+                                                                Read Article
+                                                            </Link>
+                                                        </div>
+                                                    </article>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
 
-                                {/* Reading CTA banner */}
-                                <BlogCTA />
-
-                                {/* Subscribe Form */}
+                                {/* 8. Newsletter CTA */}
                                 <Subscribe />
                             </div>
-
                         </div>
                     )}
                 </div>
             </MainLayout>
 
-            {/* 12. Centered Floating Actions Bar */}
+            {/* Centered Floating Actions Bar */}
             {!loading && blog && (
                 <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[80] flex items-center gap-6 rounded-2xl border border-purple-500/30 bg-slate-950/80 backdrop-blur-md px-6 py-3 shadow-2xl transition-all duration-300 animate-[fadeIn_200ms_ease-out]">
                     <button
@@ -1204,12 +959,12 @@ export default function BlogDetailPage() {
                 </div>
             )}
 
-            {/* 13. Floating Back to Top Button */}
+            {/* Floating Back to Top Button */}
             {showBackToTop && (
                 <button
                     type="button"
                     onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                    className="fixed bottom-6 right-6 z-[60] flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 to-purple-750 hover:from-purple-700 hover:to-purple-800 text-white shadow-lg shadow-purple-500/20 hover:scale-105 transition duration-305 animate-[fadeIn_200ms_ease-out] cursor-pointer"
+                    className="fixed bottom-6 right-6 z-[60] flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 to-purple-750 hover:from-purple-700 hover:to-purple-800 text-white shadow-lg shadow-purple-500/20 hover:scale-105 transition duration-300 animate-[fadeIn_200ms_ease-out] cursor-pointer"
                     aria-label="Back to top"
                 >
                     <svg className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
