@@ -637,7 +637,7 @@ export default function AdminBlogCreateEditPage() {
     // Fetch all books for related books select dropdown
     const fetchBooks = async () => {
         try {
-            const response = await apiClient.get('/api/books');
+            const response = await apiClient.get('/api/books', { timeout: 60000 });
             const data = response.data || [];
             const resolved = Array.isArray(data) ? data : data.books || data.data || [];
 
@@ -660,7 +660,7 @@ export default function AdminBlogCreateEditPage() {
         setLoading(true);
         setError('');
         try {
-            const response = await apiClient.get(`/api/blogs/admin/${id}`);
+            const response = await apiClient.get(`/api/blogs/admin/${id}`, { timeout: 60000 });
             const blog = response.data?.blog;
             if (!blog) {
                 throw new Error('Blog post not found.');

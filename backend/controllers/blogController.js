@@ -421,7 +421,7 @@ const getBlogAnalytics = async (req, res, next) => {
 
 /**
  * 9. Get blog details by ID
- * Route: GET /api/blogs/id/:id
+ * Route: GET /api/blogs/admin/:id
  * Admin only (used in editing / management page)
  */
 const getBlogById = async (req, res, next) => {
@@ -431,9 +431,13 @@ const getBlogById = async (req, res, next) => {
             return res.status(403).json({ success: false, message: 'Not authorized as admin' });
         }
 
+        if (!req.params.id || !req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+            return res.status(400).json({ success: false, message: 'Invalid blog ID' });
+        }
+
         const blog = await Blog.findById(req.params.id)
-            .populate('author', 'username avatar')
-            .populate('relatedBooks');
+            .select('title slug category excerpt content coverImage tags relatedBooks status seoTitle seoDescription seoKeywords')
+            .lean();
 
         if (!blog) {
             return res.status(404).json({ success: false, message: 'Blog not found' });
