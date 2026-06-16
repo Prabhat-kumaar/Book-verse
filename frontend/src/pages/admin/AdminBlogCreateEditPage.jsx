@@ -525,6 +525,10 @@ export default function AdminBlogCreateEditPage() {
         extensions: [
             StarterKit.configure({
                 link: false,
+                code: false,
+                strike: false,
+                horizontalRule: false,
+                underline: false,
             }),
             TiptapLink.configure({
                 openOnClick: false,
@@ -1025,7 +1029,7 @@ export default function AdminBlogCreateEditPage() {
             const endpoint = mode === 'create' ? '/api/blogs' : `/api/blogs/${id}`;
             const apiMethod = mode === 'create' ? 'post' : 'put';
 
-            await apiClient[apiMethod](endpoint, formData);
+            await apiClient[apiMethod](endpoint, formData, { timeout: 60000 });
 
             setToast(mode === 'create' ? 'Blog created successfully.' : 'Blog updated successfully.');
             setTimeout(() => setToast(''), 2200);
@@ -1137,7 +1141,7 @@ export default function AdminBlogCreateEditPage() {
         const { state, dispatch } = editor.view;
         const { from, to } = state.selection;
         if (from === to) return;
-        
+
         const tr = state.tr;
         state.doc.nodesBetween(from, to, (node, pos) => {
             if (node.isText) {
@@ -1233,7 +1237,7 @@ export default function AdminBlogCreateEditPage() {
             .replace(/padding-top:[^;]+;?/g, '')
             .replace(/padding-left:[^;]+;?/g, '')
             .replace(/padding:[^;]+;?/g, '');
-        
+
         let borderStyle = '';
         if (borderType === 'bottom') {
             borderStyle = 'border-bottom: 2px solid rgba(99, 102, 241, 0.6); padding-bottom: 4px;';
@@ -1244,7 +1248,7 @@ export default function AdminBlogCreateEditPage() {
         } else if (borderType === 'left') {
             borderStyle = 'border-left: 4px solid rgba(99, 102, 241, 0.6); padding-left: 8px;';
         }
-        
+
         if (borderStyle) {
             newStyle = `${borderStyle} ${newStyle}`;
         }
@@ -1253,12 +1257,12 @@ export default function AdminBlogCreateEditPage() {
 
     const handleFindAndReplace = (replaceAll = false) => {
         if (!editor || !findText.trim()) return;
-        
+
         const { state, dispatch } = editor.view;
         const tr = state.tr;
         const searchRegex = new RegExp(findText.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
         let matches = [];
-        
+
         state.doc.descendants((node, pos) => {
             if (node.isText) {
                 const text = node.text;
@@ -1272,13 +1276,13 @@ export default function AdminBlogCreateEditPage() {
                 }
             }
         });
-        
+
         if (matches.length === 0) {
             setToast('No matches found.');
             setTimeout(() => setToast(''), 1500);
             return;
         }
-        
+
         if (replaceAll) {
             for (let i = matches.length - 1; i >= 0; i--) {
                 const { from, to } = matches[i];
@@ -2934,8 +2938,8 @@ export default function AdminBlogCreateEditPage() {
                                 <label className="text-[11px] font-bold text-slate-350 block">Image Alignment (Text Wrapping)</label>
                                 <div className="grid grid-cols-3 gap-2">
                                     <label className={`flex flex-col items-center justify-center p-2 rounded-lg border text-center cursor-pointer transition ${editorImageAlignment === 'align-left'
-                                            ? 'border-indigo-500 bg-indigo-500/10 text-white'
-                                            : 'border-white/10 bg-slate-950/40 text-slate-400 hover:text-white'
+                                        ? 'border-indigo-500 bg-indigo-500/10 text-white'
+                                        : 'border-white/10 bg-slate-950/40 text-slate-400 hover:text-white'
                                         }`}>
                                         <input
                                             type="radio"
@@ -2949,8 +2953,8 @@ export default function AdminBlogCreateEditPage() {
                                         <span className="text-[9px] text-slate-500 mt-0.5">Wrap Right</span>
                                     </label>
                                     <label className={`flex flex-col items-center justify-center p-2 rounded-lg border text-center cursor-pointer transition ${editorImageAlignment === 'align-center'
-                                            ? 'border-indigo-500 bg-indigo-500/10 text-white'
-                                            : 'border-white/10 bg-slate-950/40 text-slate-400 hover:text-white'
+                                        ? 'border-indigo-500 bg-indigo-500/10 text-white'
+                                        : 'border-white/10 bg-slate-950/40 text-slate-400 hover:text-white'
                                         }`}>
                                         <input
                                             type="radio"
@@ -2964,8 +2968,8 @@ export default function AdminBlogCreateEditPage() {
                                         <span className="text-[9px] text-slate-500 mt-0.5">Block/Full</span>
                                     </label>
                                     <label className={`flex flex-col items-center justify-center p-2 rounded-lg border text-center cursor-pointer transition ${editorImageAlignment === 'align-right'
-                                            ? 'border-indigo-500 bg-indigo-500/10 text-white'
-                                            : 'border-white/10 bg-slate-950/40 text-slate-400 hover:text-white'
+                                        ? 'border-indigo-500 bg-indigo-500/10 text-white'
+                                        : 'border-white/10 bg-slate-950/40 text-slate-400 hover:text-white'
                                         }`}>
                                         <input
                                             type="radio"
