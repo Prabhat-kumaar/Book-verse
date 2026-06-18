@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { MdChevronLeft, MdBook, MdTimer, MdLanguage, MdVisibility, MdFolderOpen } from 'react-icons/md'
 import apiClient from '../lib/apiClient'
@@ -10,6 +10,7 @@ import EmptyState from '../components/EmptyState'
 import OptimizedImage from '../components/OptimizedImage'
 import SEO from '../components/SEO'
 import { createBookSchema } from '../components/BookSchema'
+import useBooks from '../hooks/useBooks'
 
 const PRODUCTION_DOMAIN = 'https://readifyai.vercel.app'
 
@@ -91,6 +92,15 @@ export default function BookDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  const { books } = useBooks()
+  const topBooks = useMemo(() => {
+    if (!books) return []
+    return books
+      .filter((b) => b._id !== id)
+      .sort((a, b) => (b.openCount || 0) - (a.openCount || 0))
+      .slice(0, 5)
+  }, [books, id])
+
   const [reviews, setReviews] = useState([])
   const [reviewsLoading, setReviewsLoading] = useState(true)
   const [sortBy, setSortBy] = useState('recent')
@@ -115,7 +125,16 @@ export default function BookDetailPage() {
     if (!book) return null
 
     const title = book.title ? `${book.title} by ${book.author || 'Unknown Author'} | Readify AI` : 'Readify AI'
-    const description = (book.description || 'Read the full book online for free with Readify AI.').replace(/\s+/g, ' ').trim().slice(0, 160)
+    
+    let cleanDesc = (book.description || 'Read this classic book online for free on Readify AI.').replace(/\s+/g, ' ').trim()
+    if (cleanDesc.length < 150) {
+      const pad = ' Read this book free on Readify AI, the ultimate online book reader with progress tracking, custom themes, and reading goals.'
+      cleanDesc = (cleanDesc + pad).slice(0, 157) + '...'
+    }
+    if (cleanDesc.length > 160) {
+      cleanDesc = cleanDesc.slice(0, 157) + '...'
+    }
+
     const image = book.thumbnail ? getBookThumbnailUrl(book) : `${PRODUCTION_DOMAIN}/favicon.svg`
 
     // Use slug-based canonical (matches sitemap + reader page)
@@ -127,7 +146,7 @@ export default function BookDetailPage() {
 
     return {
       title,
-      description,
+      description: cleanDesc,
       image,
       path: canonicalPath,  // canonical points to /read/slug/
       schema: createBookSchema(book, canonicalPath, image, displayPath),
@@ -652,101 +671,136 @@ export default function BookDetailPage() {
               )}
             </div>
 
-            {/* Review Form (Right Column) */}
-            <div className="lg:col-span-4 rounded-2xl border border-white/10 bg-slate-950/50 p-5 sm:p-6 backdrop-blur-md">
-              <h3 className="text-base font-bold text-white mb-2 tracking-tight">
-                {myReview && !isEditing ? 'Your Submitted Review' : myReview ? 'Edit Your Review' : 'Write a Review'}
-              </h3>
-              <p className="text-[10px] text-slate-400 mb-4 font-semibold leading-relaxed">
-                {myReview && !isEditing
-                  ? 'Thank you for reviewing this title. You can modify or delete your feedback at any time.'
-                  : 'Share your stars and written thoughts about this book with the community.'}
-              </p>
+            {/* Right Column (Review Form & Popular Books Sidebar) */}
+            <div className="lg:col-span-4 space-y-6">
+              {/* Review Form */}
+              <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-5 sm:p-6 backdrop-blur-md">
+                <h3 className="text-base font-bold text-white mb-2 tracking-tight">
+                  {myReview && !isEditing ? 'Your Submitted Review' : myReview ? 'Edit Your Review' : 'Write a Review'}
+                </h3>
+                <p className="text-[10px] text-slate-400 mb-4 font-semibold leading-relaxed">
+                  {myReview && !isEditing
+                    ? 'Thank you for reviewing this title. You can modify or delete your feedback at any time.'
+                    : 'Share your stars and written thoughts about this book with the community.'}
+                </p>
 
-              {formSubmitError && (
-                <div className="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-400 font-semibold leading-normal">
-                  {formSubmitError}
-                </div>
-              )}
+                {formSubmitError && (
+                  <div className="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-400 font-semibold leading-normal">
+                    {formSubmitError}
+                  </div>
+                )}
 
-              {myReview && !isEditing ? (
-                <div className="space-y-4">
-                  <div className="rounded-xl border border-white/5 bg-[#0f1424]/20 p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center text-amber-400 text-sm select-none">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <span key={`my-review-star-${star}`}>
-                            {star <= myReview.rating ? '★' : '☆'}
-                          </span>
-                        ))}
+                {myReview && !isEditing ? (
+                  <div className="space-y-4">
+                    <div className="rounded-xl border border-white/5 bg-[#0f1424]/20 p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center text-amber-400 text-sm select-none">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <span key={`my-review-star-${star}`}>
+                              {star <= myReview.rating ? '★' : '☆'}
+                            </span>
+                          ))}
+                        </div>
+                        <span className="text-[10px] text-slate-500 font-semibold">
+                          {new Date(myReview.createdAt).toLocaleDateString()}
+                        </span>
                       </div>
-                      <span className="text-[10px] text-slate-500 font-semibold">
-                        {new Date(myReview.createdAt).toLocaleDateString()}
-                      </span>
+                      {myReview.reviewText && (
+                        <p className="mt-3 text-xs text-slate-300 font-medium whitespace-pre-line italic">
+                          "{myReview.reviewText}"
+                        </p>
+                      )}
                     </div>
-                    {myReview.reviewText && (
-                      <p className="mt-3 text-xs text-slate-300 font-medium whitespace-pre-line italic">
-                        "{myReview.reviewText}"
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setIsEditing(true)}
-                      className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-bold text-white transition hover:bg-white/10"
-                    >
-                      ✏️ Edit Review
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleDeleteReview}
-                      className="flex-1 rounded-xl border border-rose-500/20 bg-rose-500/10 py-2 text-xs font-bold text-rose-300 transition hover:bg-rose-500/20"
-                    >
-                      🗑️ Delete
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmitReview} className="space-y-4">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Rating</label>
-                    {renderFormStars()}
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Review (Optional)</label>
-                    <textarea
-                      maxLength="500"
-                      value={formText}
-                      onChange={(e) => setFormText(e.target.value)}
-                      className="w-full h-24 rounded-xl border border-white/10 bg-slate-950/65 p-3 text-xs text-white placeholder:text-zinc-500 outline-none focus:border-indigo-500/50 resize-none font-medium"
-                      placeholder="What did you think of the author, pace, or key insights? (max 500 characters)"
-                    />
-                    <div className="flex justify-between mt-1 text-[9px] font-bold text-slate-500">
-                      <span>{formText.length}/500</span>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 pt-1">
-                    {myReview && isEditing && (
+                    <div className="flex gap-2">
                       <button
                         type="button"
-                        onClick={() => setIsEditing(false)}
-                        className="flex-1 rounded-xl border border-white/10 bg-transparent py-2 text-xs font-bold text-white transition hover:bg-white/5"
+                        onClick={() => setIsEditing(true)}
+                        className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-bold text-white transition hover:bg-white/10"
                       >
-                        Cancel
+                        ✏️ Edit Review
                       </button>
-                    )}
-                    <button
-                      type="submit"
-                      disabled={formSubmitLoading}
-                      className="flex-1 rounded-xl bg-indigo-600 py-2 text-xs font-bold text-white shadow-md transition hover:bg-indigo-500 disabled:opacity-50"
-                    >
-                      {formSubmitLoading ? 'Saving...' : myReview ? 'Update Review' : 'Submit Review'}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={handleDeleteReview}
+                        className="flex-1 rounded-xl border border-rose-500/20 bg-rose-500/10 py-2 text-xs font-bold text-rose-300 transition hover:bg-rose-500/20"
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
                   </div>
-                </form>
+                ) : (
+                  <form onSubmit={handleSubmitReview} className="space-y-4">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Rating</label>
+                      {renderFormStars()}
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Review (Optional)</label>
+                      <textarea
+                        maxLength="500"
+                        value={formText}
+                        onChange={(e) => setFormText(e.target.value)}
+                        className="w-full h-24 rounded-xl border border-white/10 bg-slate-950/65 p-3 text-xs text-white placeholder:text-zinc-500 outline-none focus:border-indigo-500/50 resize-none font-medium"
+                        placeholder="What did you think of the author, pace, or key insights? (max 500 characters)"
+                      />
+                      <div className="flex justify-between mt-1 text-[9px] font-bold text-slate-500">
+                        <span>{formText.length}/500</span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-1">
+                      {myReview && isEditing && (
+                        <button
+                          type="button"
+                          onClick={() => setIsEditing(false)}
+                          className="flex-1 rounded-xl border border-white/10 bg-transparent py-2 text-xs font-bold text-white transition hover:bg-white/5"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                      <button
+                        type="submit"
+                        disabled={formSubmitLoading}
+                        className="flex-1 rounded-xl bg-indigo-600 py-2 text-xs font-bold text-white shadow-md transition hover:bg-indigo-500 disabled:opacity-50"
+                      >
+                        {formSubmitLoading ? 'Saving...' : myReview ? 'Update Review' : 'Submit Review'}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+
+              {/* Top 5 Popular Books Sidebar */}
+              {topBooks && topBooks.length > 0 && (
+                <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-5 sm:p-6 backdrop-blur-md text-left">
+                  <h3 className="text-sm font-extrabold uppercase tracking-wider text-indigo-400 mb-4 flex items-center gap-2">
+                    <span>🔥</span> Popular Books
+                  </h3>
+                  <div className="space-y-4">
+                    {topBooks.map((b) => (
+                      <Link key={b._id} to={`/book/${b._id}`} className="flex gap-3 group">
+                        <img
+                          src={getBookThumbnailUrl(b)}
+                          alt={b.title}
+                          className="w-12 h-16 object-cover rounded-lg border border-white/10 group-hover:border-indigo-500 transition-colors"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = '/placeholder-blog.webp';
+                          }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-xs font-bold text-white group-hover:text-indigo-400 transition-colors truncate">{b.title}</h4>
+                          <p className="text-[10px] text-slate-400 mt-1 truncate">{b.author || 'Unknown Author'}</p>
+                          <div className="flex items-center gap-1 text-[9px] text-amber-400 mt-1.5">
+                            <span>★</span>
+                            <span>{Number(b.averageRating || 0).toFixed(1)}</span>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
 

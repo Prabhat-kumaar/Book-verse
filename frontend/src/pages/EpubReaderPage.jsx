@@ -618,11 +618,13 @@ export default function EpubReaderPage({ book = null }) {
 
             const pageNumber = Math.max(1, Math.min(totalLocs, currentLocation + 1))
 
-            console.log('[Progress] EPUB Location updated:', {
-              pageNumber,
-              totalLocs,
-              cfi: currentCfiVal,
-            })
+            if (import.meta.env.DEV) {
+              console.log('[Progress] EPUB Location updated:', {
+                pageNumber,
+                totalLocs,
+                cfi: currentCfiVal,
+              })
+            }
 
             // Sync with progress hook
             updateProgress({
@@ -851,11 +853,11 @@ export default function EpubReaderPage({ book = null }) {
     try {
       if (isBookSaved) {
         const response = await apiClient.delete(`/api/saved-books/${encodeURIComponent(savedEntry._id)}`)
-        console.log('[SavedBooks] Remove response:', response)
+        if (import.meta.env.DEV) console.log('[SavedBooks] Remove response:', response)
         showToast('Removed from Library')
       } else {
         const response = await apiClient.post('/api/saved-books', { bookId })
-        console.log('[SavedBooks] Save response:', response)
+        if (import.meta.env.DEV) console.log('[SavedBooks] Save response:', response)
         showToast('Saved to Library ❤️')
       }
       await refreshSavedBooks()

@@ -1063,7 +1063,7 @@ export default function AdminBlogCreateEditPage() {
             if (editor) {
                 editor.commands.insertContent(text);
             }
-        } catch (err) {
+        } catch {
             setToast('Please use Ctrl+V to paste directly.');
             setTimeout(() => setToast(''), 2200);
         }
@@ -1078,7 +1078,7 @@ export default function AdminBlogCreateEditPage() {
             await navigator.clipboard.writeText(text);
             editor.commands.deleteSelection();
             setToast('Cut to clipboard.');
-        } catch (err) {
+        } catch {
             setToast('Please use Ctrl+X to cut selection.');
         }
         setTimeout(() => setToast(''), 1500);
@@ -1092,7 +1092,7 @@ export default function AdminBlogCreateEditPage() {
         try {
             await navigator.clipboard.writeText(text);
             setToast('Copied to clipboard.');
-        } catch (err) {
+        } catch {
             setToast('Please use Ctrl+C to copy selection.');
         }
         setTimeout(() => setToast(''), 1500);
@@ -1100,7 +1100,6 @@ export default function AdminBlogCreateEditPage() {
 
     const handleFormatPainterClick = () => {
         if (!editor) return;
-        const { from, to } = editor.state.selection;
         const activeMarkTypes = ['bold', 'italic', 'underline', 'strike', 'code', 'link', 'highlight'];
         const marks = [];
         activeMarkTypes.forEach(name => {
@@ -1260,7 +1259,7 @@ export default function AdminBlogCreateEditPage() {
 
         const { state, dispatch } = editor.view;
         const tr = state.tr;
-        const searchRegex = new RegExp(findText.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
+        const searchRegex = new RegExp(findText.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
         let matches = [];
 
         state.doc.descendants((node, pos) => {
@@ -1310,7 +1309,7 @@ export default function AdminBlogCreateEditPage() {
 
     const applyTextEffect = (effectType) => {
         if (!editor) return;
-        let style = {};
+        let style;
         if (effectType === 'glow') {
             style = { textShadow: '0 0 8px rgba(99, 102, 241, 0.8), 0 0 2px rgba(99, 102, 241, 0.9)' };
         } else if (effectType === 'shadow') {
@@ -1351,11 +1350,6 @@ export default function AdminBlogCreateEditPage() {
 
     const isEditorReady = editor && !editor.isDestroyed;
 
-    const getBtnClass = (active, disabled = false) => {
-        return `px-2.5 py-1 text-xs font-bold rounded transition flex items-center justify-center min-w-[28px] h-7 ${disabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
-            } ${active ? 'bg-indigo-500 text-white border border-indigo-400' : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-transparent'
-            }`;
-    };
 
     const renderPreviewPanelContent = () => {
         return (

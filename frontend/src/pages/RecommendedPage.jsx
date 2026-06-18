@@ -34,7 +34,7 @@ function BookCard({ book, progress }) {
       <SaveBookHeart bookId={book._id} book={book} />
       <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition duration-500 group-hover:opacity-100 [background:linear-gradient(145deg,rgba(84,132,255,0.1),rgba(146,92,255,0.08))]" />
       <div className="pointer-events-none absolute inset-0 rounded-2xl border border-transparent opacity-0 transition duration-500 group-hover:opacity-100 [background:linear-gradient(135deg,rgba(95,144,255,0.35),rgba(165,111,255,0.25))_border-box] [mask:linear-gradient(#fff_0_0)_padding-box,linear-gradient(#fff_0_0)] [mask-composite:exclude]" />
-      
+
       <div className="relative flex flex-col h-full justify-between">
         <Link to={`/book/${book._id}`} className="group/link block cursor-pointer text-left">
           <div className="mb-2 aspect-[3/4] w-full overflow-hidden rounded-lg bg-slate-950/50 shadow-inner ring-1 ring-white/10 relative block">
@@ -53,7 +53,7 @@ function BookCard({ book, progress }) {
               </div>
             )}
           </div>
-          
+
           <h4 className="line-clamp-1 text-xs sm:text-sm font-bold text-white leading-tight group-hover/link:text-indigo-400 transition-colors">{book.title}</h4>
           <p className="mt-0.5 line-clamp-1 text-[10px] text-slate-400 font-medium">{book.author || 'Unknown Author'}</p>
           {book.totalReviews > 0 && (
@@ -75,7 +75,7 @@ function BookCard({ book, progress }) {
             </div>
           ) : (
             <div className="mb-1.5 flex items-center">
-              <span 
+              <span
                 className="inline-block text-[9px] font-bold uppercase tracking-wider truncate max-w-full block"
                 style={{ color: getCategoryColor(book.category) }}
               >
@@ -113,10 +113,10 @@ export default function RecommendedPage() {
     <section className="rounded-2xl border border-white/10 bg-white/[0.05] p-5 sm:p-7">
       <SEO
         title="Recommended Books - Readify AI"
-        description="Personalized recommendations, standard curated collections, and top digital library books based on your reading progress and learning shelf on Readify AI."
+        description="Get personalized book recommendations and curated collections based on your reading history. Discover top classic books and free ebooks online on Readify AI."
         path="/recommended"
       />
-      <h1 className="text-2xl font-bold text-white sm:text-3xl">Recommended</h1>
+      <h1 className="text-2xl font-bold text-white sm:text-3xl">Personalized Book Recommendations</h1>
       <p className="mt-1 text-sm text-slate-300">Suggestions based on available library books.</p>
 
       {loading ? (

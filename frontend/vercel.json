@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/sitemap.xml",
+      "destination": "https://book-verse-production.up.railway.app/sitemap.xml"
+    },
+    {
       "source": "/((?!api/|assets/|favicon.svg|icons.svg|sitemap.xml|sitemap-.*.xml|robots.txt).*)",
       "destination": "/index.html"
     }

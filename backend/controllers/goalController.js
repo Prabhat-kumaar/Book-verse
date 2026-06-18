@@ -131,24 +131,41 @@ const getMyHistory = async (req, res, next) => {
         const userId = req.user._id;
 
         const goals = await ReadingGoal.find({ user: userId }).sort({ year: -1 });
-        const history = [];
 
-        for (const goal of goals) {
-            const startOfYear = new Date(goal.year, 0, 1);
-            const endOfYear = new Date(goal.year, 11, 31, 23, 59, 59, 999);
-
-            const completedCount = await Progress.countDocuments({
-                userId: userId.toString(),
-                $or: [{ completed: true }, { progressPercentage: 100 }],
-                updatedAt: { $gte: startOfYear, $lte: endOfYear }
-            });
-
-            history.push({
-                year: goal.year,
-                targetBooks: goal.targetBooks,
-                completedBooksCount: completedCount,
-            });
+        if (!goals.length) {
+            return res.status(200).json({ success: true, data: [] });
         }
+
+        // ✅ FIX #5: Single aggregation instead of N+1 queries
+        // Pehle saare years ke liye ek hi DB call — loop ke andar query nahi
+        const years = goals.map(g => g.year);
+        const startOfMinYear = new Date(Math.min(...years), 0, 1);
+        const endOfMaxYear = new Date(Math.max(...years), 11, 31, 23, 59, 59, 999);
+
+        const progressAgg = await Progress.aggregate([
+            {
+                $match: {
+                    userId: userId.toString(),
+                    $or: [{ completed: true }, { progressPercentage: 100 }],
+                    updatedAt: { $gte: startOfMinYear, $lte: endOfMaxYear }
+                }
+            },
+            {
+                $group: {
+                    _id: { $year: '$updatedAt' },
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        // year → count map banao O(1) lookup ke liye
+        const countsByYear = new Map(progressAgg.map(item => [item._id, item.count]));
+
+        const history = goals.map(goal => ({
+            year: goal.year,
+            targetBooks: goal.targetBooks,
+            completedBooksCount: countsByYear.get(goal.year) || 0,
+        }));
 
         res.status(200).json({
             success: true,

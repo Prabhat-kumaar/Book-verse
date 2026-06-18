@@ -1,4 +1,5 @@
 import { Suspense, lazy, useMemo } from 'react'
+import SEO from '../components/SEO'
 
 const CHUNK_RELOAD_KEY = 'readify_reader_chunk_reload_at'
 const CHUNK_RELOAD_TTL_MS = 30000
@@ -23,7 +24,7 @@ function lazyWithRetry(importer) {
   return lazy(() => importer().catch((error) => {
     if (isChunkLoadError(error) && shouldReloadForChunkError()) {
       window.location.reload()
-      return new Promise(() => {})
+      return new Promise(() => { })
     }
     throw error
   }))
@@ -55,6 +56,13 @@ export default function UnifiedReaderPage({ book = null }) {
   )
   return (
     <div className="min-h-screen w-full animate-reader-fade-up">
+      {!book && (
+        <SEO
+          title="Reader - Readify AI"
+          description="Read classic books online free with the Readify AI reader. Experience fast, distraction-free EPUB and PDF reading with bookmarks and progress tracking tools."
+          path="/reader"
+        />
+      )}
       <Suspense
         fallback={(
           <div className="grid min-h-screen place-items-center bg-slate-950 text-sm text-slate-300">

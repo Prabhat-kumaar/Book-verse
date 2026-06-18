@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import apiClient from '../lib/apiClient'
+import SEO from '../components/SEO'
 
 const inputClass =
   'w-full rounded-xl border border-white/15 bg-slate-950/55 px-4 py-3 text-sm text-white outline-none transition duration-300 placeholder:text-slate-400 focus:border-blue-300/55 focus:bg-slate-900/75 focus:shadow-[0_0_0_4px_rgba(98,108,255,0.2)]'
@@ -51,6 +52,11 @@ export default function LoginPage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#050914] px-4 py-10 text-slate-100 sm:px-6">
+      <SEO 
+        title="Sign In | Readify AI" 
+        description="Sign in to your Readify AI account to track your reading progress, streaks, and custom daily reading goals." 
+        path="/login" 
+      />
       <div className="pointer-events-none absolute -left-20 top-20 h-72 w-72 rounded-full bg-blue-500/20 blur-[120px]" />
       <div className="pointer-events-none absolute right-0 top-24 h-80 w-80 rounded-full bg-violet-500/20 blur-[130px]" />
 

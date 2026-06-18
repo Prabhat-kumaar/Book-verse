@@ -93,8 +93,8 @@ app.use(cors({
             return callback(null, true);
         }
 
-        // 2. Allow any Vercel deployment dynamically to prevent dynamic subdomain blockages
-        if (normalizedOrigin === 'https://readifyai.vercel.app') {
+        // 2. ✅ FIX #6: Allow ANY Vercel deployment — production + all preview subdomains
+        if (/\.vercel\.app$/i.test(normalizedOrigin)) {
             return callback(null, true);
         }
 
@@ -241,6 +241,61 @@ app.get('/uploads/:filename', (req, res) => {
     }
 });
 
+// ================= SITEMAP =================
+app.get('/sitemap.xml', async (req, res, next) => {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const PRODUCTION_DOMAIN = 'https://readifyai.vercel.app';
+
+        // Fetch books from database
+        const books = await Book.find({}).select('slug updatedAt createdAt').lean();
+
+        // Fetch blogs (only published blogs)
+        const Blog = require('./models/Blog');
+        const blogs = await Blog.find({ status: 'published' }).select('slug publishedAt updatedAt createdAt').lean();
+
+        let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+        xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+
+        // Static routes
+        const staticRoutes = [
+            { loc: `${PRODUCTION_DOMAIN}/`, priority: '1.0', changefreq: 'daily', lastmod: today },
+            { loc: `${PRODUCTION_DOMAIN}/blog`, priority: '0.9', changefreq: 'daily', lastmod: today },
+            { loc: `${PRODUCTION_DOMAIN}/books`, priority: '0.9', changefreq: 'daily', lastmod: today },
+            { loc: `${PRODUCTION_DOMAIN}/categories`, priority: '0.7', changefreq: 'weekly', lastmod: today },
+            { loc: `${PRODUCTION_DOMAIN}/recommended`, priority: '0.8', changefreq: 'weekly', lastmod: today }
+        ];
+
+        staticRoutes.forEach(r => {
+            xml += `  <url>\n    <loc>${r.loc}</loc>\n    <lastmod>${r.lastmod}</lastmod>\n    <changefreq>${r.changefreq}</changefreq>\n    <priority>${r.priority}</priority>\n  </url>\n`;
+        });
+
+        // Dynamic book routes
+        books.forEach(b => {
+            if (b.slug) {
+                const lastmod = new Date(b.updatedAt || b.createdAt || Date.now()).toISOString().split('T')[0];
+                xml += `  <url>\n    <loc>${PRODUCTION_DOMAIN}/read/${b.slug}/</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.8</priority>\n  </url>\n`;
+            }
+        });
+
+        // Dynamic blog routes
+        blogs.forEach(b => {
+            if (b.slug) {
+                const lastmod = new Date(b.publishedAt || b.updatedAt || b.createdAt || Date.now()).toISOString().split('T')[0];
+                xml += `  <url>\n    <loc>${PRODUCTION_DOMAIN}/blog/${b.slug}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n  </url>\n`;
+            }
+        });
+
+        xml += '</urlset>\n';
+
+        res.header('Content-Type', 'application/xml');
+        res.header('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
+        return res.send(xml);
+    } catch (error) {
+        next(error);
+    }
+});
+
 // ================= ROOT =================
 app.get('/', (_req, res) => {
     return res.json({
@@ -280,7 +335,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 
 // 301 Redirect from old /book/:id to new /read/:slug
-// Add this BEFORE all other routes (near top of app.use statements)
 app.get('/book/:id', async (req, res) => {
   try {
     const book = await Book.findById(req.params.id);
@@ -363,4 +417,3 @@ const startServer = () => {
 };
 
 startServer();
-

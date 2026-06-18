@@ -64,7 +64,7 @@ const BookCard = memo(function BookCard({ book, progress }) {
       <SaveBookHeart bookId={book._id} book={book} />
       <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition duration-500 group-hover:opacity-100 [background:linear-gradient(145deg,rgba(84,132,255,0.1),rgba(146,92,255,0.08))]" />
       <div className="pointer-events-none absolute inset-0 rounded-2xl border border-transparent opacity-0 transition duration-500 group-hover:opacity-100 [background:linear-gradient(135deg,rgba(95,144,255,0.35),rgba(165,111,255,0.25))_border-box] [mask:linear-gradient(#fff_0_0)_padding-box,linear-gradient(#fff_0_0)] [mask-composite:exclude]" />
-      
+
       <div className="relative flex flex-col h-full justify-between">
         <Link to={`/book/${book._id}`} className="group/link block cursor-pointer text-left">
           <div className="mb-2 aspect-[3/4] w-full overflow-hidden rounded-lg bg-slate-950/50 shadow-inner ring-1 ring-white/10 relative block">
@@ -83,7 +83,7 @@ const BookCard = memo(function BookCard({ book, progress }) {
               </div>
             )}
           </div>
-          
+
           <h4 className="line-clamp-1 text-xs sm:text-sm font-bold text-white leading-tight group-hover/link:text-indigo-400 transition-colors">{book.title}</h4>
           <p className="mt-0.5 line-clamp-1 text-[10px] text-slate-400 font-medium">{book.author || 'Unknown Author'}</p>
           {book.totalReviews > 0 && (
@@ -105,7 +105,7 @@ const BookCard = memo(function BookCard({ book, progress }) {
             </div>
           ) : (
             <div className="mb-1.5 flex items-center">
-              <span 
+              <span
                 className="inline-block text-[9px] font-bold uppercase tracking-wider truncate max-w-full block"
                 style={{ color: getCategoryColor(book.category) }}
               >
@@ -194,10 +194,10 @@ export default function BooksPage() {
     <section id="books-section" className="rounded-2xl border border-white/10 bg-white/[0.05] p-5 sm:p-7">
       <SEO
         title="Explore Books - Readify AI"
-        description="Search, sort, filter, and discover your next read from our extensive list of digital books, guides, textbooks, and personal documents on Readify AI."
+        description="Explore our curated library of free ebooks and classics. Search, filter, and discover books to read online or save to your personal library on Readify AI."
         path="/books"
       />
-      <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">Explore Books</h1>
+      <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">Explore Our Collection of 50+ Books</h1>
       <p className="mt-1 text-sm text-slate-300">Search, filter, and discover your next read.</p>
 
       {/* Premium Search and Filtering Controls */}
@@ -215,7 +215,7 @@ export default function BooksPage() {
               className="w-full rounded-xl border border-white/15 bg-slate-950/60 py-3 pl-10 pr-4 text-sm text-white outline-none transition duration-300 placeholder:text-slate-400 focus:border-indigo-500 focus:bg-slate-900/80"
             />
           </div>
-          
+
           <div className="flex items-center gap-3 shrink-0">
             <label className="shrink-0 text-xs font-semibold uppercase tracking-wider text-slate-400">Sort By</label>
             <select
@@ -241,11 +241,10 @@ export default function BooksPage() {
                   key={cat}
                   type="button"
                   onClick={() => setSelectedCategory(cat)}
-                  className={`shrink-0 rounded-full px-4 py-2 text-xs font-bold transition-all duration-300 flex items-center gap-1.5 ${
-                    active
+                  className={`shrink-0 rounded-full px-4 py-2 text-xs font-bold transition-all duration-300 flex items-center gap-1.5 ${active
                       ? 'bg-gradient-to-r from-blue-500 to-violet-600 text-white shadow-[0_0_15px_rgba(99,102,241,0.4)] scale-105'
                       : 'border border-white/10 bg-white/[0.04] text-slate-300 hover:border-indigo-400/30 hover:text-white'
-                  }`}
+                    }`}
                 >
                   <span className="text-sm">{emoji}</span>
                   <span className="truncate max-w-[100px] block">{cat}</span>

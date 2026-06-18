@@ -86,6 +86,9 @@ const login = async (req, res, next) => {
         });
 
         if (user && (await user.matchPassword(password))) {
+            if (user.isBanned) {
+                return next(new AppError('Your account has been suspended.', 403));
+            }
             res.json(serializeAuthResponse(user));
         } else {
             // Legacy support: migrate old Admin collection users into User(role=admin) on successful login.

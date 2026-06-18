@@ -45,20 +45,21 @@ const uploadToCloudinary = async (localPath, folder = 'bookverse', options = {})
         const result = await cloudinary.uploader.upload(localPath, uploadOptions);
 
         console.log(`[Cloudinary] Successfully uploaded to: ${result.secure_url}`);
-        
-        // Dynamic clean up of the local file
-        try {
-            fs.unlinkSync(localPath);
-            console.log(`[Cloudinary] Cleaned up temporary local file: ${localPath}`);
-        } catch (unlinkError) {
-            console.warn(`[Cloudinary] Could not remove temp file ${localPath}:`, unlinkError.message);
-        }
 
         return result.secure_url;
     } catch (error) {
         console.error('[Cloudinary] Upload exception occurred:', error.message || error);
-        
         throw error;
+    } finally {
+        // ✅ FIX #4: Always clean up local temp file — success ya fail dono cases mein
+        if (localPath && fs.existsSync(localPath)) {
+            try {
+                fs.unlinkSync(localPath);
+                console.log(`[Cloudinary] Cleaned up temporary local file: ${localPath}`);
+            } catch (unlinkError) {
+                console.warn(`[Cloudinary] Could not remove temp file ${localPath}:`, unlinkError.message);
+            }
+        }
     }
 };
 

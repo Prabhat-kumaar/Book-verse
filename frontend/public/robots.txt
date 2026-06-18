@@ -1,6 +1,10 @@
 User-agent: *
 Allow: /
+Disallow: /admin/
 Disallow: /admin
+Disallow: /dashboard/
 Disallow: /dashboard
+Disallow: /profile/
 Disallow: /profile
+
 Sitemap: https://readifyai.vercel.app/sitemap.xml

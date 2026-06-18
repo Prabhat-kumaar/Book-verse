@@ -165,14 +165,14 @@ export default function useReadingProgress(bookId, userId, fileType = 'pdf') {
     if (!isFinal && 
         lastSavedPageRef.current === current.currentPage && 
         lastSavedCfiRef.current === current.locationCfi) {
-      console.log('[useReadingProgress] Skip saving: page and CFI unchanged')
+      if (import.meta.env.DEV) console.log('[useReadingProgress] Skip saving: page and CFI unchanged')
       return
     }
 
     // 2. Throttling Protection: Enforce minimum delay between saves
     const now = Date.now()
     if (lastSaveCallTimestampRef.current && now - lastSaveCallTimestampRef.current < MIN_SAVE_INTERVAL_MS) {
-      console.log('[useReadingProgress] Save throttled')
+      if (import.meta.env.DEV) console.log('[useReadingProgress] Save throttled')
       return
     }
     lastSaveCallTimestampRef.current = now
@@ -218,11 +218,13 @@ export default function useReadingProgress(bookId, userId, fileType = 'pdf') {
         updatedAt: new Date().toISOString(),
       }))
 
-      console.log(`[useReadingProgress] Dispatching saveProgress API request:`, {
-        currentPage: current.currentPage,
-        locationCfi: current.locationCfi,
-        readingTime: elapsedSeconds,
-      })
+      if (import.meta.env.DEV) {
+        console.log(`[useReadingProgress] Dispatching saveProgress API request:`, {
+          currentPage: current.currentPage,
+          locationCfi: current.locationCfi,
+          readingTime: elapsedSeconds,
+        })
+      }
 
       // Send to backend with cancellation signal
       await apiClient.post('/api/progress/save', payload, { signal: abortController.signal })
@@ -230,7 +232,7 @@ export default function useReadingProgress(bookId, userId, fileType = 'pdf') {
       readingStartRef.current = Date.now()
     } catch (err) {
       if (err.name === 'CanceledError' || err.message === 'canceled' || err.code === 'ERR_CANCELED') {
-        console.log('[useReadingProgress] Save request cancelled cleanly')
+        if (import.meta.env.DEV) console.log('[useReadingProgress] Save request cancelled cleanly')
       } else {
         console.error('[useReadingProgress] Save progress failed:', err)
       }
@@ -328,7 +330,7 @@ export default function useReadingProgress(bookId, userId, fileType = 'pdf') {
 
       if (!current.userId) return
 
-      console.log('[useReadingProgress] Marking book completed')
+      if (import.meta.env.DEV) console.log('[useReadingProgress] Marking book completed')
       await apiClient.post('/api/progress/complete', { bookId: current.bookId })
     } catch (err) {
       console.error('[useReadingProgress] Failed to mark completed:', err)

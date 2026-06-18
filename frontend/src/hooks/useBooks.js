@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import apiClient from '../lib/apiClient'
 import { API_URL, buildApiUrl } from '../lib/apiConfig'
-import { getBookThumbnailUrl, normalizeMediaUrl } from '../lib/mediaUrls'
+import { normalizeMediaUrl } from '../lib/mediaUrls'
 
 const isDev = import.meta.env.DEV
 const BOOKS_CACHE_TTL_MS = 15000

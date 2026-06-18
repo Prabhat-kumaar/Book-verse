@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Select from 'react-select';
 import apiClient from '../../lib/apiClient';
@@ -57,8 +57,8 @@ const slugify = (text) => {
         .toLowerCase()
         .trim()
         .replace(/\s+/g, '-')           // Replace spaces with -
-        .replace(/[^\w\-]+/g, '')       // Remove all non-word chars
-        .replace(/\-\-+/g, '-')         // Replace multiple - with single -
+        .replace(/[^\w-]+/g, '')       // Remove all non-word chars
+        .replace(/--+/g, '-')         // Replace multiple - with single -
         .replace(/^-+/, '')             // Trim - from start of text
         .replace(/-+$/, '');            // Trim - from end of text
 };
@@ -175,7 +175,7 @@ export default function AdminBlogAutoGeneratePage() {
         setSaving(true);
         setError('');
         try {
-            const response = await apiClient.post('/api/blogs', payload);
+            await apiClient.post('/api/blogs', payload);
             showToastMsg('Draft saved successfully!');
             setTimeout(() => {
                 navigate('/admin/blogs');

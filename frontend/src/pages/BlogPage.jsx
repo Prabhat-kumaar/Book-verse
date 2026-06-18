@@ -4,6 +4,7 @@ import { FaRegBookmark, FaRegHeart, FaBookmark, FaHeart } from 'react-icons/fa';
 import SEO from '../components/SEO';
 import MainLayout from '../layout/MainLayout';
 import { buildApiUrl } from '../lib/apiConfig';
+import OptimizedImage from '../components/OptimizedImage';
 
 // Allowed blog categories for filtering
 const CATEGORIES = [
@@ -141,7 +142,7 @@ const Hero = React.memo(function Hero() {
                     Literary Journal
                 </span>
                 <h1 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-none bg-gradient-to-r from-white via-slate-100 to-purple-200 bg-clip-text text-transparent">
-                    Discover Our Blog
+                    Readify AI Blog - Book Reviews & Guides
                 </h1>
                 <p className="mt-4 text-sm sm:text-base text-slate-350 leading-relaxed font-medium">
                     Deep dive into <TypingEffect texts={typingTexts} speed={85} delay={1800} />
@@ -282,15 +283,10 @@ const BlogCard = React.memo(function BlogCard({ blog }) {
                 <div className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl bg-slate-950/60 mb-4 select-none">
                     <Link to={blogUrl} className="block h-full w-full">
                         {blog.coverImage ? (
-                            <img
-                                loading="lazy"
+                            <OptimizedImage
                                 src={blog.coverImage}
                                 alt={blog.title}
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                onError={(e) => {
-                                    e.target.onerror = null;
-                                    e.target.src = '/placeholder-blog.webp';
-                                }}
                             />
                         ) : (
                             <div className="grid h-full w-full place-items-center bg-gradient-to-br from-indigo-900 via-slate-900 to-purple-900 p-3 text-center text-xs font-semibold text-white">
@@ -489,8 +485,8 @@ const Pagination = React.memo(function Pagination({ currentPage, totalPages, onP
                         type="button"
                         onClick={() => onPageChange(1)}
                         className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl border text-sm font-bold transition duration-300 cursor-pointer ${currentPage === 1
-                                ? 'border-purple-500 bg-purple-650 bg-gradient-to-br from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-500/30'
-                                : 'border-purple-500/20 bg-slate-900/40 text-slate-355 hover:border-purple-500/50 hover:bg-slate-900'
+                            ? 'border-purple-500 bg-purple-650 bg-gradient-to-br from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-500/30'
+                            : 'border-purple-500/20 bg-slate-900/40 text-slate-355 hover:border-purple-500/50 hover:bg-slate-900'
                             }`}
                     >
                         1
@@ -507,8 +503,8 @@ const Pagination = React.memo(function Pagination({ currentPage, totalPages, onP
                         type="button"
                         onClick={() => onPageChange(pageNum)}
                         className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl border text-sm font-bold transition duration-300 cursor-pointer ${currentPage === pageNum
-                                ? 'border-purple-500 bg-gradient-to-br from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-500/30'
-                                : 'border-purple-500/20 bg-slate-900/40 text-slate-355 hover:border-purple-500/50 hover:bg-slate-900'
+                            ? 'border-purple-500 bg-gradient-to-br from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-500/30'
+                            : 'border-purple-500/20 bg-slate-900/40 text-slate-355 hover:border-purple-500/50 hover:bg-slate-900'
                             }`}
                     >
                         {pageNum}
@@ -523,8 +519,8 @@ const Pagination = React.memo(function Pagination({ currentPage, totalPages, onP
                         type="button"
                         onClick={() => onPageChange(totalPages)}
                         className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl border text-sm font-bold transition duration-300 cursor-pointer ${currentPage === totalPages
-                                ? 'border-purple-500 bg-gradient-to-br from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-500/30'
-                                : 'border-purple-500/20 bg-slate-900/40 text-slate-355 hover:border-purple-500/50 hover:bg-slate-900'
+                            ? 'border-purple-500 bg-gradient-to-br from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-500/30'
+                            : 'border-purple-500/20 bg-slate-900/40 text-slate-355 hover:border-purple-500/50 hover:bg-slate-900'
                             }`}
                     >
                         {totalPages}
@@ -557,14 +553,10 @@ const FeaturedPost = React.memo(function FeaturedPost({ blog }) {
             <h4 className="text-xs font-bold text-purple-400 mb-3 uppercase tracking-wider">★ Featured Article</h4>
             {blog.coverImage && (
                 <Link to={`/blog/${blog.slug}`} className="block overflow-hidden rounded-xl aspect-[16/9] mb-3">
-                    <img 
-                        src={blog.coverImage} 
-                        alt={blog.title} 
-                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-500 animate-[fadeIn_200ms_ease-out]" 
-                        onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = '/placeholder-blog.webp';
-                        }}
+                    <OptimizedImage
+                        src={blog.coverImage}
+                        alt={blog.title}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-500 animate-[fadeIn_200ms_ease-out]"
                     />
                 </Link>
             )}
@@ -601,16 +593,14 @@ const SidebarCategories = React.memo(function SidebarCategories({ activeCategory
                             key={cat}
                             type="button"
                             onClick={() => onSelectCategory(cat)}
-                            className={`flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                                active
+                            className={`flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-200 cursor-pointer ${active
                                     ? 'bg-purple-600 text-white shadow-[0_4px_12px_rgba(99,102,241,0.25)]'
                                     : 'text-slate-300 hover:bg-white/5 hover:text-white'
-                            }`}
+                                }`}
                         >
                             <span>{cat}</span>
-                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                                active ? 'bg-white/20 text-white' : 'bg-purple-600/10 border border-purple-500/20 text-purple-300'
-                            }`}>
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${active ? 'bg-white/20 text-white' : 'bg-purple-600/10 border border-purple-500/20 text-purple-300'
+                                }`}>
                                 {getCount(cat)}
                             </span>
                         </button>
@@ -634,14 +624,10 @@ const PopularPosts = React.memo(function PopularPosts({ posts }) {
                     <Link key={post.slug} to={`/blog/${post.slug}`} className="group flex gap-3 items-center min-w-0">
                         {post.coverImage ? (
                             <div className="h-10 w-14 overflow-hidden rounded-lg bg-slate-950/60 border border-purple-500/10 shrink-0 shadow-md">
-                                <img 
-                                    src={post.coverImage} 
-                                    alt={post.title} 
-                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                                    onError={(e) => {
-                                        e.target.onerror = null;
-                                        e.target.src = '/placeholder-blog.webp';
-                                    }}
+                                <OptimizedImage
+                                    src={post.coverImage}
+                                    alt={post.title}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                 />
                             </div>
                         ) : (
@@ -1006,8 +992,8 @@ export default function BlogPage() {
     // Refetch when url queries change
     useEffect(() => {
         const isSearchChange = prevParamsRef.current.search !== search &&
-                               prevParamsRef.current.category === category &&
-                               prevParamsRef.current.page === currentPage;
+            prevParamsRef.current.category === category &&
+            prevParamsRef.current.page === currentPage;
 
         prevParamsRef.current = { category, page: currentPage, search };
 
@@ -1115,8 +1101,8 @@ export default function BlogPage() {
         <React.Fragment>
             {/* 1. SEO Helmet Wrapper */}
             <SEO
-                title="Blog - Readify AI | Book Reviews & Reading Tips"
-                description="Discover reading guides, book reviews, and tips from our blog"
+                title="Readify AI Blog - Book Reviews & Guides"
+                description="Readify AI Blog: Discover free book reviews, comprehensive study guides, and deep literary analyses to help you find and read the best classic books online."
                 path="/blog"
             />
 

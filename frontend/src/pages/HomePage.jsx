@@ -114,7 +114,7 @@ const BookCard = memo(function BookCard({ book, index }) {
       <SaveBookHeart bookId={book._id} book={book} />
       <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition duration-500 group-hover:opacity-100 [background:linear-gradient(145deg,rgba(84,132,255,0.1),rgba(146,92,255,0.08))]" />
       <div className="pointer-events-none absolute inset-0 rounded-2xl border border-transparent opacity-0 transition duration-500 group-hover:opacity-100 [background:linear-gradient(135deg,rgba(95,144,255,0.35),rgba(165,111,255,0.25))_border-box] [mask:linear-gradient(#fff_0_0)_padding-box,linear-gradient(#fff_0_0)] [mask-composite:exclude]" />
-      
+
       <div className="relative flex flex-col h-full justify-between">
         <Link to={`/book/${book._id}`} className="group/link block cursor-pointer text-left">
           <div className="mb-2.5 aspect-[3/4] w-full overflow-hidden rounded-xl bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 shadow-inner ring-1 ring-white/10 relative block">
@@ -130,10 +130,10 @@ const BookCard = memo(function BookCard({ book, index }) {
             ) : (
               <div
                 className={`h-full w-full rounded-lg bg-gradient-to-br ${index % 3 === 0
-                    ? 'from-blue-500/70 to-violet-600/70'
-                    : index % 3 === 1
-                      ? 'from-indigo-500/70 to-sky-500/70'
-                      : 'from-violet-500/70 to-fuchsia-500/70'
+                  ? 'from-blue-500/70 to-violet-600/70'
+                  : index % 3 === 1
+                    ? 'from-indigo-500/70 to-sky-500/70'
+                    : 'from-violet-500/70 to-fuchsia-500/70'
                   } p-2 flex items-center justify-center`}
               >
                 <p className="line-clamp-3 text-[10px] font-black leading-snug text-center text-white">{book.title}</p>
@@ -167,8 +167,8 @@ const BookCard = memo(function BookCard({ book, index }) {
             </div>
           ) : (
             <div className="mb-1.5 flex items-center">
-              <span 
-                className="inline-block text-[9px] font-bold uppercase tracking-wider truncate max-w-full block" 
+              <span
+                className="inline-block text-[9px] font-bold uppercase tracking-wider truncate max-w-full block"
                 style={{ color: getCategoryColor(book.category) }}
               >
                 {book.category || 'New to shelf'}
@@ -402,224 +402,224 @@ export default function HomePage() {
   return (
     <>
       <motion.section
-      initial={{ opacity: 0, y: 28 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.85, ease: 'easeOut' }}
-      className="relative overflow-hidden py-4 sm:py-10 animate-[fadeIn_300ms_ease-out]"
-    >
-      <SEO
-        title="Readify AI - Read Books Online Free"
-        description="Streamlined digital reading companion platform for ebooks, textbooks, and personal documents. Track reading progress, study note bookmarks, and streaks completely free."
-        path="/"
-        schema={[homeSchema, orgSchema]}
-      />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.05),transparent_42%),radial-gradient(circle_at_80%_10%,rgba(132,145,255,0.04),transparent_33%)]" />
+        initial={{ opacity: 0, y: 28 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.85, ease: 'easeOut' }}
+        className="relative overflow-hidden py-4 sm:py-10 animate-[fadeIn_300ms_ease-out]"
+      >
+        <SEO
+          title="Readify AI - Read Books Online Free"
+          description="Read classic books and free ebooks online with Readify AI. Track your reading progress, set goals, save notes, and discover personalized book recommendations."
+          path="/"
+          schema={[homeSchema, orgSchema]}
+        />
+        <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">Read Classic Books Online Free</h1>
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.05),transparent_42%),radial-gradient(circle_at_80%_10%,rgba(132,145,255,0.04),transparent_33%)]" />
 
-      <div className="relative space-y-8 px-2.5 sm:px-0">
-        <section id="continue-reading">
-          <SectionHeader title="CONTINUE READING" to="/books" />
-          {progressLoading ? (
-            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pr-6 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4">
-              {[...Array(4)].map((_, idx) => (
-                <ProgressCardSkeleton key={`continue-skeleton-${idx}`} />
-              ))}
-            </div>
-          ) : (isGuestUser || (progressError && (progressError.includes('Not authorized') || progressError.includes('no token')))) ? (
-            <div className="mx-1 rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center backdrop-blur-xl">
-              <p className="text-sm text-slate-300">Login to track your reading progress</p>
-              <button
-                type="button"
-                onClick={() => navigate('/login')}
-                className="mt-3 inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-blue-500 to-violet-600 px-5 py-2 text-xs font-semibold text-white shadow-md hover:brightness-110"
-              >
-                Login
-              </button>
-            </div>
-          ) : progressError ? (
-            <p className="px-1 text-sm text-rose-200">{progressError}</p>
-          ) : continueReadingBooks.length === 0 ? (
-            <EmptyState
-              className="mx-1"
-              icon="Book"
-              title="No books in progress"
-              description="Start reading any book and it will appear here."
-              actionLabel="Explore Books"
-              onAction={handleExploreBooks}
-              compact
-            />
-          ) : (
-            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pr-6 pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden sm:gap-4">
-              {continueReadingBooks.slice(0, 10).map((item) => {
-                const book = item.book || {}
-                const computed = computeProgress(item)
-                const currentPage = computed.currentPage
-                const percent = computed.progressPercentage
-                const link = buildReaderHash(book, { page: currentPage, cfi: item.resumeCfi || '' })
-                return (
-                  <div key={item._id} className="group w-[66vw] min-w-[66vw] shrink-0 snap-start rounded-2xl border border-white/10 bg-white/[0.05] p-3 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-blue-300/35 hover:bg-white/[0.09] sm:w-[230px] sm:min-w-[230px]">
-                    <a href={link} className="group relative block h-[150px] overflow-hidden rounded-xl bg-slate-950">
-                      {book.thumbnail ? (
-                        <OptimizedImage
-                          src={getBookThumbnailUrl(book)}
-                          onError={applyThumbnailFallback}
-                          alt={book.title}
-                          loading="lazy"
-                          fetchPriority="low"
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="grid h-full w-full place-items-center bg-gradient-to-br from-blue-500/45 to-violet-600/45 p-3 text-center text-sm font-semibold text-white">
-                          {book.title || 'Book'}
-                        </div>
-                      )}
-                      <span className="absolute right-2 top-2 rounded-full bg-black/80 px-2 py-0.5 text-[10px] font-bold text-white shadow-md">{percent}%</span>
-                    </a>
-                    <p className="mt-2 line-clamp-1 text-sm font-bold text-white leading-tight">{book.title}</p>
-                    <p className="mt-0.5 text-[11px] font-medium text-slate-400">Page {currentPage} of {computed.totalPages}</p>
-                    <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-white/10">
-                      <div className="h-full bg-pink-500 transition-all duration-500" style={{ width: `${percent}%` }} />
-                    </div>
-                    <p className="mt-1 text-[10px] text-slate-500">Last opened {timeAgo(item.lastReadAt)}</p>
-                    <a href={link} className="mt-2.5 inline-flex w-full items-center justify-center rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-bold text-white transition hover:bg-white/15">
-                      Resume
-                    </a>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </section>
-
-        <section>
-          <SectionHeader title="TOP 10 BOOKS" to="/books" />
-          {loading ? (
-            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pr-6 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4">
-              {[...Array(5)].map((_, index) => (
-                <BookCardSkeleton key={`top-ten-skeleton-${index}`} />
-              ))}
-            </div>
-          ) : error ? (
-            <div className="rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
-              {error}
-            </div>
-          ) : (
-            <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pr-6 pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-              {topTenBooks.map((book, idx) => (
-                <div key={`topten-${book._id || idx}`} className="relative shrink-0 snap-start w-[72vw] min-w-[72vw] pl-7 sm:w-[230px] sm:min-w-[230px]">
-                  <span className="pointer-events-none absolute left-0 top-3 text-8xl font-black leading-none text-white/20">{idx + 1}</span>
-                  <BookCard book={book} index={idx} />
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {showNewArrivals && (
-          <BookRow
-            rowKey="NEW ARRIVALS"
-            books={newArrivalBooks}
-            loading={loading && newArrivalBooks.length === 0}
-            emptyTitle="No new arrivals yet"
-            viewAllTo="/books"
-          />
-        )}
-
-        <div id="books-section" className="space-y-8">
-          {categoryRows.map(({ category, books: categoryBooks }) => (
-            <BookRow
-              key={category}
-              rowKey={category}
-              books={categoryBooks}
-              loading={loading}
-              viewAllTo={`/categories?category=${encodeURIComponent(category)}`}
-            />
-          ))}
-        </div>
-
-        {/* Premium Blog CTA Section */}
-        <section className="relative overflow-hidden rounded-2xl border border-purple-500/20 bg-slate-950/20 p-6 sm:p-8 text-center transition-all duration-300 shadow-md hover:shadow-lg">
-          <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-[#0c1033]/20 via-[#3c1e78]/10 to-[#090514]/20" />
-          <div className="relative z-10 flex flex-col items-center">
-            <span className="text-4xl select-none" role="img" aria-label="blog">📝</span>
-            <h3 className="mt-4 text-lg sm:text-xl font-extrabold text-white tracking-tight">
-              Explore Our Blog
-            </h3>
-            <p className="mt-2 text-xs sm:text-sm text-gray-300 max-w-lg mx-auto leading-relaxed">
-              Read articles, tips, and guides about books and reading to enrich your literary experience.
-            </p>
-            <div className="mt-5">
-              <Link
-                to="/blog"
-                className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 px-6 py-2.5 text-xs font-bold text-white transition shadow-md shadow-purple-500/20"
-              >
-                Browse Blog
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        {authUser && !goalLoading && goalData?.goalSet && (
-          <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-950/45 p-4 backdrop-blur-md">
-            <div className="absolute -right-12 -top-12 h-24 w-24 rounded-full bg-indigo-500/10 blur-2xl pointer-events-none" />
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl select-none">
-                  {goalData.data.completedBooksCount >= goalData.data.goal.targetBooks ? 'Goal' :
-                   goalData.data.status === 'Ahead of schedule' ? 'Hot' :
-                   goalData.data.status === 'Behind schedule' ? 'Time' : 'On'}
-                </span>
-                <div>
-                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                    {currentYear} Reading Journey
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                      goalData.data.completedBooksCount >= goalData.data.goal.targetBooks
-                        ? 'bg-emerald-500/15 border-emerald-500/20 text-emerald-400'
-                        : goalData.data.status === 'Ahead of schedule'
-                        ? 'bg-teal-500/15 border-teal-500/20 text-teal-400'
-                        : goalData.data.status === 'Behind schedule'
-                        ? 'bg-amber-500/15 border-amber-500/20 text-amber-400'
-                        : 'bg-indigo-500/15 border-indigo-500/20 text-indigo-400'
-                    }`}>
-                      {goalData.data.status === 'Goal achieved!' || goalData.data.completedBooksCount >= goalData.data.goal.targetBooks ? 'Achieved' :
-                       goalData.data.status === 'Ahead of schedule' ? 'Ahead' :
-                       goalData.data.status === 'Behind schedule' ? 'Behind Pace' : 'On Track'}
-                    </span>
-                  </h4>
-                  <p className="text-xs text-slate-300 mt-1 select-none leading-relaxed">
-                    {goalData.data.completedBooksCount >= goalData.data.goal.targetBooks
-                      ? 'Goal achieved! You completed your reading challenge for the year!'
-                      : goalData.data.status === 'Ahead of schedule'
-                      ? 'Great pace! You are ahead of schedule. Keep it up!'
-                      : goalData.data.status === 'Behind schedule'
-                      ? `You can catch up! Read ${goalData.data.booksPerMonthNeeded} ${goalData.data.booksPerMonthNeeded === 1 ? 'book' : 'books'} this month to stay on track.`
-                      : 'Keep going! You are perfectly on track to achieve your yearly goal.'}
-                  </p>
-                </div>
+        <div className="relative space-y-8 px-2.5 sm:px-0">
+          <section id="continue-reading">
+            <SectionHeader title="CONTINUE READING" to="/books" />
+            {progressLoading ? (
+              <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pr-6 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4">
+                {[...Array(4)].map((_, idx) => (
+                  <ProgressCardSkeleton key={`continue-skeleton-${idx}`} />
+                ))}
               </div>
-              <div className="flex flex-col gap-1.5 sm:w-64 shrink-0 justify-center">
-                <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold select-none">
-                  <span>Progress ({Math.min(100, Math.round((goalData.data.completedBooksCount / goalData.data.goal.targetBooks) * 100))}%)</span>
-                  <span className="font-extrabold text-indigo-400 font-mono">
-                    {goalData.data.completedBooksCount} / {goalData.data.goal.targetBooks} books
-                  </span>
-                </div>
-                <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-blue-400 via-indigo-500 to-violet-600 transition-all duration-700 ease-out"
-                    style={{ width: `${Math.min(100, Math.round((goalData.data.completedBooksCount / goalData.data.goal.targetBooks) * 100))}%` }}
-                  />
-                </div>
-                <Link
-                  to="/profile"
-                  className="text-[10px] text-right font-extrabold text-indigo-400 hover:text-indigo-300 transition-colors uppercase tracking-wider mt-0.5 select-none"
+            ) : (isGuestUser || (progressError && (progressError.includes('Not authorized') || progressError.includes('no token')))) ? (
+              <div className="mx-1 rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center backdrop-blur-xl">
+                <p className="text-sm text-slate-300">Login to track your reading progress</p>
+                <button
+                  type="button"
+                  onClick={() => navigate('/login')}
+                  className="mt-3 inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-blue-500 to-violet-600 px-5 py-2 text-xs font-semibold text-white shadow-md hover:brightness-110"
                 >
-                  View Details &rarr;
+                  Login
+                </button>
+              </div>
+            ) : progressError ? (
+              <p className="px-1 text-sm text-rose-200">{progressError}</p>
+            ) : continueReadingBooks.length === 0 ? (
+              <EmptyState
+                className="mx-1"
+                icon="Book"
+                title="No books in progress"
+                description="Start reading any book and it will appear here."
+                actionLabel="Explore Books"
+                onAction={handleExploreBooks}
+                compact
+              />
+            ) : (
+              <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pr-6 pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden sm:gap-4">
+                {continueReadingBooks.slice(0, 10).map((item) => {
+                  const book = item.book || {}
+                  const computed = computeProgress(item)
+                  const currentPage = computed.currentPage
+                  const percent = computed.progressPercentage
+                  const link = buildReaderHash(book, { page: currentPage, cfi: item.resumeCfi || '' })
+                  return (
+                    <div key={item._id} className="group w-[66vw] min-w-[66vw] shrink-0 snap-start rounded-2xl border border-white/10 bg-white/[0.05] p-3 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-blue-300/35 hover:bg-white/[0.09] sm:w-[230px] sm:min-w-[230px]">
+                      <a href={link} className="group relative block h-[150px] overflow-hidden rounded-xl bg-slate-950">
+                        {book.thumbnail ? (
+                          <OptimizedImage
+                            src={getBookThumbnailUrl(book)}
+                            onError={applyThumbnailFallback}
+                            alt={book.title}
+                            loading="lazy"
+                            fetchPriority="low"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="grid h-full w-full place-items-center bg-gradient-to-br from-blue-500/45 to-violet-600/45 p-3 text-center text-sm font-semibold text-white">
+                            {book.title || 'Book'}
+                          </div>
+                        )}
+                        <span className="absolute right-2 top-2 rounded-full bg-black/80 px-2 py-0.5 text-[10px] font-bold text-white shadow-md">{percent}%</span>
+                      </a>
+                      <p className="mt-2 line-clamp-1 text-sm font-bold text-white leading-tight">{book.title}</p>
+                      <p className="mt-0.5 text-[11px] font-medium text-slate-400">Page {currentPage} of {computed.totalPages}</p>
+                      <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-white/10">
+                        <div className="h-full bg-pink-500 transition-all duration-500" style={{ width: `${percent}%` }} />
+                      </div>
+                      <p className="mt-1 text-[10px] text-slate-500">Last opened {timeAgo(item.lastReadAt)}</p>
+                      <a href={link} className="mt-2.5 inline-flex w-full items-center justify-center rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-bold text-white transition hover:bg-white/15">
+                        Resume
+                      </a>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <SectionHeader title="TOP 10 BOOKS" to="/books" />
+            {loading ? (
+              <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pr-6 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4">
+                {[...Array(5)].map((_, index) => (
+                  <BookCardSkeleton key={`top-ten-skeleton-${index}`} />
+                ))}
+              </div>
+            ) : error ? (
+              <div className="rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+                {error}
+              </div>
+            ) : (
+              <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pr-6 pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                {topTenBooks.map((book, idx) => (
+                  <div key={`topten-${book._id || idx}`} className="relative shrink-0 snap-start w-[72vw] min-w-[72vw] pl-7 sm:w-[230px] sm:min-w-[230px]">
+                    <span className="pointer-events-none absolute left-0 top-3 text-8xl font-black leading-none text-white/20">{idx + 1}</span>
+                    <BookCard book={book} index={idx} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {showNewArrivals && (
+            <BookRow
+              rowKey="NEW ARRIVALS"
+              books={newArrivalBooks}
+              loading={loading && newArrivalBooks.length === 0}
+              emptyTitle="No new arrivals yet"
+              viewAllTo="/books"
+            />
+          )}
+
+          <div id="books-section" className="space-y-8">
+            {categoryRows.map(({ category, books: categoryBooks }) => (
+              <BookRow
+                key={category}
+                rowKey={category}
+                books={categoryBooks}
+                loading={loading}
+                viewAllTo={`/categories?category=${encodeURIComponent(category)}`}
+              />
+            ))}
+          </div>
+
+          {/* Premium Blog CTA Section */}
+          <section className="relative overflow-hidden rounded-2xl border border-purple-500/20 bg-slate-950/20 p-6 sm:p-8 text-center transition-all duration-300 shadow-md hover:shadow-lg">
+            <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-[#0c1033]/20 via-[#3c1e78]/10 to-[#090514]/20" />
+            <div className="relative z-10 flex flex-col items-center">
+              <span className="text-4xl select-none" role="img" aria-label="blog">📝</span>
+              <h3 className="mt-4 text-lg sm:text-xl font-extrabold text-white tracking-tight">
+                Explore Our Blog
+              </h3>
+              <p className="mt-2 text-xs sm:text-sm text-gray-300 max-w-lg mx-auto leading-relaxed">
+                Read articles, tips, and guides about books and reading to enrich your literary experience.
+              </p>
+              <div className="mt-5">
+                <Link
+                  to="/blog"
+                  className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 px-6 py-2.5 text-xs font-bold text-white transition shadow-md shadow-purple-500/20"
+                >
+                  Browse Blog
                 </Link>
               </div>
             </div>
-          </div>
-        )}
-      </div>
+          </section>
+
+          {authUser && !goalLoading && goalData?.goalSet && (
+            <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-950/45 p-4 backdrop-blur-md">
+              <div className="absolute -right-12 -top-12 h-24 w-24 rounded-full bg-indigo-500/10 blur-2xl pointer-events-none" />
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl select-none">
+                    {goalData.data.completedBooksCount >= goalData.data.goal.targetBooks ? 'Goal' :
+                      goalData.data.status === 'Ahead of schedule' ? 'Hot' :
+                        goalData.data.status === 'Behind schedule' ? 'Time' : 'On'}
+                  </span>
+                  <div>
+                    <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                      {currentYear} Reading Journey
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${goalData.data.completedBooksCount >= goalData.data.goal.targetBooks
+                          ? 'bg-emerald-500/15 border-emerald-500/20 text-emerald-400'
+                          : goalData.data.status === 'Ahead of schedule'
+                            ? 'bg-teal-500/15 border-teal-500/20 text-teal-400'
+                            : goalData.data.status === 'Behind schedule'
+                              ? 'bg-amber-500/15 border-amber-500/20 text-amber-400'
+                              : 'bg-indigo-500/15 border-indigo-500/20 text-indigo-400'
+                        }`}>
+                        {goalData.data.status === 'Goal achieved!' || goalData.data.completedBooksCount >= goalData.data.goal.targetBooks ? 'Achieved' :
+                          goalData.data.status === 'Ahead of schedule' ? 'Ahead' :
+                            goalData.data.status === 'Behind schedule' ? 'Behind Pace' : 'On Track'}
+                      </span>
+                    </h4>
+                    <p className="text-xs text-slate-300 mt-1 select-none leading-relaxed">
+                      {goalData.data.completedBooksCount >= goalData.data.goal.targetBooks
+                        ? 'Goal achieved! You completed your reading challenge for the year!'
+                        : goalData.data.status === 'Ahead of schedule'
+                          ? 'Great pace! You are ahead of schedule. Keep it up!'
+                          : goalData.data.status === 'Behind schedule'
+                            ? `You can catch up! Read ${goalData.data.booksPerMonthNeeded} ${goalData.data.booksPerMonthNeeded === 1 ? 'book' : 'books'} this month to stay on track.`
+                            : 'Keep going! You are perfectly on track to achieve your yearly goal.'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1.5 sm:w-64 shrink-0 justify-center">
+                  <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold select-none">
+                    <span>Progress ({Math.min(100, Math.round((goalData.data.completedBooksCount / goalData.data.goal.targetBooks) * 100))}%)</span>
+                    <span className="font-extrabold text-indigo-400 font-mono">
+                      {goalData.data.completedBooksCount} / {goalData.data.goal.targetBooks} books
+                    </span>
+                  </div>
+                  <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-blue-400 via-indigo-500 to-violet-600 transition-all duration-700 ease-out"
+                      style={{ width: `${Math.min(100, Math.round((goalData.data.completedBooksCount / goalData.data.goal.targetBooks) * 100))}%` }}
+                    />
+                  </div>
+                  <Link
+                    to="/profile"
+                    className="text-[10px] text-right font-extrabold text-indigo-400 hover:text-indigo-300 transition-colors uppercase tracking-wider mt-0.5 select-none"
+                  >
+                    View Details &rarr;
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </motion.section>
 
       {isSignupPopupVisible && isGuestUser && (

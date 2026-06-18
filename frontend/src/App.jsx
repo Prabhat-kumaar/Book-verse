@@ -59,6 +59,7 @@ const SavedBooksPage = lazyWithRetry(() => import('./pages/SavedBooksPage'))
 const ProfileDashboardPage = lazyWithRetry(() => import('./pages/ProfileDashboardPage'))
 const BookDetailPage = lazyWithRetry(() => import('./pages/BookDetailPage'))
 const BookReadPage = lazyWithRetry(() => import('./pages/BookReadPage'))
+import NotFoundPage from './pages/NotFoundPage'
 
 class AppErrorBoundary extends React.Component {
   constructor(props) {
@@ -317,7 +318,7 @@ function App() {
             <Route path="/profile" element={<RequireAuth><MainLayout><ProfileDashboardPage /></MainLayout></RequireAuth>} />
             <Route path="/me" element={<Navigate to="/profile" replace />} />
             <Route path="/saved-books" element={<RequireAuth><MainLayout><SavedBooksPage /></MainLayout></RequireAuth>} />
-            <Route path="*" element={<MainLayout><HomePage /></MainLayout>} />
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         )}
       </Suspense>
