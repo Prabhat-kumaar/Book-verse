@@ -346,6 +346,8 @@ export default function AdminBlogCreateEditPage() {
     const [toast, setToast] = useState('');
     const [autosaveIndicator, setAutosaveIndicator] = useState('');
     const [showAutosaveModal, setShowAutosaveModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deleting, setDeleting] = useState(false);
 
     // Live Preview Panel visibility states
     // Live Preview Panel visibility states
@@ -1234,6 +1236,42 @@ export default function AdminBlogCreateEditPage() {
             setError(err.response?.data?.message || err.message || 'An error occurred while saving the blog post.');
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const handleArchiveBlog = async () => {
+        if (mode !== 'edit' || !id) return;
+        setDeleting(true);
+        setError('');
+        try {
+            await apiClient.delete(`/api/blogs/${id}`);
+            setToast('Blog post archived successfully.');
+            setTimeout(() => setToast(''), 2200);
+            navigate('/admin/blogs');
+        } catch (err) {
+            console.error('[AdminBlogCreateEditPage] Archive error:', err);
+            setError(err.response?.data?.message || err.message || 'Failed to archive blog.');
+        } finally {
+            setDeleting(false);
+            setShowDeleteModal(false);
+        }
+    };
+
+    const handlePermanentDeleteBlog = async () => {
+        if (mode !== 'edit' || !id) return;
+        setDeleting(true);
+        setError('');
+        try {
+            await apiClient.delete(`/api/blogs/${id}/permanent`);
+            setToast('Blog post permanently deleted.');
+            setTimeout(() => setToast(''), 2200);
+            navigate('/admin/blogs');
+        } catch (err) {
+            console.error('[AdminBlogCreateEditPage] Permanent delete error:', err);
+            setError(err.response?.data?.message || err.message || 'Failed to permanently delete blog.');
+        } finally {
+            setDeleting(false);
+            setShowDeleteModal(false);
         }
     };
 
@@ -2921,6 +2959,16 @@ export default function AdminBlogCreateEditPage() {
                                         👁 Preview
                                     </button>
 
+                                    {mode === 'edit' && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowDeleteModal(true)}
+                                            className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-6 py-3 text-rose-300 hover:bg-rose-500/20 transition"
+                                        >
+                                            Delete Blog
+                                        </button>
+                                    )}
+
                                     <button
                                         type="button"
                                         onClick={() => navigate('/admin/blogs')}
@@ -3516,6 +3564,55 @@ export default function AdminBlogCreateEditPage() {
                                 {(previewLayout === 'both' || previewLayout === 'desktop') && renderDesktopPreview()}
                                 {(previewLayout === 'both' || previewLayout === 'mobile') && renderMobilePreview()}
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal overlay */}
+            {showDeleteModal && (
+                <div className="fixed inset-0 z-[120] grid place-items-center bg-[#02050fcc] p-4 backdrop-blur-sm animate-[fadeIn_200ms_ease-out]">
+                    <div className="w-full max-w-md rounded-2xl border border-white/15 bg-slate-950/90 p-5 shadow-[0_20px_60px_rgba(4,7,24,0.65)] text-left">
+                        <h4 className="text-lg font-bold text-white">
+                            {formData.status === 'archived' ? 'Permanently Delete Blog' : 'Delete / Archive Blog'}
+                        </h4>
+                        <p className="mt-2 text-sm text-slate-300 leading-relaxed">
+                            {formData.status === 'archived' ? (
+                                <>
+                                    Are you sure you want to permanently delete <span className="font-semibold text-white">"{formData.title}"</span>? This action cannot be undone.
+                                </>
+                            ) : (
+                                <>
+                                    Are you sure you want to archive or permanently delete <span className="font-semibold text-white">"{formData.title}"</span>? Archiving hides it from readers, and it can be recovered later.
+                                </>
+                            )}
+                        </p>
+                        <div className="mt-5 flex justify-end gap-2 text-xs">
+                            <button
+                                type="button"
+                                onClick={() => setShowDeleteModal(false)}
+                                className="rounded-lg border border-white/20 bg-white/[0.08] px-4 py-2 font-bold text-slate-100 transition hover:bg-white/[0.14]"
+                            >
+                                Cancel
+                            </button>
+                            {formData.status !== 'archived' && (
+                                <button
+                                    type="button"
+                                    onClick={handleArchiveBlog}
+                                    disabled={deleting}
+                                    className="rounded-lg border border-indigo-300/30 bg-indigo-500/20 px-4 py-2 font-bold text-indigo-100 transition hover:bg-indigo-500/30 disabled:cursor-not-allowed disabled:opacity-65"
+                                >
+                                    {deleting ? 'Archiving...' : 'Archive Blog'}
+                                </button>
+                            )}
+                            <button
+                                type="button"
+                                onClick={handlePermanentDeleteBlog}
+                                disabled={deleting}
+                                className="rounded-lg border border-rose-500 bg-rose-600 px-4 py-2 font-bold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-65"
+                            >
+                                {deleting ? 'Deleting...' : 'Delete Permanently'}
+                            </button>
                         </div>
                     </div>
                 </div>
