@@ -63,8 +63,31 @@ const uploadToCloudinary = async (localPath, folder = 'bookverse', options = {})
     }
 };
 
+const uploadBase64ToCloudinary = async (base64DataUri, folder = 'bookverse', options = {}) => {
+    if (!isConfigured) {
+        console.warn('[Cloudinary] Skipping base64 upload because Cloudinary environment variables are not set.');
+        return null;
+    }
+
+    try {
+        console.log(`[Cloudinary] Starting base64 upload, length: ${base64DataUri.length}`);
+        const result = await cloudinary.uploader.upload(base64DataUri, {
+            folder: folder,
+            resource_type: 'image',
+            ...options
+        });
+
+        console.log(`[Cloudinary] Successfully uploaded base64 to: ${result.secure_url}`);
+        return result.secure_url;
+    } catch (error) {
+        console.error('[Cloudinary] Base64 upload exception occurred:', error.message || error);
+        throw error;
+    }
+};
+
 module.exports = {
     cloudinary,
     isCloudinaryConfigured: !!isConfigured,
-    uploadToCloudinary
+    uploadToCloudinary,
+    uploadBase64ToCloudinary
 };

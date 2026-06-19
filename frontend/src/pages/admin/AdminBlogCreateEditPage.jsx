@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Select from 'react-select';
 import { useEditor, EditorContent } from '@tiptap/react';
+import { BubbleMenu } from '@tiptap/react/menus';
 import { Mark, Extension } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import TiptapLink from '@tiptap/extension-link';
@@ -116,21 +117,32 @@ const selectDarkStyles = {
     })
 };
 
-// Extend ImageResize to support class attribute for left/right/center image alignment
+// Extend ImageResize to support class attribute for left/right/center image alignment and sizing
 const CustomImage = ImageResize.extend({
     addAttributes() {
         return {
             ...this.parent?.(),
             class: {
-                default: 'align-center',
+                default: 'img-center img-large',
                 parseHTML: element => {
                     const cls = element.getAttribute('class') || '';
-                    if (cls.includes('align-left')) return 'align-left';
-                    if (cls.includes('align-right')) return 'align-right';
-                    return 'align-center';
+                    let newCls = cls;
+                    // Map legacy classes
+                    if (cls.includes('align-left')) newCls = newCls.replace('align-left', 'img-left');
+                    if (cls.includes('align-right')) newCls = newCls.replace('align-right', 'img-right');
+                    if (cls.includes('align-center')) newCls = newCls.replace('align-center', 'img-center');
+                    
+                    // Enforce defaults if parts are missing
+                    if (!newCls.includes('img-left') && !newCls.includes('img-center') && !newCls.includes('img-right')) {
+                        newCls += ' img-center';
+                    }
+                    if (!newCls.includes('img-small') && !newCls.includes('img-medium') && !newCls.includes('img-large') && !newCls.includes('img-full-width')) {
+                        newCls += ' img-large';
+                    }
+                    return newCls.trim();
                 },
                 renderHTML: attributes => {
-                    return { class: attributes.class || 'align-center' };
+                    return { class: attributes.class || 'img-center img-large' };
                 },
             },
         };
@@ -340,6 +352,7 @@ export default function AdminBlogCreateEditPage() {
         const saved = localStorage.getItem('readify_preview_open');
         return saved === 'true';
     });
+    const [previewLayout, setPreviewLayout] = useState('both'); // 'desktop', 'mobile', 'both'
 
     const togglePreview = () => {
         setShowPreview(prev => {
@@ -495,11 +508,17 @@ export default function AdminBlogCreateEditPage() {
             editor.chain().setTextSelection(savedSelectionRef.current).run();
         }
 
+        // Map initial modal alignments to our new classes
+        let mappedAlignment;
+        if (editorImageAlignment === 'align-left') mappedAlignment = 'img-left img-medium';
+        else if (editorImageAlignment === 'align-right') mappedAlignment = 'img-right img-medium';
+        else mappedAlignment = 'img-center img-large';
+
         // Insert image node to Tiptap editor with alignment class
         editor.chain().focus().setImage({
             src: finalUrl,
             alt: editorImageAlt.trim() || 'Blog inline image',
-            class: editorImageAlignment
+            class: mappedAlignment
         }).run();
 
         // Reset state & close modal
@@ -509,6 +528,33 @@ export default function AdminBlogCreateEditPage() {
         setEditorImageAlt('');
         setEditorImageAlignment('align-center');
         setEditorImageError('');
+    };
+
+    // Helper functions for image alignment & size controls in the BubbleMenu
+    const getSelectedImageAttributes = () => {
+        if (!editor) return { alignment: 'img-center', size: 'img-large' };
+        const attrs = editor.getAttributes('image');
+        const classStr = attrs.class || '';
+        
+        let alignment = 'img-center';
+        if (classStr.includes('img-left')) alignment = 'img-left';
+        else if (classStr.includes('img-right')) alignment = 'img-right';
+        else if (classStr.includes('img-center')) alignment = 'img-center';
+        
+        let size = 'img-large';
+        if (classStr.includes('img-small')) size = 'img-small';
+        else if (classStr.includes('img-medium')) size = 'img-medium';
+        else if (classStr.includes('img-large')) size = 'img-large';
+        else if (classStr.includes('img-full-width')) size = 'img-full-width';
+        
+        return { alignment, size };
+    };
+
+    const handleUpdateImageClass = (alignment, size) => {
+        if (!editor) return;
+        editor.chain().focus().updateAttributes('image', {
+            class: `${alignment} ${size}`
+        }).run();
     };
 
     useEffect(() => {
@@ -1029,7 +1075,7 @@ export default function AdminBlogCreateEditPage() {
             const endpoint = mode === 'create' ? '/api/blogs' : `/api/blogs/${id}`;
             const apiMethod = mode === 'create' ? 'post' : 'put';
 
-            await apiClient[apiMethod](endpoint, formData, { timeout: 60000 });
+            await apiClient[apiMethod](endpoint, formData, { timeout: 120000 });
 
             setToast(mode === 'create' ? 'Blog created successfully.' : 'Blog updated successfully.');
             setTimeout(() => setToast(''), 2200);
@@ -1462,6 +1508,48 @@ export default function AdminBlogCreateEditPage() {
         );
     };
 
+    const renderMobilePreview = () => (
+        <div className="flex flex-col items-center">
+            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                <span>📱 Mobile Preview</span>
+                <span className="text-[9px] lowercase text-slate-600">(375px viewport)</span>
+            </div>
+            {/* Simulated phone frame */}
+            <div className="w-[375px] h-[640px] rounded-[32px] border-8 border-slate-800 bg-[#050914] overflow-y-auto shadow-2xl flex flex-col p-4 relative scrollbar-none scrollbar-thin">
+                <div className="mt-4 flex-1">
+                    {renderPreviewPanelContent()}
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderDesktopPreview = () => (
+        <div className="flex flex-col items-center">
+            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                <span>💻 Desktop Preview</span>
+                <span className="text-[9px] lowercase text-slate-600">(1100px viewport, scaled)</span>
+            </div>
+            {/* Simulated desktop window */}
+            <div className="w-[420px] h-[640px] rounded-2xl border-8 border-slate-800 bg-[#050914] overflow-hidden shadow-2xl relative flex flex-col">
+                {/* Window header */}
+                <div className="h-6 bg-slate-900 border-b border-white/5 flex items-center px-3 gap-1 shrink-0">
+                    <div className="h-2 w-2 rounded-full bg-rose-500" />
+                    <div className="h-2 w-2 rounded-full bg-amber-500" />
+                    <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                    <div className="mx-auto w-40 h-3 bg-slate-950 rounded text-[8px] text-slate-600 flex items-center justify-center font-mono overflow-hidden">
+                        readifyai.com/preview
+                    </div>
+                </div>
+                {/* Scrollable container */}
+                <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 scrollbar-thin">
+                    <div className="w-[1100px] origin-top-left scale-[0.35] h-auto pb-[180%]">
+                        {renderPreviewPanelContent()}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
     return (
         <div className="relative min-h-screen overflow-x-clip bg-[#050914] text-slate-100">
             {/* Ambient background glows */}
@@ -1525,6 +1613,13 @@ export default function AdminBlogCreateEditPage() {
 
                             {/* Form Column */}
                             <form onSubmit={handleSubmit} className={`w-full flex flex-col gap-6 text-left transition-all duration-300 ease-in-out ${showPreview ? 'flex-1 min-w-0' : 'w-full max-w-none'}`}>
+                                {submitting && (
+                                    <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/10 p-4 text-xs text-indigo-300 flex items-center gap-2">
+                                        <div className="h-3.5 w-3.5 rounded-full border-2 border-white/10 border-t-indigo-400 animate-spin" />
+                                        <span>Saving post changes. Large posts with images may take a moment to upload to Cloudinary...</span>
+                                    </div>
+                                )}
+
                                 {error && (
                                     <div className="rounded-xl border border-rose-300/20 bg-rose-500/10 p-4 text-xs text-rose-300">
                                         {error}
@@ -2323,6 +2418,121 @@ export default function AdminBlogCreateEditPage() {
                                                 </div>
                                             )}
                                         </div>
+                                        {editor && (
+                                            <BubbleMenu
+                                                editor={editor}
+                                                tippyOptions={{ duration: 150 }}
+                                                shouldShow={({ editor }) => editor.isActive('image')}
+                                            >
+                                                <div className="flex flex-wrap items-center gap-1 rounded-xl border border-white/10 bg-slate-950/95 p-1.5 shadow-2xl backdrop-blur-xl text-[10px] sm:text-xs font-bold text-slate-200">
+                                                    {/* Alignment controls */}
+                                                    <span className="px-1 text-[10px] text-slate-500 uppercase tracking-wider">Align:</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const { size } = getSelectedImageAttributes();
+                                                            handleUpdateImageClass('img-left', size);
+                                                        }}
+                                                        className={`px-2 py-1 rounded transition-colors ${
+                                                            getSelectedImageAttributes().alignment === 'img-left' 
+                                                                ? 'bg-indigo-500 text-white' 
+                                                                : 'hover:bg-white/10 text-slate-300'
+                                                        }`}
+                                                    >
+                                                        Left
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const { size } = getSelectedImageAttributes();
+                                                            handleUpdateImageClass('img-center', size);
+                                                        }}
+                                                        className={`px-2 py-1 rounded transition-colors ${
+                                                            getSelectedImageAttributes().alignment === 'img-center' 
+                                                                ? 'bg-indigo-500 text-white' 
+                                                                : 'hover:bg-white/10 text-slate-300'
+                                                        }`}
+                                                    >
+                                                        Center
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const { size } = getSelectedImageAttributes();
+                                                            handleUpdateImageClass('img-right', size);
+                                                        }}
+                                                        className={`px-2 py-1 rounded transition-colors ${
+                                                            getSelectedImageAttributes().alignment === 'img-right' 
+                                                                ? 'bg-indigo-500 text-white' 
+                                                                : 'hover:bg-white/10 text-slate-300'
+                                                        }`}
+                                                    >
+                                                        Right
+                                                    </button>
+                                                    
+                                                    <span className="w-px h-4 bg-white/10 mx-1" />
+                                                    
+                                                    {/* Sizing controls */}
+                                                    <span className="px-1 text-[10px] text-slate-500 uppercase tracking-wider">Size:</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const { alignment } = getSelectedImageAttributes();
+                                                            handleUpdateImageClass(alignment, 'img-small');
+                                                        }}
+                                                        className={`px-2 py-1 rounded transition-colors ${
+                                                            getSelectedImageAttributes().size === 'img-small' 
+                                                                ? 'bg-indigo-500 text-white' 
+                                                                : 'hover:bg-white/10 text-slate-300'
+                                                        }`}
+                                                    >
+                                                        25%
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const { alignment } = getSelectedImageAttributes();
+                                                            handleUpdateImageClass(alignment, 'img-medium');
+                                                        }}
+                                                        className={`px-2 py-1 rounded transition-colors ${
+                                                            getSelectedImageAttributes().size === 'img-medium' 
+                                                                ? 'bg-indigo-500 text-white' 
+                                                                : 'hover:bg-white/10 text-slate-300'
+                                                        }`}
+                                                    >
+                                                        50%
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const { alignment } = getSelectedImageAttributes();
+                                                            handleUpdateImageClass(alignment, 'img-large');
+                                                        }}
+                                                        className={`px-2 py-1 rounded transition-colors ${
+                                                            getSelectedImageAttributes().size === 'img-large' 
+                                                                ? 'bg-indigo-500 text-white' 
+                                                                : 'hover:bg-white/10 text-slate-300'
+                                                        }`}
+                                                    >
+                                                        100%
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const { alignment } = getSelectedImageAttributes();
+                                                            handleUpdateImageClass(alignment, 'img-full-width');
+                                                        }}
+                                                        className={`px-2 py-1 rounded transition-colors ${
+                                                            getSelectedImageAttributes().size === 'img-full-width' 
+                                                                ? 'bg-indigo-500 text-white' 
+                                                                : 'hover:bg-white/10 text-slate-300'
+                                                        }`}
+                                                    >
+                                                        Full Width
+                                                    </button>
+                                                </div>
+                                            </BubbleMenu>
+                                        )}
                                         <EditorContent
                                             editor={editor}
                                             className={`prose prose-invert max-w-none min-h-[500px] px-5 py-4 focus:outline-none text-slate-200 text-base outline-none rounded-b-xl w-full blog-content ${showFormattingMarks ? 'show-formatting-marks' : ''}`}
@@ -2577,12 +2787,42 @@ export default function AdminBlogCreateEditPage() {
                                 </div>
                             </form>
 
-                            {/* Live Preview Sidebar (w-[380px] width when open, scrollable) */}
+                            {/* Live Preview Sidebar (dynamic width, scrollable) */}
                             {showPreview && (
-                                <aside className="hidden md:flex w-[380px] shrink-0 flex-col gap-4 text-left sticky top-4 transition-all duration-300 ease-in-out animate-[fadeIn_300ms_ease-in-out]">
+                                <aside 
+                                    className={`hidden md:flex shrink-0 flex-col gap-4 text-left sticky top-4 transition-all duration-300 ease-in-out animate-[fadeIn_300ms_ease-in-out] ${
+                                        previewLayout === 'both' ? 'w-[890px]' : previewLayout === 'desktop' ? 'w-[460px]' : 'w-[420px]'
+                                    }`}
+                                >
                                     <div className="w-full rounded-2xl border border-white/10 bg-white/[0.02] p-5 backdrop-blur-xl flex flex-col gap-4 h-auto max-h-[90vh]">
                                         <div className="flex items-center justify-between border-b border-white/5 pb-2 shrink-0">
                                             <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-400">LIVE PREVIEW</h3>
+                                            
+                                            {/* Preview mode toggle */}
+                                            <div className="flex items-center gap-1 bg-slate-900/60 p-0.5 rounded-lg border border-white/5 text-[10px] font-bold">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPreviewLayout('desktop')}
+                                                    className={`px-2 py-0.5 rounded transition ${previewLayout === 'desktop' ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:text-white'}`}
+                                                >
+                                                    Desktop
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPreviewLayout('mobile')}
+                                                    className={`px-2 py-0.5 rounded transition ${previewLayout === 'mobile' ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:text-white'}`}
+                                                >
+                                                    Mobile
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPreviewLayout('both')}
+                                                    className={`px-2 py-0.5 rounded transition ${previewLayout === 'both' ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:text-white'}`}
+                                                >
+                                                    Both
+                                                </button>
+                                            </div>
+
                                             <button
                                                 type="button"
                                                 onClick={() => {
@@ -2595,7 +2835,11 @@ export default function AdminBlogCreateEditPage() {
                                             </button>
                                         </div>
                                         <div className="flex-1 overflow-y-auto max-h-[80vh] pr-1">
-                                            {renderPreviewPanelContent()}
+                                            {/* Previews based on layout selection */}
+                                            <div className={`flex gap-6 items-start justify-center ${previewLayout === 'both' ? 'flex-col xl:flex-row' : 'flex-col'}`}>
+                                                {(previewLayout === 'both' || previewLayout === 'desktop') && renderDesktopPreview()}
+                                                {(previewLayout === 'both' || previewLayout === 'mobile') && renderMobilePreview()}
+                                            </div>
                                         </div>
                                     </div>
                                 </aside>
@@ -3079,12 +3323,38 @@ export default function AdminBlogCreateEditPage() {
             {/* Mobile Preview Modal Overlay (< 768px) */}
             {showPreview && (
                 <div className="fixed inset-0 z-50 md:hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-[fadeIn_200ms_ease-out]">
-                    <div className="w-full max-w-lg max-h-[90vh] rounded-2xl border border-white/10 bg-slate-950 px-5 py-6 shadow-2xl text-left flex flex-col gap-4 overflow-hidden">
+                    <div className="w-full max-w-2xl max-h-[90vh] rounded-2xl border border-white/10 bg-slate-950 px-5 py-6 shadow-2xl text-left flex flex-col gap-4 overflow-hidden">
                         <div className="flex items-center justify-between border-b border-white/5 pb-3 shrink-0">
                             <div className="flex items-center gap-2">
                                 <span className="text-indigo-400">👁</span>
                                 <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200">LIVE PREVIEW</h3>
                             </div>
+                            
+                            {/* Preview mode toggle */}
+                            <div className="flex items-center gap-1 bg-slate-900/60 p-0.5 rounded-lg border border-white/5 text-[10px] font-bold">
+                                <button
+                                    type="button"
+                                    onClick={() => setPreviewLayout('desktop')}
+                                    className={`px-2 py-0.5 rounded transition ${previewLayout === 'desktop' ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:text-white'}`}
+                                >
+                                    Desktop
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setPreviewLayout('mobile')}
+                                    className={`px-2 py-0.5 rounded transition ${previewLayout === 'mobile' ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:text-white'}`}
+                                >
+                                    Mobile
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setPreviewLayout('both')}
+                                    className={`px-2 py-0.5 rounded transition ${previewLayout === 'both' ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:text-white'}`}
+                                >
+                                    Both
+                                </button>
+                            </div>
+
                             <button
                                 type="button"
                                 onClick={() => {
@@ -3097,7 +3367,11 @@ export default function AdminBlogCreateEditPage() {
                             </button>
                         </div>
                         <div className="flex-1 overflow-y-auto pr-1">
-                            {renderPreviewPanelContent()}
+                            {/* Previews based on layout selection */}
+                            <div className={`flex gap-6 items-start justify-center ${previewLayout === 'both' ? 'flex-col sm:flex-row' : 'flex-col'}`}>
+                                {(previewLayout === 'both' || previewLayout === 'desktop') && renderDesktopPreview()}
+                                {(previewLayout === 'both' || previewLayout === 'mobile') && renderMobilePreview()}
+                            </div>
                         </div>
                     </div>
                 </div>

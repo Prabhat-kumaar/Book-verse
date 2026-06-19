@@ -559,37 +559,57 @@
   }
 }
 
-/* Tiptap editor (.prose, .ProseMirror) and viewer (.blog-content-html, .blog-content) image alignment */
+/* Legacy & New Tiptap editor and viewer image alignment & sizing */
 .blog-content img.align-right,
 .prose img.align-right,
 .blog-content-html img.align-right,
-.ProseMirror img.align-right {
-  float: right;
-  margin-left: 1.5rem;
-  margin-bottom: 0.5rem;
-  height: auto;
+.ProseMirror img.align-right,
+.blog-content img.img-right,
+.prose img.img-right,
+.blog-content-html img.img-right,
+.ProseMirror img.img-right {
+  float: right !important;
+  margin-left: 1.5rem !important;
+  margin-bottom: 1rem !important;
+  margin-top: 0.25rem !important;
+  height: auto !important;
   border-radius: 8px;
+  max-width: 45% !important;
+  clear: right !important;
 }
 
 .blog-content img.align-left,
 .prose img.align-left,
 .blog-content-html img.align-left,
-.ProseMirror img.align-left {
-  float: left;
-  margin-right: 1.5rem;
-  margin-bottom: 0.5rem;
-  height: auto;
+.ProseMirror img.align-left,
+.blog-content img.img-left,
+.prose img.img-left,
+.blog-content-html img.img-left,
+.ProseMirror img.img-left {
+  float: left !important;
+  margin-right: 1.5rem !important;
+  margin-bottom: 1rem !important;
+  margin-top: 0.25rem !important;
+  height: auto !important;
   border-radius: 8px;
+  max-width: 45% !important;
+  clear: left !important;
 }
 
 .blog-content img.align-center,
 .prose img.align-center,
 .blog-content-html img.align-center,
-.ProseMirror img.align-center {
-  display: block;
-  margin: 1rem auto;
-  height: auto;
+.ProseMirror img.align-center,
+.blog-content img.img-center,
+.prose img.img-center,
+.blog-content-html img.img-center,
+.ProseMirror img.img-center {
+  display: block !important;
+  margin: 1.5rem auto !important;
+  height: auto !important;
   border-radius: 8px;
+  float: none !important;
+  clear: both !important;
 }
 
 .blog-content img,
@@ -598,6 +618,43 @@
 .ProseMirror img {
   max-width: 100%;
   height: auto;
+  transition: all 0.3s ease;
+}
+
+/* Sizing controls */
+.blog-content img.img-small,
+.prose img.img-small,
+.blog-content-html img.img-small,
+.ProseMirror img.img-small {
+  width: 25% !important;
+  min-width: 150px;
+}
+
+.blog-content img.img-medium,
+.prose img.img-medium,
+.blog-content-html img.img-medium,
+.ProseMirror img.img-medium {
+  width: 50% !important;
+}
+
+.blog-content img.img-large,
+.prose img.img-large,
+.blog-content-html img.img-large,
+.ProseMirror img.img-large {
+  width: 100% !important;
+}
+
+.blog-content img.img-full-width,
+.prose img.img-full-width,
+.blog-content-html img.img-full-width,
+.ProseMirror img.img-full-width {
+  width: 100vw !important;
+  max-width: 1000px !important;
+  margin-left: 50% !important;
+  transform: translateX(-50%) !important;
+  display: block !important;
+  float: none !important;
+  clear: both !important;
 }
 
 /* Text paragraphs flow BESIDE the floated image */
@@ -605,9 +662,19 @@
 .prose p,
 .blog-content p,
 .blog-content-html p {
-  overflow: hidden;
+  overflow: visible; /* Modified to allow natural Word-style text wrapping around floats */
   margin-top: 0;
   margin-bottom: 0.75rem;
+}
+
+/* Constrain blog content width for readability (Medium / MS Word style) */
+.blog-content,
+.blog-content-html,
+.blog-content .tiptap,
+.blog-content .ProseMirror {
+  max-width: 720px !important;
+  margin: 0 auto !important;
+  width: 100% !important;
 }
 
 /* Remove gap on the image node paragraph itself */

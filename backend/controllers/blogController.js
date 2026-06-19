@@ -180,42 +180,130 @@ const getBlogsByCategory = async (req, res, next) => {
  * Route: POST /api/blogs
  * Admin only
  */
+const { uploadBase64ToCloudinary, isCloudinaryConfigured } = require('../utils/cloudinary');
+
+/**
+ * Helper function to extract and upload base64 images inside editor content to Cloudinary
+ */
+const processContentImages = async (content) => {
+    if (!content) return content;
+    if (!isCloudinaryConfigured) {
+        console.warn('[blogController] Cloudinary not configured. Skipping processing of base64 images in content.');
+        return content;
+    }
+
+    // Match all base64 image src in content (data:image/png;base64,...)
+    const base64Regex = /src=["'](data:image\/[^;]+;base64,[^"']+)["']/g;
+    const matches = [...content.matchAll(base64Regex)];
+    
+    if (matches.length === 0) return content;
+
+    console.log(`[${new Date().toISOString()}] [blogController] Found ${matches.length} base64 images in content. Processing...`);
+
+    const uploadPromises = matches.map(async (match) => {
+        const base64Data = match[1];
+        try {
+            const url = await uploadBase64ToCloudinary(base64Data, 'readifyai/blogs/inline');
+            return { original: base64Data, url };
+        } catch (error) {
+            console.error(`[${new Date().toISOString()}] [blogController] Failed to upload inline base64 image:`, error.message);
+            return { original: base64Data, url: null };
+        }
+    });
+
+    const results = await Promise.all(uploadPromises);
+
+    let updatedContent = content;
+    for (const result of results) {
+        if (result.url) {
+            updatedContent = updatedContent.replaceAll(result.original, result.url);
+        }
+    }
+
+    console.log(`[${new Date().toISOString()}] [blogController] Completed processing base64 images. Replaced count: ${results.filter(r => r.url).length}`);
+    return updatedContent;
+};
+
+/**
+ * 5. Create a new blog post
+ * Route: POST /api/blogs
+ * Admin only
+ */
 const createBlog = async (req, res, next) => {
     try {
+        const startTime = Date.now();
+        console.log(`[${new Date().toISOString()}] [createBlog] Start request processing.`);
+
         const { title, category, excerpt, content, coverImage, tags, relatedBooks, status, seoTitle, seoDescription, seoKeywords } = req.body;
 
         // Validation of required fields
+        console.log(`[${new Date().toISOString()}] [createBlog] Step 1: Validation start.`);
         const requiredCheck = validate.required(
             { title, category, excerpt, content, coverImage },
             ['title', 'category', 'excerpt', 'content', 'coverImage']
         );
 
         if (!requiredCheck.valid) {
+            console.warn(`[${new Date().toISOString()}] [createBlog] Validation failed: ${requiredCheck.message}`);
             return res.status(400).json({ success: false, message: requiredCheck.message });
         }
 
         // Authorization check
         if (!req.user || req.user.role !== 'admin') {
+            console.warn(`[${new Date().toISOString()}] [createBlog] Authorization failed: Not authorized as admin`);
             return res.status(403).json({ success: false, message: 'Not authorized as admin' });
         }
+        console.log(`[${new Date().toISOString()}] [createBlog] Step 1: Validation success. Time taken: ${Date.now() - startTime}ms`);
 
-        const blog = await Blog.create({
-            title,
-            category,
-            excerpt,
-            content,
-            coverImage,
-            tags: tags || [],
-            relatedBooks: relatedBooks || [],
-            status: status || 'draft',
-            author: req.user._id,
-            seoTitle,
-            seoDescription,
-            seoKeywords
-        });
+        // Image processing (Uploading inline base64 images in content to Cloudinary)
+        console.log(`[${new Date().toISOString()}] [createBlog] Step 2: Image processing / upload start.`);
+        const imageProcessStart = Date.now();
+        let processedContent;
+        try {
+            processedContent = await processContentImages(content);
+        } catch (imgError) {
+            console.error(`[${new Date().toISOString()}] [createBlog] Image processing exception:`, imgError.message || imgError);
+            return res.status(500).json({ 
+                success: false, 
+                message: `Failed to process/upload images embedded in content: ${imgError.message || imgError}` 
+            });
+        }
+        console.log(`[${new Date().toISOString()}] [createBlog] Step 2: Image processing complete. Time taken: ${Date.now() - imageProcessStart}ms`);
+
+        // DB write
+        console.log(`[${new Date().toISOString()}] [createBlog] Step 3: DB Write start.`);
+        const dbWriteStart = Date.now();
+        let blog;
+        try {
+            blog = await Blog.create({
+                title,
+                category,
+                excerpt,
+                content: processedContent,
+                coverImage,
+                tags: tags || [],
+                relatedBooks: relatedBooks || [],
+                status: status || 'draft',
+                author: req.user._id,
+                seoTitle,
+                seoDescription,
+                seoKeywords
+            });
+        } catch (dbError) {
+            console.error(`[${new Date().toISOString()}] [createBlog] DB Write exception:`, dbError.message || dbError);
+            return res.status(500).json({ 
+                success: false, 
+                message: `Failed to write blog post to database: ${dbError.message || dbError}` 
+            });
+        }
+        
+        const dbWriteDuration = Date.now() - dbWriteStart;
+        console.log(`[${new Date().toISOString()}] [createBlog] Step 3: DB Write success. Time taken: ${dbWriteDuration}ms`);
+        console.log(`[${new Date().toISOString()}] [createBlog] Request fully completed. Total time: ${Date.now() - startTime}ms`);
 
         res.status(201).json({ blog });
     } catch (error) {
+        console.error(`[${new Date().toISOString()}] [createBlog] Catch-all error:`, error.message || error);
         if (error.name === 'ValidationError') {
             const messages = Object.values(error.errors).map((err) => err.message);
             return res.status(400).json({ success: false, message: 'Validation error', errors: messages });
@@ -231,38 +319,83 @@ const createBlog = async (req, res, next) => {
  */
 const updateBlog = async (req, res, next) => {
     try {
+        const startTime = Date.now();
+        console.log(`[${new Date().toISOString()}] [updateBlog] Start request processing for ID: ${req.params.id}`);
+
         const blog = await Blog.findById(req.params.id);
         if (!blog) {
+            console.warn(`[${new Date().toISOString()}] [updateBlog] Blog not found for ID: ${req.params.id}`);
             return res.status(404).json({ success: false, message: 'Blog not found' });
         }
 
         // Authorization check
         if (!req.user || req.user.role !== 'admin') {
+            console.warn(`[${new Date().toISOString()}] [updateBlog] Authorization failed: Not authorized as admin`);
             return res.status(403).json({ success: false, message: 'Not authorized as admin' });
         }
 
         // Ownership check
         if (blog.author.toString() !== req.user._id.toString()) {
+            console.warn(`[${new Date().toISOString()}] [updateBlog] Ownership check failed: user is not author`);
             return res.status(403).json({ success: false, message: 'Not authorized to update this blog' });
         }
 
+        console.log(`[${new Date().toISOString()}] [updateBlog] Step 1: Validation and ownership success. Time taken: ${Date.now() - startTime}ms`);
+
+        // Image processing (Uploading inline base64 images in content to Cloudinary)
+        console.log(`[${new Date().toISOString()}] [updateBlog] Step 2: Image processing / upload start.`);
+        const imageProcessStart = Date.now();
+        let processedContent = req.body.content;
+        if (processedContent !== undefined) {
+            try {
+                processedContent = await processContentImages(processedContent);
+            } catch (imgError) {
+                console.error(`[${new Date().toISOString()}] [updateBlog] Image processing exception:`, imgError.message || imgError);
+                return res.status(500).json({ 
+                    success: false, 
+                    message: `Failed to process/upload images embedded in content: ${imgError.message || imgError}` 
+                });
+            }
+        }
+        console.log(`[${new Date().toISOString()}] [updateBlog] Step 2: Image processing complete. Time taken: ${Date.now() - imageProcessStart}ms`);
+
+        // Update fields dynamically
         const allowedFields = [
-            'title', 'slug', 'category', 'excerpt', 'content', 'tags',
+            'title', 'slug', 'category', 'excerpt', 'tags',
             'relatedBooks', 'status', 'seoTitle', 'seoDescription', 'seoKeywords', 'coverImage'
         ];
 
-        // Update fields dynamically
         allowedFields.forEach((field) => {
             if (req.body[field] !== undefined) {
                 blog[field] = req.body[field];
             }
         });
 
-        // Saving will trigger pre-save / pre-validate hooks
-        await blog.save();
+        if (processedContent !== undefined) {
+            blog.content = processedContent;
+        }
+
+        // DB write
+        console.log(`[${new Date().toISOString()}] [updateBlog] Step 3: DB Write start.`);
+        const dbWriteStart = Date.now();
+        try {
+            // Saving will trigger pre-save / pre-validate hooks
+            await blog.save();
+        } catch (dbError) {
+            console.error(`[${new Date().toISOString()}] [updateBlog] DB Write exception:`, dbError.message || dbError);
+            return res.status(500).json({ 
+                success: false, 
+                message: `Failed to write blog post updates to database: ${dbError.message || dbError}` 
+            });
+        }
+        
+        const dbWriteDuration = Date.now() - dbWriteStart;
+        console.log(`[${new Date().toISOString()}] [updateBlog] Step 3: DB Write success. Time taken: ${dbWriteDuration}ms`);
+        console.log(`[${new Date().toISOString()}] [updateBlog] Request fully completed. Total time: ${Date.now() - startTime}ms`);
 
         res.json({ blog });
     } catch (error) {
+        console.error(`[${new Date().toISOString()}] [updateBlog] Catch-all error:`, error.message || error);
         if (error.name === 'ValidationError') {
             const messages = Object.values(error.errors).map((err) => err.message);
             return res.status(400).json({ success: false, message: 'Validation error', errors: messages });
