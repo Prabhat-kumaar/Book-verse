@@ -617,6 +617,83 @@ export default function AdminBlogCreateEditPage() {
             attributes: {
                 class: 'blog-content',
             },
+            handleDOMEvents: {
+                drop: (view, event) => {
+                    const hasFiles = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files.length;
+                    if (!hasFiles) return false;
+
+                    const images = Array.from(event.dataTransfer.files).filter(file => file.type.startsWith('image/'));
+                    if (images.length === 0) return false;
+
+                    event.preventDefault();
+
+                    const { schema } = view.state;
+                    const coordinates = view.posAtCoords({ left: event.clientX, top: event.clientY });
+
+                    images.forEach(async (file) => {
+                        try {
+                            setToast('Uploading image...');
+                            const uploadForm = new FormData();
+                            uploadForm.append('thumbnail', file);
+                            const response = await apiClient.post('/api/blogs/admin/upload-cover', uploadForm, {
+                                headers: { 'Content-Type': 'multipart/form-data' }
+                            });
+                            const url = response.data?.secure_url || response.data?.url;
+                            if (url) {
+                                const node = schema.nodes.image.create({ src: url, alt: file.name || 'Blog image' });
+                                const transaction = view.state.tr.insert(coordinates.pos, node);
+                                view.dispatch(transaction);
+                                setToast('Image uploaded successfully.');
+                                setTimeout(() => setToast(''), 1500);
+                            }
+                        } catch (err) {
+                            console.error('[EditorImageDrop] Upload failed:', err);
+                            setToast('Image upload failed.');
+                            setTimeout(() => setToast(''), 1500);
+                        }
+                    });
+                    return true;
+                },
+                paste: (view, event) => {
+                    const hasItems = event.clipboardData && event.clipboardData.items && event.clipboardData.items.length;
+                    if (!hasItems) return false;
+
+                    const images = Array.from(event.clipboardData.items)
+                        .filter(item => item.kind === 'file' && item.type.startsWith('image/'))
+                        .map(item => item.getAsFile());
+
+                    if (images.length === 0) return false;
+
+                    event.preventDefault();
+
+                    const { schema } = view.state;
+                    const selectionPos = view.state.selection.from;
+
+                    images.forEach(async (file) => {
+                        try {
+                            setToast('Uploading pasted image...');
+                            const uploadForm = new FormData();
+                            uploadForm.append('thumbnail', file);
+                            const response = await apiClient.post('/api/blogs/admin/upload-cover', uploadForm, {
+                                headers: { 'Content-Type': 'multipart/form-data' }
+                            });
+                            const url = response.data?.secure_url || response.data?.url;
+                            if (url) {
+                                const node = schema.nodes.image.create({ src: url, alt: file.name || 'Blog pasted image' });
+                                const transaction = view.state.tr.insert(selectionPos, node);
+                                view.dispatch(transaction);
+                                setToast('Image uploaded successfully.');
+                                setTimeout(() => setToast(''), 1500);
+                            }
+                        } catch (err) {
+                            console.error('[EditorImagePaste] Upload failed:', err);
+                            setToast('Image upload failed.');
+                            setTimeout(() => setToast(''), 1500);
+                        }
+                    });
+                    return true;
+                }
+            }
         },
         onUpdate: ({ editor }) => {
             setFormData(prev => ({
@@ -1035,6 +1112,55 @@ export default function AdminBlogCreateEditPage() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [formData]);
 
+    // Helper to upload inline base64 images inside content before saving
+    const uploadBase64ImagesInContent = async (htmlContent) => {
+        if (!htmlContent) return htmlContent;
+
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlContent, 'text/html');
+        const images = Array.from(doc.querySelectorAll('img'));
+        const base64Images = images.filter(img => img.src && img.src.startsWith('data:image/'));
+
+        if (base64Images.length === 0) return htmlContent;
+
+        setToast(`Uploading ${base64Images.length} inline images...`);
+
+        const dataURLtoFile = (dataurl, filename) => {
+            const arr = dataurl.split(',');
+            const mime = arr[0].match(/:(.*?);/)[1];
+            const bstr = atob(arr[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while (n--) {
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            return new File([u8arr], filename, { type: mime });
+        };
+
+        for (let i = 0; i < base64Images.length; i++) {
+            const img = base64Images[i];
+            const base64Data = img.getAttribute('src');
+            try {
+                setToast(`Uploading image ${i + 1} of ${base64Images.length}...`);
+                const file = dataURLtoFile(base64Data, `inline_image_${Date.now()}_${i}.png`);
+                const uploadForm = new FormData();
+                uploadForm.append('thumbnail', file);
+                const response = await apiClient.post('/api/blogs/admin/upload-cover', uploadForm, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                const url = response.data?.secure_url || response.data?.url;
+                if (url) {
+                    img.setAttribute('src', url);
+                }
+            } catch (err) {
+                console.error(`[uploadBase64ImagesInContent] Failed to upload image ${i + 1}:`, err);
+                throw new Error(`Failed to upload embedded image #${i + 1}. Please verify image file size.`);
+            }
+        }
+
+        return doc.body.innerHTML;
+    };
+
     // Submit handler
     const handleSubmit = async (e) => {
         if (e) e.preventDefault();
@@ -1073,10 +1199,21 @@ export default function AdminBlogCreateEditPage() {
         setSubmitting(true);
         setError('');
         try {
+            // Upload any base64 images to Cloudinary before sending the request
+            const cleanContentHtml = await uploadBase64ImagesInContent(formData.content);
+            const submissionData = {
+                ...formData,
+                content: cleanContentHtml
+            };
+
             const endpoint = mode === 'create' ? '/api/blogs' : `/api/blogs/${id}`;
             const apiMethod = mode === 'create' ? 'post' : 'put';
 
-            await apiClient[apiMethod](endpoint, formData, { timeout: 120000 });
+            await apiClient[apiMethod](endpoint, submissionData, { timeout: 120000 });
+
+            // Sync clean content to editor and state
+            editor?.commands?.setContent(cleanContentHtml);
+            setFormData(submissionData);
 
             setToast(mode === 'create' ? 'Blog created successfully.' : 'Blog updated successfully.');
             setTimeout(() => setToast(''), 2200);
