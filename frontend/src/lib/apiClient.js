@@ -52,6 +52,19 @@ apiClient.interceptors.response.use(
     const status = error?.response?.status
     const message = error?.response?.data?.message || error?.message || 'Request failed'
     isDev && console.error('[apiClient] Request failed:', { status, message, url: error?.config?.url })
+    
+    // Auto logout if token is expired/failed (401)
+    if (status === 401) {
+      localStorage.removeItem('authToken')
+      localStorage.removeItem('authUser')
+      window.dispatchEvent(new Event('authChanged'))
+      
+      const currentPath = window.location.pathname
+      if (currentPath !== '/login' && currentPath !== '/signup') {
+        window.location.href = '/login'
+      }
+    }
+    
     return Promise.reject(error)
   },
 )
