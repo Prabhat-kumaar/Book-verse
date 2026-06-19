@@ -334,8 +334,8 @@ const updateBlog = async (req, res, next) => {
             return res.status(403).json({ success: false, message: 'Not authorized as admin' });
         }
 
-        // Ownership check
-        if (blog.author.toString() !== req.user._id.toString()) {
+        // Ownership check (Admins can bypass ownership validation)
+        if (req.user.role !== 'admin' && blog.author.toString() !== req.user._id.toString()) {
             console.warn(`[${new Date().toISOString()}] [updateBlog] Ownership check failed: user is not author`);
             return res.status(403).json({ success: false, message: 'Not authorized to update this blog' });
         }
@@ -421,8 +421,8 @@ const deleteBlog = async (req, res, next) => {
             return res.status(403).json({ success: false, message: 'Not authorized as admin' });
         }
 
-        // Ownership check
-        if (blog.author.toString() !== req.user._id.toString()) {
+        // Ownership check (Admins can bypass ownership validation)
+        if (req.user.role !== 'admin' && blog.author.toString() !== req.user._id.toString()) {
             return res.status(403).json({ success: false, message: 'Not authorized to delete this blog' });
         }
 
@@ -452,8 +452,8 @@ const permanentlyDeleteBlog = async (req, res, next) => {
             return res.status(403).json({ success: false, message: 'Not authorized as admin' });
         }
 
-        // Ownership check
-        if (blog.author.toString() !== req.user._id.toString()) {
+        // Ownership check (Admins can bypass ownership validation)
+        if (req.user.role !== 'admin' && blog.author.toString() !== req.user._id.toString()) {
             return res.status(403).json({ success: false, message: 'Not authorized to delete this blog' });
         }
 
@@ -554,7 +554,7 @@ const getBlogAnalytics = async (req, res, next) => {
                     ]
                 }
             }
-        ]).maxTimeMS(15000);
+        ]).option({ maxTimeMS: 15000 });
 
         console.log(`[${new Date().toISOString()}] [getBlogAnalytics] Step 2: Consolidated stats aggregation completed in ${Date.now() - aggStartTime}ms`);
 
