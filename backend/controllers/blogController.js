@@ -504,63 +504,108 @@ const getBlogAnalytics = async (req, res, next) => {
             }
         }
 
-        // Fetch counts for stats overview (within date filter)
-        const [
-            totalBlogs,
-            publishedCount,
-            draftCount,
-            archivedCount,
-            totalCount
-        ] = await Promise.all([
-            Blog.countDocuments({ ...dateFilter, status: { $ne: 'archived' } }),
-            Blog.countDocuments({ ...dateFilter, status: 'published' }),
-            Blog.countDocuments({ ...dateFilter, status: 'draft' }),
-            Blog.countDocuments({ ...dateFilter, status: 'archived' }),
-            Blog.countDocuments(dateFilter)
-        ]);
+        // Fetch engagement/monthly metrics date ranges
+        const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
 
-        const viewsResult = await Blog.aggregate([
-            { $match: { ...dateFilter, status: { $ne: 'archived' } } },
-            { $group: { _id: null, total: { $sum: '$viewCount' } } }
-        ]);
-        const totalViews = viewsResult[0] ? viewsResult[0].total : 0;
+        // Fetch counts, views, and category statistics in a single flat aggregation pipeline to minimize DB round-trips
+        console.log(`[${new Date().toISOString()}] [getBlogAnalytics] Step 1: Starting consolidated stats aggregation...`);
+        const aggStartTime = Date.now();
 
-        // Limit to 10 for the top blogs table
-        const mostViewedBlogs = await Blog.find({ ...dateFilter, status: { $ne: 'archived' } })
-            .sort({ viewCount: -1 })
-            .limit(10)
-            .populate('author', 'username avatar')
-            .lean();
-
-        const averageViewsPerBlog = totalBlogs > 0 ? Number((totalViews / totalBlogs).toFixed(2)) : 0;
-
-        const categoryStats = await Blog.aggregate([
-            { $match: { ...dateFilter, status: { $ne: 'archived' } } },
+        const facetResult = await Blog.aggregate([
             {
-                $group: {
-                    _id: '$category',
-                    count: { $sum: 1 },
-                    totalViews: { $sum: '$viewCount' }
+                $facet: {
+                    counts: [
+                        { $match: dateFilter },
+                        {
+                            $group: {
+                                _id: null,
+                                totalCount: { $sum: 1 },
+                                publishedCount: { $sum: { $cond: [{ $eq: ['$status', 'published'] }, 1, 0] } },
+                                draftCount: { $sum: { $cond: [{ $eq: ['$status', 'draft'] }, 1, 0] } },
+                                archivedCount: { $sum: { $cond: [{ $eq: ['$status', 'archived'] }, 1, 0] } },
+                                totalBlogs: { $sum: { $cond: [{ $ne: ['$status', 'archived'] }, 1, 0] } }
+                            }
+                        }
+                    ],
+                    views: [
+                        { $match: { ...dateFilter, status: { $ne: 'archived' } } },
+                        { $group: { _id: null, total: { $sum: '$viewCount' } } }
+                    ],
+                    categoryStats: [
+                        { $match: { ...dateFilter, status: { $ne: 'archived' } } },
+                        {
+                            $group: {
+                                _id: '$category',
+                                count: { $sum: 1 },
+                                totalViews: { $sum: '$viewCount' }
+                            }
+                        },
+                        { $sort: { totalViews: -1 } }
+                    ],
+                    postsThisMonth: [
+                        { $match: { createdAt: { $gte: startOfThisMonth } } },
+                        { $count: 'count' }
+                    ],
+                    postsLastMonth: [
+                        { $match: { createdAt: { $gte: startOfLastMonth, $lte: endOfLastMonth } } },
+                        { $count: 'count' }
+                    ]
                 }
-            },
-            { $sort: { totalViews: -1 } }
-        ]);
+            }
+        ]).maxTimeMS(15000);
 
+        console.log(`[${new Date().toISOString()}] [getBlogAnalytics] Step 2: Consolidated stats aggregation completed in ${Date.now() - aggStartTime}ms`);
+
+        const resultData = facetResult[0] || {};
+
+        // Extract aggregated counts
+        const counts = resultData.counts && resultData.counts[0] ? resultData.counts[0] : {
+            totalCount: 0,
+            publishedCount: 0,
+            draftCount: 0,
+            archivedCount: 0,
+            totalBlogs: 0
+        };
+        const totalCount = counts.totalCount || 0;
+        const publishedCount = counts.publishedCount || 0;
+        const draftCount = counts.draftCount || 0;
+        const archivedCount = counts.archivedCount || 0;
+        const totalBlogs = counts.totalBlogs || 0;
+
+        // Extract aggregated views
+        const totalViews = resultData.views && resultData.views[0] ? resultData.views[0].total : 0;
+
+        // Extract aggregated category stats
+        const categoryStats = resultData.categoryStats || [];
         const topCategories = categoryStats.map((item) => ({
             category: item._id,
             count: item.count,
             totalViews: item.totalViews
         }));
 
-        // Engagement metrics: created this month vs last month
-        const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+        // Extract aggregated monthly counts
+        const postsThisMonth = resultData.postsThisMonth && resultData.postsThisMonth[0] ? resultData.postsThisMonth[0].count : 0;
+        const postsLastMonth = resultData.postsLastMonth && resultData.postsLastMonth[0] ? resultData.postsLastMonth[0].count : 0;
 
-        const [postsThisMonth, postsLastMonth] = await Promise.all([
-            Blog.countDocuments({ createdAt: { $gte: startOfThisMonth } }),
-            Blog.countDocuments({ createdAt: { $gte: startOfLastMonth, $lte: endOfLastMonth } })
-        ]);
+        // Limit to 10 for the top blogs table, run conditionally and separately
+        let mostViewedBlogs = [];
+        if (req.query.excludeTopBlogs !== 'true') {
+            console.log(`[${new Date().toISOString()}] [getBlogAnalytics] Step 3: Fetching top viewed blogs...`);
+            const topBlogsStartTime = Date.now();
+            mostViewedBlogs = await Blog.find({ ...dateFilter, status: { $ne: 'archived' } })
+                .sort({ viewCount: -1 })
+                .limit(10)
+                .populate('author', 'username avatar')
+                .maxTimeMS(15000)
+                .lean();
+            console.log(`[${new Date().toISOString()}] [getBlogAnalytics] Step 4: Top viewed blogs fetched in ${Date.now() - topBlogsStartTime}ms`);
+        } else {
+            console.log(`[${new Date().toISOString()}] [getBlogAnalytics] Step 3: Skipping top viewed blogs fetch per request parameter`);
+        }
+
+        const averageViewsPerBlog = totalBlogs > 0 ? Number((totalViews / totalBlogs).toFixed(2)) : 0;
 
         res.json({
             analytics: {
@@ -653,8 +698,9 @@ const getAllBlogsAdmin = async (req, res, next) => {
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit)
+                .maxTimeMS(15000)
                 .lean(),
-            Blog.countDocuments(filter)
+            Blog.countDocuments(filter).maxTimeMS(15000)
         ]);
 
         const totalPages = Math.ceil(totalCount / limit);

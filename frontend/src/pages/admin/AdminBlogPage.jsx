@@ -388,7 +388,7 @@ export default function AdminBlogPage() {
     // Fetch analytics summary counts
     const fetchStats = async () => {
         try {
-            const response = await apiClient.get('/api/blogs/admin/analytics/overview');
+            const response = await apiClient.get('/api/blogs/admin/analytics/overview?excludeTopBlogs=true');
             const data = response.data?.analytics || {};
             setStats({
                 totalCount: data.totalCount || 0,

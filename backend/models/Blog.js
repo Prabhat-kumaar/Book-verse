@@ -117,6 +117,7 @@ blogSchema.index({ status: 1 });
 blogSchema.index({ category: 1 });
 blogSchema.index({ createdAt: -1 });
 blogSchema.index({ viewCount: -1 });
+blogSchema.index({ status: 1, createdAt: -1 });
 
 // Pre-validate hook to auto-generate slug from title if not provided
 blogSchema.pre('validate', function (next) {

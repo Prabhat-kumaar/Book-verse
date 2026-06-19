@@ -38,6 +38,7 @@ const uploadToCloudinary = async (localPath, folder = 'bookverse', options = {})
         const uploadOptions = {
             folder: folder,
             resource_type: 'auto',
+            timeout: 30000,
             ...options
         };
         if (ext === '.epub') uploadOptions.resource_type = 'raw';
@@ -74,6 +75,7 @@ const uploadBase64ToCloudinary = async (base64DataUri, folder = 'bookverse', opt
         const result = await cloudinary.uploader.upload(base64DataUri, {
             folder: folder,
             resource_type: 'image',
+            timeout: 30000,
             ...options
         });
 
