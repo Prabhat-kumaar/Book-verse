@@ -338,6 +338,7 @@ export default function AdminBlogCreateEditPage() {
     const [submitting, setSubmitting] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState('');
+    const [fetchError, setFetchError] = useState('');
     const [fieldErrors, setFieldErrors] = useState({});
     const [slugError, setSlugError] = useState('');
     const [isSaved, setIsSaved] = useState(true);
@@ -704,7 +705,7 @@ export default function AdminBlogCreateEditPage() {
     const fetchBlogDetail = async () => {
         if (mode !== 'edit' || !id) return;
         setLoading(true);
-        setError('');
+        setFetchError('');
         try {
             const response = await apiClient.get(`/api/blogs/admin/${id}`, { timeout: 60000 });
             const blog = response.data?.blog;
@@ -730,7 +731,7 @@ export default function AdminBlogCreateEditPage() {
             isManualSlug.current = true;
         } catch (err) {
             console.error('[AdminBlogCreateEditPage] Fetch details error:', err);
-            setError(err.response?.data?.message || err.message || 'Unable to retrieve blog details.');
+            setFetchError(err.response?.data?.message || err.message || 'Unable to retrieve blog details.');
         } finally {
             setLoading(false);
         }
@@ -1598,11 +1599,11 @@ export default function AdminBlogCreateEditPage() {
                             <div className="mx-auto h-12 w-12 rounded-full border-4 border-white/10 border-t-indigo-400 animate-spin" />
                             <p className="mt-4 text-sm text-slate-400">Loading blog details...</p>
                         </div>
-                    ) : error && mode === 'edit' ? (
+                    ) : fetchError && mode === 'edit' ? (
                         <div className="rounded-2xl border border-rose-300/20 bg-rose-500/10 p-6 text-center max-w-md mx-auto my-8">
                             <span className="text-2xl">⚠️</span>
                             <h3 className="mt-2 text-sm font-bold text-white">Could not load details</h3>
-                            <p className="mt-1.5 text-xs text-rose-300/80 leading-relaxed">{error}</p>
+                            <p className="mt-1.5 text-xs text-rose-300/80 leading-relaxed">{fetchError}</p>
                             <div className="mt-5 flex gap-2 justify-center">
                                 <button type="button" onClick={fetchBlogDetail} className="rounded-xl bg-indigo-500 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-600">Retry</button>
                                 <Link to="/admin/blogs" className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-white hover:bg-white/10">Cancel</Link>
