@@ -1170,8 +1170,10 @@ export default function AdminBlogCreateEditPage() {
     };
 
     // Submit handler
-    const handleSubmit = async (e) => {
-        if (e) e.preventDefault();
+    const handleSubmit = async (e, overrideStatus) => {
+        if (e && e.preventDefault) e.preventDefault();
+
+        const activeStatus = overrideStatus || formData.status;
 
         // Manual validation schema check
         const errors = {};
@@ -1211,6 +1213,7 @@ export default function AdminBlogCreateEditPage() {
             const cleanContentHtml = await uploadBase64ImagesInContent(formData.content);
             const submissionData = {
                 ...formData,
+                status: activeStatus,
                 content: cleanContentHtml
             };
 
@@ -1278,10 +1281,8 @@ export default function AdminBlogCreateEditPage() {
     // Quick save status change triggers
     const handleSaveStatus = async (statusVal) => {
         setFormData(prev => ({ ...prev, status: statusVal }));
-        // Execute submit with updated state
-        setTimeout(() => {
-            handleSubmit();
-        }, 100);
+        // Execute submit with immediate status override
+        await handleSubmit(null, statusVal);
     };
 
     // Ribbon Helper Functions
