@@ -80,7 +80,7 @@ const allowedOrigins = new Set([
 
 const normalizeOrigin = (origin = '') => origin.trim().replace(/\/+$/, '');
 
-app.use(cors({
+const corsOptions = {
     origin: function (origin, callback) {
         if (!origin) {
             return callback(null, true);
@@ -125,10 +125,12 @@ app.use(cors({
         'X-Requested-With'
     ],
     optionsSuccessStatus: 200
-}));
+};
 
-// Enable preflight for all routes globally
-app.options('*', cors());
+app.use(cors(corsOptions));
+
+// Enable preflight for all routes globally using the same CORS configuration options
+app.options('*', cors(corsOptions));
 // ================= BODY PARSER =================
 app.use(express.json({ limit: '10mb' }));
 
