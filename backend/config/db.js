@@ -1,6 +1,10 @@
 const dns = require('node:dns');
 const mongoose = require('mongoose');
 
+// Disable command buffering globally so requests fail fast instead of hanging when the database is disconnected or full
+mongoose.set('bufferCommands', false);
+
+
 const looksLikePlaceholder = (value = '') => {
     const raw = String(value || '').trim();
     if (!raw) return true;
