@@ -436,6 +436,36 @@ const deleteBlog = async (req, res, next) => {
 };
 
 /**
+ * 7.5 Permanently delete a blog post from the database (hard delete)
+ * Route: DELETE /api/blogs/:id/permanent
+ * Admin only (Only owner can delete)
+ */
+const permanentlyDeleteBlog = async (req, res, next) => {
+    try {
+        const blog = await Blog.findById(req.params.id);
+        if (!blog) {
+            return res.status(404).json({ success: false, message: 'Blog not found' });
+        }
+
+        // Authorization check
+        if (!req.user || req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, message: 'Not authorized as admin' });
+        }
+
+        // Ownership check
+        if (blog.author.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ success: false, message: 'Not authorized to delete this blog' });
+        }
+
+        await Blog.findByIdAndDelete(req.params.id);
+
+        res.json({ success: true, message: 'Blog post permanently deleted' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
  * 8. Get blog statistics and analytics
  * Route: GET /api/blogs/analytics
  * Admin only
@@ -687,6 +717,7 @@ module.exports = {
     createBlog,
     updateBlog,
     deleteBlog,
+    permanentlyDeleteBlog,
     getBlogAnalytics,
     getBlogById,
     getAllBlogsAdmin,

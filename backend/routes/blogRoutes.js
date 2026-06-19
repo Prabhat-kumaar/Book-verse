@@ -9,6 +9,7 @@ const {
     createBlog,
     updateBlog,
     deleteBlog,
+    permanentlyDeleteBlog,
     getBlogAnalytics,
     getBlogById,
     getAllBlogsAdmin,
@@ -47,6 +48,9 @@ router.put('/:id', protect, admin, validateUpdateBlog, updateBlog);
 
 // 6. Delete a blog (DELETE /:id)
 router.delete('/:id', protect, admin, deleteBlog);
+
+// 6.2 Permanently delete a blog (DELETE /:id/permanent)
+router.delete('/:id/permanent', protect, admin, permanentlyDeleteBlog);
 
 // 6.5 Bulk update status (PUT /admin/bulk-status)
 router.put('/admin/bulk-status', protect, admin, bulkUpdateStatus);

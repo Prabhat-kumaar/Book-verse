@@ -222,15 +222,13 @@ const BlogRow = React.memo(function BlogRow({
                     >
                         View
                     </a>
-                    {blog.status !== 'archived' && (
-                        <button
-                            type="button"
-                            onClick={() => onDelete(blog)}
-                            className="rounded bg-rose-500/10 border border-rose-500/20 px-2.5 py-1 text-xs font-bold text-rose-300 hover:bg-rose-500/20"
-                        >
-                            Delete
-                        </button>
-                    )}
+                    <button
+                        type="button"
+                        onClick={() => onDelete(blog)}
+                        className="rounded bg-rose-500/10 border border-rose-500/20 px-2.5 py-1 text-xs font-bold text-rose-300 hover:bg-rose-500/20"
+                    >
+                        Delete
+                    </button>
                 </div>
             </td>
         </tr>
@@ -488,7 +486,7 @@ export default function AdminBlogPage() {
             setDeleting(true);
             await apiClient.delete(`/api/blogs/${deleteTarget._id}`);
             
-            setToast('Blog post deleted successfully.');
+            setToast('Blog post archived successfully.');
             setTimeout(() => setToast(''), 2200);
 
             // Refetch current list and status stats
@@ -498,6 +496,28 @@ export default function AdminBlogPage() {
         } catch (err) {
             console.error('[AdminBlogPage] Delete error:', err);
             setError(err.response?.data?.message || err.message || 'Failed to delete blog.');
+        } finally {
+            setDeleting(false);
+            setDeleteTarget(null);
+        }
+    };
+
+    const handleConfirmPermanentDelete = async () => {
+        if (!deleteTarget?._id) return;
+        try {
+            setDeleting(true);
+            await apiClient.delete(`/api/blogs/${deleteTarget._id}/permanent`);
+            
+            setToast('Blog post permanently deleted.');
+            setTimeout(() => setToast(''), 2200);
+
+            // Refetch current list and status stats
+            fetchBlogs();
+            fetchStats();
+            setSelectedBlogs((prev) => prev.filter((id) => id !== deleteTarget._id));
+        } catch (err) {
+            console.error('[AdminBlogPage] Permanent delete error:', err);
+            setError(err.response?.data?.message || err.message || 'Failed to permanently delete blog.');
         } finally {
             setDeleting(false);
             setDeleteTarget(null);
@@ -642,13 +662,23 @@ export default function AdminBlogPage() {
                 </main>
             </div>
 
-            {/* Soft Delete Confirmation Modal overlay */}
+            {/* Delete Confirmation Modal overlay */}
             {deleteTarget && (
                 <div className="fixed inset-0 z-[120] grid place-items-center bg-[#02050fcc] p-4 backdrop-blur-sm">
                     <div className="w-full max-w-md rounded-2xl border border-white/15 bg-slate-950/90 p-5 shadow-[0_20px_60px_rgba(4,7,24,0.65)] text-left">
-                        <h4 className="text-lg font-bold text-white">Confirm Archive</h4>
+                        <h4 className="text-lg font-bold text-white">
+                            {deleteTarget.status === 'archived' ? 'Permanently Delete Blog' : 'Delete / Archive Blog'}
+                        </h4>
                         <p className="mt-2 text-sm text-slate-300 leading-relaxed">
-                            Are you sure you want to archive <span className="font-semibold text-white">"{deleteTarget.title}"</span>? This will hide it from readers, and you can recover it later from the archived filter.
+                            {deleteTarget.status === 'archived' ? (
+                                <>
+                                    Are you sure you want to permanently delete <span className="font-semibold text-white">"{deleteTarget.title}"</span>? This action cannot be undone.
+                                </>
+                            ) : (
+                                <>
+                                    Are you sure you want to archive or permanently delete <span className="font-semibold text-white">"{deleteTarget.title}"</span>? Archiving hides it from readers, and it can be recovered later.
+                                </>
+                            )}
                         </p>
                         <div className="mt-5 flex justify-end gap-2 text-xs">
                             <button
@@ -658,13 +688,23 @@ export default function AdminBlogPage() {
                             >
                                 Cancel
                             </button>
+                            {deleteTarget.status !== 'archived' && (
+                                <button
+                                    type="button"
+                                    onClick={handleConfirmDelete}
+                                    disabled={deleting}
+                                    className="rounded-lg border border-indigo-300/30 bg-indigo-500/20 px-4 py-2 font-bold text-indigo-100 transition hover:bg-indigo-500/30 disabled:cursor-not-allowed disabled:opacity-65"
+                                >
+                                    {deleting ? 'Archiving...' : 'Archive Blog'}
+                                </button>
+                            )}
                             <button
                                 type="button"
-                                onClick={handleConfirmDelete}
+                                onClick={handleConfirmPermanentDelete}
                                 disabled={deleting}
-                                className="rounded-lg border border-rose-300/35 bg-rose-500/20 px-4 py-2 font-bold text-rose-100 transition hover:bg-rose-500/30 disabled:cursor-not-allowed disabled:opacity-65"
+                                className="rounded-lg border border-rose-500 bg-rose-600 px-4 py-2 font-bold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-65"
                             >
-                                {deleting ? 'Archiving...' : 'Archive Blog'}
+                                {deleting ? 'Deleting...' : 'Delete Permanently'}
                             </button>
                         </div>
                     </div>
