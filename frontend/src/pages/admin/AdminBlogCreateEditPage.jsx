@@ -483,7 +483,8 @@ export default function AdminBlogCreateEditPage() {
                 const formDataUpload = new FormData();
                 formDataUpload.append('thumbnail', editorImageFile);
                 const response = await apiClient.post('/blogs/admin/upload-cover', formDataUpload, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                    timeout: 0
                 });
                 if (response.data && response.data.url) {
                     finalUrl = response.data.url;
@@ -636,7 +637,8 @@ export default function AdminBlogCreateEditPage() {
                             const uploadForm = new FormData();
                             uploadForm.append('thumbnail', file);
                             const response = await apiClient.post('/api/blogs/admin/upload-cover', uploadForm, {
-                                headers: { 'Content-Type': 'multipart/form-data' }
+                                headers: { 'Content-Type': 'multipart/form-data' },
+                                timeout: 0
                             });
                             const url = response.data?.secure_url || response.data?.url;
                             if (url) {
@@ -675,7 +677,8 @@ export default function AdminBlogCreateEditPage() {
                             const uploadForm = new FormData();
                             uploadForm.append('thumbnail', file);
                             const response = await apiClient.post('/api/blogs/admin/upload-cover', uploadForm, {
-                                headers: { 'Content-Type': 'multipart/form-data' }
+                                headers: { 'Content-Type': 'multipart/form-data' },
+                                timeout: 0
                             });
                             const url = response.data?.secure_url || response.data?.url;
                             if (url) {
@@ -890,7 +893,9 @@ export default function AdminBlogCreateEditPage() {
             const uploadForm = new FormData();
             uploadForm.append('thumbnail', file); // passes multer image filter
 
-            const response = await apiClient.post('/api/blogs/admin/upload-cover', uploadForm);
+            const response = await apiClient.post('/api/blogs/admin/upload-cover', uploadForm, {
+                timeout: 0
+            });
 
             // Verify Cloudinary upload was successful (response has secure_url)
             const secureUrl = response.data?.secure_url || response.data?.url;
@@ -1146,7 +1151,8 @@ export default function AdminBlogCreateEditPage() {
                 const uploadForm = new FormData();
                 uploadForm.append('thumbnail', file);
                 const response = await apiClient.post('/api/blogs/admin/upload-cover', uploadForm, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                    timeout: 0
                 });
                 const url = response.data?.secure_url || response.data?.url;
                 if (url) {
