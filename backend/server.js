@@ -123,8 +123,12 @@ app.use(cors({
         'Origin',
         'Accept',
         'X-Requested-With'
-    ]
+    ],
+    optionsSuccessStatus: 200
 }));
+
+// Enable preflight for all routes globally
+app.options('*', cors());
 // ================= BODY PARSER =================
 app.use(express.json({ limit: '10mb' }));
 
