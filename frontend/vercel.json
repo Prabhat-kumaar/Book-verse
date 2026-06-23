@@ -5,6 +5,17 @@
       "destination": "https://book-verse-production.up.railway.app/sitemap.xml"
     },
     {
+      "source": "/:path((?!api/|assets/|favicon.svg|icons.svg|sitemap.xml|sitemap-.*.xml|robots.txt).*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*([Gg]ooglebot|[Bb]ingbot|[Yy]andex|[Bb]aiduspider|[Ff]acebookexternalhit|[Tt]witterbot|[Ll]inkedinbot|[Pp]interest|[Ss]lackbot|[Dd]iscordbot|[Ww]hats[Aa]pp|[Tt]elegram[Bb]ot|[Gg][Pp][Tt][Bb]ot|[Cc]laude[Bb]ot|[Pp]rerender|[Cc]url).*"
+        }
+      ],
+      "destination": "/api/prerender?path=/:path"
+    },
+    {
       "source": "/((?!api/|assets/|favicon.svg|icons.svg|sitemap.xml|sitemap-.*.xml|robots.txt).*)",
       "destination": "/index.html"
     }

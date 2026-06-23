@@ -42,6 +42,7 @@ const getAllBlogs = async (req, res, next) => {
 
         const [blogs, totalCount] = await Promise.all([
             Blog.find(filter)
+                .select('title slug excerpt coverImage category tags publishedAt createdAt viewCount author -content')
                 .populate('author', 'username avatar')
                 .sort(sortOption)
                 .skip(skip)

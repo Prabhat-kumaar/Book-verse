@@ -5,7 +5,6 @@ const isDev = process.env.NODE_ENV !== 'production';
 const devLog = (...args) => isDev && console.log(...args);
 const devError = (...args) => console.error(...args);
 
-const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const asTrimmedString = (value) => (typeof value === 'string' ? value.trim() : '');
 const getServerBaseUrl = (req) => `${req.protocol}://${req.get('host')}`;
 const toFileUrl = (req, file) => `${getServerBaseUrl(req)}/uploads/${file.filename}`;
@@ -278,11 +277,13 @@ const parsePagination = (query) => {
     return { page, limit, skip };
 };
 
+const normalizeCategory = (category = '') => asTrimmedString(category);
+
 const getAllBooks = async (req, res, next) => {
     try {
         const { page, limit, skip } = parsePagination(req.query || {});
-        const { category } = req.query;
-        const filter = category ? { category: { $regex: new RegExp(category.trim(), 'i') } } : {};
+        const category = normalizeCategory(req.query.category);
+        const filter = category ? { category } : {};
         const [books, total] = await Promise.all([
             Book.find(filter)
                 .sort({ createdAt: -1 })
@@ -298,7 +299,7 @@ const getAllBooks = async (req, res, next) => {
             thumbnail: book.thumbnail ? formatUrl(req, book.thumbnail) : null,
             coverImage: book.coverImage ? formatUrl(req, book.coverImage) : null,
         }));
-        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        res.setHeader('Cache-Control', 'public, max-age=300');
         res.json({
             success: true,
             books: formattedBooks,
@@ -318,9 +319,8 @@ const getAllBooks = async (req, res, next) => {
 const getBooksByCategory = async (req, res, next) => {
     try {
         const { page, limit, skip } = parsePagination(req.query || {});
-        const { category } = req.params;
-        const categoryRegex = new RegExp(escapeRegex(category.trim()), 'i');
-        const filter = { category: { $regex: categoryRegex } };
+        const category = normalizeCategory(req.params.category);
+        const filter = { category };
         const [books, total] = await Promise.all([
             Book.find(filter)
                 .sort({ createdAt: -1 })

@@ -4,22 +4,6 @@ import Select from 'react-select';
 import { useEditor, EditorContent } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import { Mark, Extension } from '@tiptap/core';
-import StarterKit from '@tiptap/starter-kit';
-import TiptapLink from '@tiptap/extension-link';
-import Underline from '@tiptap/extension-underline';
-import Strike from '@tiptap/extension-strike';
-import Code from '@tiptap/extension-code';
-import TextAlign from '@tiptap/extension-text-align';
-import { TextStyle } from '@tiptap/extension-text-style';
-import { Color } from '@tiptap/extension-color';
-import Highlight from '@tiptap/extension-highlight';
-import { Table } from '@tiptap/extension-table';
-import TableRow from '@tiptap/extension-table-row';
-import TableCell from '@tiptap/extension-table-cell';
-import TableHeader from '@tiptap/extension-table-header';
-import Youtube from '@tiptap/extension-youtube';
-import HorizontalRule from '@tiptap/extension-horizontal-rule';
-import ImageResize from 'tiptap-extension-resize-image';
 import SEO from '../../components/SEO';
 import MainLayout from '../../layout/MainLayout';
 import apiClient from '../../lib/apiClient';
@@ -118,7 +102,7 @@ const selectDarkStyles = {
 };
 
 // Extend ImageResize to support class attribute for left/right/center image alignment and sizing
-const CustomImage = ImageResize.extend({
+const createCustomImage = (ImageResize) => ImageResize.extend({
     addAttributes() {
         return {
             ...this.parent?.(),
@@ -186,7 +170,7 @@ const Superscript = Mark.create({
 });
 
 // Custom TextStyle Extension consolidating custom typography styling attributes
-const CustomTextStyle = TextStyle.extend({
+const createCustomTextStyle = (TextStyle) => TextStyle.extend({
     addAttributes() {
         return {
             ...this.parent?.(),
@@ -298,6 +282,107 @@ const BlockStyles = Extension.create({
     }
 });
 
+const loadTiptapExtensions = async () => {
+    const [
+        StarterKitModule,
+        LinkModule,
+        UnderlineModule,
+        StrikeModule,
+        CodeModule,
+        TextAlignModule,
+        TextStyleModule,
+        ColorModule,
+        HighlightModule,
+        TableModule,
+        TableRowModule,
+        TableCellModule,
+        TableHeaderModule,
+        YoutubeModule,
+        HorizontalRuleModule,
+        ImageResizeModule,
+    ] = await Promise.all([
+        import('@tiptap/starter-kit'),
+        import('@tiptap/extension-link'),
+        import('@tiptap/extension-underline'),
+        import('@tiptap/extension-strike'),
+        import('@tiptap/extension-code'),
+        import('@tiptap/extension-text-align'),
+        import('@tiptap/extension-text-style'),
+        import('@tiptap/extension-color'),
+        import('@tiptap/extension-highlight'),
+        import('@tiptap/extension-table'),
+        import('@tiptap/extension-table-row'),
+        import('@tiptap/extension-table-cell'),
+        import('@tiptap/extension-table-header'),
+        import('@tiptap/extension-youtube'),
+        import('@tiptap/extension-horizontal-rule'),
+        import('tiptap-extension-resize-image'),
+    ]);
+
+    const StarterKit = StarterKitModule.default;
+    const TiptapLink = LinkModule.default;
+    const Underline = UnderlineModule.default;
+    const Strike = StrikeModule.default;
+    const Code = CodeModule.default;
+    const TextAlign = TextAlignModule.default;
+    const TextStyle = TextStyleModule.TextStyle || TextStyleModule.default;
+    const Color = ColorModule.Color || ColorModule.default;
+    const Highlight = HighlightModule.default;
+    const Table = TableModule.Table || TableModule.default;
+    const TableRow = TableRowModule.default;
+    const TableCell = TableCellModule.default;
+    const TableHeader = TableHeaderModule.default;
+    const Youtube = YoutubeModule.default;
+    const HorizontalRule = HorizontalRuleModule.default;
+    const ImageResize = ImageResizeModule.default;
+    const CustomImage = createCustomImage(ImageResize);
+    const CustomTextStyle = createCustomTextStyle(TextStyle);
+
+    return [
+        StarterKit.configure({
+            link: false,
+            code: false,
+            strike: false,
+            horizontalRule: false,
+            underline: false,
+        }),
+        TiptapLink.configure({
+            openOnClick: false,
+        }),
+        CustomImage.configure({
+            inline: true,
+            allowBase64: true,
+        }),
+        Underline,
+        Strike,
+        Code,
+        Subscript,
+        Superscript,
+        BlockStyles,
+        TextAlign.configure({
+            types: ['heading', 'paragraph'],
+            alignments: ['left', 'center', 'right', 'justify']
+        }),
+        CustomTextStyle,
+        Color,
+        Highlight.configure({
+            multicolor: true,
+        }),
+        Table.configure({
+            resizable: true,
+        }),
+        TableRow,
+        TableHeader,
+        TableCell,
+        Youtube.configure({
+            inline: false,
+            width: 640,
+            height: 360,
+        }),
+        HorizontalRule,
+    ];
+};
+
 
 
 export default function AdminBlogCreateEditPage() {
@@ -313,6 +398,7 @@ export default function AdminBlogCreateEditPage() {
     const [findText, setFindText] = useState('');
     const [replaceText, setReplaceText] = useState('');
     const [showFindReplacePanel, setShowFindReplacePanel] = useState(false);
+    const [tiptapExtensions, setTiptapExtensions] = useState(null);
 
     // Form fields state
     const [formData, setFormData] = useState({
@@ -571,50 +657,25 @@ export default function AdminBlogCreateEditPage() {
         return () => URL.revokeObjectURL(objectUrl);
     }, [newBookThumbnailFile]);
 
+    useEffect(() => {
+        let cancelled = false;
+
+        loadTiptapExtensions()
+            .then((extensions) => {
+                if (!cancelled) setTiptapExtensions(extensions);
+            })
+            .catch((err) => {
+                console.error('[AdminBlogCreateEditPage] Failed to load TipTap extensions:', err);
+                setError('Editor tools failed to load. Please refresh and try again.');
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
     const editor = useEditor({
-        extensions: [
-            StarterKit.configure({
-                link: false,
-                code: false,
-                strike: false,
-                horizontalRule: false,
-                underline: false,
-            }),
-            TiptapLink.configure({
-                openOnClick: false,
-            }),
-            CustomImage.configure({
-                inline: true,
-                allowBase64: true,
-            }),
-            Underline,
-            Strike,
-            Code,
-            Subscript,
-            Superscript,
-            BlockStyles,
-            TextAlign.configure({
-                types: ['heading', 'paragraph'],
-                alignments: ['left', 'center', 'right', 'justify']
-            }),
-            CustomTextStyle,
-            Color,
-            Highlight.configure({
-                multicolor: true,
-            }),
-            Table.configure({
-                resizable: true,
-            }),
-            TableRow,
-            TableHeader,
-            TableCell,
-            Youtube.configure({
-                inline: false,
-                width: 640,
-                height: 360,
-            }),
-            HorizontalRule,
-        ],
+        extensions: tiptapExtensions || [Subscript, Superscript, BlockStyles],
         content: formData.content,
         editorProps: {
             attributes: {
@@ -727,7 +788,7 @@ export default function AdminBlogCreateEditPage() {
                 setTimeout(() => setToast(''), 1500);
             }
         }
-    });
+    }, [tiptapExtensions]);
 
     // Sync editor content when loaded (e.g., from DB or local storage restore)
     useEffect(() => {
@@ -1162,7 +1223,7 @@ export default function AdminBlogCreateEditPage() {
                 }
             } catch (err) {
                 console.error(`[uploadBase64ImagesInContent] Failed to upload image ${i + 1}:`, err);
-                throw new Error(`Failed to upload embedded image #${i + 1}. Please verify image file size.`);
+                throw new Error(`Failed to upload embedded image #${i + 1}. Please verify image file size.`, { cause: err });
             }
         }
 

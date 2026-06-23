@@ -27,6 +27,8 @@ const reviewRoutes = require('./routes/reviewRoutes');
 const goalRoutes = require('./routes/goalRoutes');
 const userRoutes = require('./routes/userRoutes');
 const blogRoutes = require('./routes/blogRoutes');
+const highlightRoutes = require('./routes/highlightRoutes');
+const dictionaryRoutes = require('./routes/dictionaryRoutes');
 
 // ================= CHECK ENV =================
 if (!process.env.JWT_SECRET || !process.env.JWT_SECRET.trim()) {
@@ -356,6 +358,8 @@ app.get('/book/:id', async (req, res) => {
 
 app.use('/api/books', bookRoutes);
 app.use('/api/progress', progressRoutes);
+app.use('/api/highlights', highlightRoutes);
+app.use('/api/dictionary', dictionaryRoutes);
 app.use('/api/streak', streakRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/reviews', reviewRoutes);

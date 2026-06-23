@@ -5,6 +5,7 @@ import apiClient from '../lib/apiClient'
 import UnifiedReaderPage from './UnifiedReaderPage'
 
 const SITE_NAME = 'Readify AI'
+const PRODUCTION_DOMAIN = 'https://readifyai.vercel.app'
 const FALLBACK_DESCRIPTION = 'Read this book free online on Readify AI.'
 
 function truncateMeta(value = '', maxLength = 160) {
@@ -23,8 +24,7 @@ function absoluteUrl(value = '') {
 }
 
 function getCanonicalUrl(slug = '') {
-  const origin = window.location.origin
-  return `${origin}/read/${encodeURIComponent(slug)}/`
+  return `${PRODUCTION_DOMAIN}/read/${encodeURIComponent(slug)}/`
 }
 
 function buildBookSchema(book, canonicalUrl, imageUrl) {

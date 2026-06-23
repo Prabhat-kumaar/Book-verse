@@ -11,6 +11,9 @@ import {
   MdMenu,
   MdMoreVert,
   MdSearch,
+  MdBook,
+  MdVolumeUp,
+  MdTranslate,
 } from 'react-icons/md'
 import { API_ORIGIN } from '../lib/apiConfig'
 import apiClient from '../lib/apiClient'
@@ -18,6 +21,14 @@ import { getEpubSavedCfi, setEpubSavedCfi } from '../lib/readingProgress'
 import useReadingProgress from '../hooks/useReadingProgress'
 import useSavedBooks from '../hooks/useSavedBooks'
 import './epubReader.css'
+
+const SUPPORTED_LANGUAGES = [
+  { code: 'hi', label: 'Hindi' },
+  { code: 'es', label: 'Spanish' },
+  { code: 'fr', label: 'French' },
+  { code: 'de', label: 'German' },
+  { code: 'zh-CN', label: 'Chinese' },
+]
 
 const API = API_ORIGIN
 const SWIPE_MIN_DISTANCE = 80
@@ -36,6 +47,13 @@ const debugLog = (...args) => {
 }
 const debugError = (...args) => {
   if (isDev) console.error(...args)
+}
+
+const HIGHLIGHT_COLOR_MAP = {
+  purple: '#a855f7',
+  yellow: '#eab308',
+  green: '#22c55e',
+  pink: '#ec4899',
 }
 
 function parseReaderParams(book = null) {
@@ -178,6 +196,37 @@ function buildThemeStyles(theme, fontSize = 18, isDesktop = false) {
       'text-decoration': 'underline',
       opacity: '0.95',
     },
+    '::selection': {
+      background: 'rgba(99, 102, 241, 0.3) !important',
+    },
+    '.hl-purple': {
+      'background-color': 'rgba(168, 85, 247, 0.35) !important',
+      'fill': '#a855f7 !important',
+      'fill-opacity': '0.35 !important',
+      'mix-blend-mode': 'multiply !important',
+      'color': 'inherit !important',
+    },
+    '.hl-yellow': {
+      'background-color': 'rgba(234, 179, 8, 0.35) !important',
+      'fill': '#eab308 !important',
+      'fill-opacity': '0.35 !important',
+      'mix-blend-mode': 'multiply !important',
+      'color': 'inherit !important',
+    },
+    '.hl-green': {
+      'background-color': 'rgba(34, 197, 94, 0.35) !important',
+      'fill': '#22c55e !important',
+      'fill-opacity': '0.35 !important',
+      'mix-blend-mode': 'multiply !important',
+      'color': 'inherit !important',
+    },
+    '.hl-pink': {
+      'background-color': 'rgba(236, 72, 153, 0.35) !important',
+      'fill': '#ec4899 !important',
+      'fill-opacity': '0.35 !important',
+      'mix-blend-mode': 'multiply !important',
+      'color': 'inherit !important',
+    },
   }
 }
 
@@ -259,6 +308,21 @@ export default function EpubReaderPage({ book = null }) {
   const [searchResults, setSearchResults] = useState([])
   const [menuOpen, setMenuOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
+  const [selectedText, setSelectedText] = useState('')
+  const [selectedCfiRange, setSelectedCfiRange] = useState('')
+  const [toolbarPosition, setToolbarPosition] = useState(null)
+  const [selectionContents, setSelectionContents] = useState(null)
+  const [savingHighlight, setSavingHighlight] = useState(false)
+  const [meaningPopup, setMeaningPopup] = useState(null)
+  const meaningPopupRef = useRef(null)
+  const meaningPopupRefState = useRef(null)
+  const handleClosePopupRef = useRef(null)
+  const [selectedLang, setSelectedLang] = useState('hi')
+  const [translationState, setTranslationState] = useState({
+    loading: false,
+    text: '',
+    error: '',
+  })
 
   const viewerRef = useRef(null)
   const frameRef = useRef(null)
@@ -266,6 +330,7 @@ export default function EpubReaderPage({ book = null }) {
   const searchInputRef = useRef(null)
   const bookRef = useRef(null)
   const renditionRef = useRef(null)
+  const savingRef = useRef(false)
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
   const locationTimerRef = useRef(null)
@@ -340,6 +405,205 @@ export default function EpubReaderPage({ book = null }) {
     renditionRef.current?.themes.fontSize(`${newSize}px`)
     localStorage.setItem('reader-font-size', String(newSize))
   }
+
+  const handleHighlightClick = async (cfiRange, highlightId) => {
+    if (!window.confirm('Delete this highlight?')) return
+
+    try {
+      setToastMessage('Deleting highlight...')
+      await apiClient.delete(`/api/highlights/${highlightId}`)
+      
+      if (renditionRef.current) {
+        renditionRef.current.annotations.remove(cfiRange, 'highlight')
+      }
+      
+      setToastMessage('Highlight deleted')
+      setTimeout(() => setToastMessage(''), 2000)
+    } catch (err) {
+      console.error('[Highlight Delete Error]', err)
+      setToastMessage('Failed to delete highlight')
+      setTimeout(() => setToastMessage(''), 2500)
+    }
+  }
+
+  const handleColorClick = async (color) => {
+    console.log(`[handleColorClick START] color=${color} cfiRange=${selectedCfiRange}`)
+    
+    if (!selectedCfiRange || !selectedText || savingRef.current) {
+      console.log(`[handleColorClick BLOCKED] savingRef=${savingRef.current}`)
+      return
+    }
+
+    try {
+      savingRef.current = true
+      setSavingHighlight(true)
+      
+      console.log(`[handleColorClick API CALL] Sending POST for color=${color}`)
+      const response = await apiClient.post('/api/highlights', {
+        book: bookId,
+        cfiRange: selectedCfiRange,
+        text: selectedText,
+        color,
+      })
+
+      const nextHighlight = response.data?.data || response.data
+      const highlightId = nextHighlight?._id
+
+      // Wrap the highlighted text visually in the book
+      if (renditionRef.current && highlightId) {
+        console.log(`[handleColorClick APPLY HIGHLIGHT] Adding annotation class=hl-${color} highlightId=${highlightId}`)
+        renditionRef.current.annotations.add(
+          'highlight',
+          selectedCfiRange,
+          { highlightId },
+          () => {
+            handleHighlightClick(selectedCfiRange, highlightId)
+          },
+          `hl-${color}`,
+          {
+            fill: HIGHLIGHT_COLOR_MAP[color] || '#a855f7',
+            'fill-opacity': '0.35',
+            'mix-blend-mode': 'multiply'
+          }
+        )
+      }
+
+      // Clear selection inside the iframe contents
+      if (selectionContents) {
+        try {
+          const selection = selectionContents.window.getSelection()
+          selection.removeAllRanges()
+        } catch (err) {
+          debugError('Failed to clear selection:', err)
+        }
+      }
+
+      setToastMessage('Highlight saved successfully')
+      setTimeout(() => setToastMessage(''), 2000)
+      
+      setSelectedText('')
+      setSelectedCfiRange('')
+      setToolbarPosition(null)
+      setSelectionContents(null)
+    } catch (err) {
+      console.error('[Highlight Save Error]', err)
+      setToastMessage('Failed to save highlight')
+      setTimeout(() => setToastMessage(''), 2500)
+    } finally {
+      savingRef.current = false
+      setSavingHighlight(false)
+    }
+  }
+
+  const handleClosePopup = () => {
+    setSelectedText('')
+    setSelectedCfiRange('')
+    setToolbarPosition(null)
+    setSelectionContents(null)
+    setMeaningPopup(null)
+    setSelectedLang('hi')
+    setTranslationState({
+      loading: false,
+      text: '',
+      error: '',
+    })
+    if (selectionContents) {
+      try {
+        const selection = selectionContents.window.getSelection()
+        selection.removeAllRanges()
+      } catch (err) {
+        debugError('Failed to clear selection:', err)
+      }
+    }
+  }
+
+  const handlePlayAudio = (url) => {
+    if (!url) return
+    try {
+      new Audio(url).play().catch(err => {
+        console.error('Audio playback failed:', err)
+      })
+    } catch (err) {
+      console.error('Failed to play audio:', err)
+    }
+  }
+
+  const handleMeaningClick = async () => {
+    const cleanedText = selectedText.trim()
+    if (!cleanedText) return
+
+    const pos = toolbarPosition || { top: 100, left: 100 }
+    setMeaningPopup({
+      word: cleanedText,
+      loading: true,
+      data: null,
+      error: null,
+      position: pos
+    })
+    setTranslationState({
+      loading: false,
+      text: '',
+      error: '',
+    })
+    setToolbarPosition(null)
+
+    try {
+      const response = await apiClient.get(`/api/dictionary/meaning/${encodeURIComponent(cleanedText)}`)
+      setMeaningPopup(prev => {
+        if (!prev || prev.word !== cleanedText) return prev
+        return {
+          ...prev,
+          loading: false,
+          data: response.data?.data || response.data
+        }
+      })
+    } catch (err) {
+      console.error('[Meaning Lookup Error]', err)
+      const errMsg = err.response?.data?.message || 'No definition found'
+      setMeaningPopup(prev => {
+        if (!prev || prev.word !== cleanedText) return prev
+        return {
+          ...prev,
+          loading: false,
+          error: errMsg
+        }
+      })
+    }
+  }
+
+  const handleTranslate = async () => {
+    if (!meaningPopup?.word) return
+
+    setTranslationState({
+      loading: true,
+      text: '',
+      error: ''
+    })
+
+    try {
+      const response = await apiClient.get('/api/dictionary/translate', {
+        params: {
+          text: meaningPopup.word,
+          target: selectedLang,
+        },
+      })
+      setTranslationState({
+        loading: false,
+        text: response.data?.data?.translatedText || response.data?.translatedText || '',
+        error: '',
+      })
+    } catch (err) {
+      console.error('[Translation Error]', err)
+      setTranslationState({
+        loading: false,
+        text: '',
+        error: 'Translation unavailable',
+      })
+    }
+  }
+
+  meaningPopupRefState.current = meaningPopup
+  handleClosePopupRef.current = handleClosePopup
 
   async function goNextChapter() {
     const items = spineItemsRef.current
@@ -482,6 +746,8 @@ export default function EpubReaderPage({ book = null }) {
 
     initialProgressLoadedRef.current = true
     let isDestroyed = false
+    let activeBook = null
+    let activeRendition = null
 
     const initReader = async () => {
       try {
@@ -489,17 +755,23 @@ export default function EpubReaderPage({ book = null }) {
         setErrorMessage('')
 
         if (locationTimerRef.current) window.clearTimeout(locationTimerRef.current)
-        if (renditionRef.current?.destroy) renditionRef.current.destroy()
+        if (renditionRef.current?.destroy) {
+          try { renditionRef.current.destroy() } catch { /* ignore */ }
+        }
         if (bookRef.current) {
-          bookRef.current.destroy()
+          try { bookRef.current.destroy() } catch { /* ignore */ }
           bookRef.current = null
           renditionRef.current = null
         }
         if (viewerRef.current) viewerRef.current.innerHTML = ''
 
         const book = await loadEpubBook(fileUrl)
-        if (isDestroyed || !viewerRef.current) return
+        if (isDestroyed || !viewerRef.current) {
+          try { book.destroy() } catch { /* ignore */ }
+          return
+        }
         bookRef.current = book
+        activeBook = book
 
         const rendition = book.renderTo(viewerRef.current, {
           manager: 'continuous',
@@ -510,14 +782,78 @@ export default function EpubReaderPage({ book = null }) {
           allowPopups: false,
           spread: 'none',
         })
-        if (isDestroyed) return
+        if (isDestroyed) {
+          try { rendition.destroy() } catch { /* ignore */ }
+          try { book.destroy() } catch { /* ignore */ }
+          return
+        }
         renditionRef.current = rendition
+        activeRendition = rendition
 
         // Strip scripts to prevent sandbox blocked script execution warnings (runs after rendition's own hook to catch injected scripts too)
         book.spine.hooks.content.register((doc) => {
           if (!doc) return
           const scripts = doc.querySelectorAll('script')
           scripts.forEach((script) => script.remove())
+        })
+
+        rendition.on('selected', (cfiRange, contents) => {
+          const selection = contents.window.getSelection()
+          const selectedText = selection.toString().trim()
+          if (!selectedText) {
+            setSelectedText('')
+            setSelectedCfiRange('')
+            setToolbarPosition(null)
+            setSelectionContents(null)
+            return
+          }
+
+          if (selection.rangeCount === 0) return
+          const range = selection.getRangeAt(0)
+          const rect = range.getBoundingClientRect()
+          const iframe = contents.window.frameElement
+          if (!iframe) return
+
+          const iframeRect = iframe.getBoundingClientRect()
+
+          let top = iframeRect.top + rect.top - 55
+          // Boundary check: if it goes under the header bar (which is 56px high), place it below the selection instead.
+          if (top < 65) {
+            top = iframeRect.top + rect.bottom + 15
+          }
+          // Horizontal bounds to prevent clipping on mobile screens
+          const left = Math.max(80, Math.min(window.innerWidth - 80, iframeRect.left + rect.left + rect.width / 2))
+
+          setSelectedText(selectedText)
+          setSelectedCfiRange(cfiRange)
+          setSelectionContents(contents)
+          setToolbarPosition({ top, left })
+        })
+
+        rendition.on('selectstart', () => {
+          setToolbarPosition(null)
+          setMeaningPopup(null)
+        })
+
+        book.spine.hooks.content.register((contents) => {
+          if (!contents) return
+          const doc = contents.document || contents
+          if (doc && doc.addEventListener) {
+            doc.addEventListener('click', () => {
+              if (meaningPopupRefState.current && handleClosePopupRef.current) {
+                handleClosePopupRef.current()
+                return
+              }
+              const win = contents.window || window
+              const selection = win.getSelection ? win.getSelection() : null
+              if (!selection || selection.toString().trim() === '') {
+                setSelectedText('')
+                setSelectedCfiRange('')
+                setToolbarPosition(null)
+                setSelectionContents(null)
+              }
+            })
+          }
         })
 
         applyReaderStyles(rendition, theme, fontSize, isDesktopRef.current)
@@ -558,18 +894,33 @@ export default function EpubReaderPage({ book = null }) {
         })
 
         await book.loaded.navigation
-        if (isDestroyed) return
+        if (isDestroyed) {
+          try { rendition.destroy() } catch { /* ignore */ }
+          try { book.destroy() } catch { /* ignore */ }
+          return
+        }
         const nav = await book.loaded.navigation
         const toc = flattenToc(nav.toc || [])
         setTocItems(toc)
 
         await book.spine.ready
-        if (isDestroyed) return
+        if (isDestroyed) {
+          try { rendition.destroy() } catch { /* ignore */ }
+          try { book.destroy() } catch { /* ignore */ }
+          return
+        }
         spineItemsRef.current = book.spine?.spineItems || []
 
         await book.ready
+        if (isDestroyed) {
+          try { rendition.destroy() } catch { /* ignore */ }
+          try { book.destroy() } catch { /* ignore */ }
+          return
+        }
 
         const onLocationChanged = (loc) => {
+          setToolbarPosition(null)
+          setMeaningPopup(null)
           if (!locationsReadyRef.current) {
             debugLog('[Progress] Skipping locationChanged: locations are not ready')
             return
@@ -652,6 +1003,37 @@ export default function EpubReaderPage({ book = null }) {
           setLoadingState('ready')
         }
 
+        try {
+          const highlightsResponse = await apiClient.get(`/api/highlights/${bookId}`)
+          const fetchedHighlights = highlightsResponse.data?.data || []
+          if (!isDestroyed) {
+            fetchedHighlights.forEach((hl) => {
+              if (hl.cfiRange) {
+                rendition.annotations.add(
+                  'highlight',
+                  hl.cfiRange,
+                  { highlightId: hl._id },
+                  () => {
+                    handleHighlightClick(hl.cfiRange, hl._id)
+                  },
+                  `hl-${hl.color}`,
+                  {
+                    fill: HIGHLIGHT_COLOR_MAP[hl.color] || '#a855f7',
+                    'fill-opacity': '0.35',
+                    'mix-blend-mode': 'multiply'
+                  }
+                )
+              }
+            })
+          }
+        } catch (err) {
+          console.error('[Highlights Fetch Error]', err)
+          if (!isDestroyed) {
+            setToastMessage('Failed to load highlights')
+            setTimeout(() => setToastMessage(''), 2500)
+          }
+        }
+
         // Generate locations asynchronously in the background so it is completely non-blocking
         (async () => {
           try {
@@ -684,9 +1066,17 @@ export default function EpubReaderPage({ book = null }) {
     return () => {
       isDestroyed = true
       if (locationTimerRef.current) window.clearTimeout(locationTimerRef.current)
-      if (renditionRef.current?.destroy) renditionRef.current.destroy()
+      if (activeRendition?.destroy) {
+        try { activeRendition.destroy() } catch { /* ignore */ }
+      }
+      if (activeBook?.destroy) {
+        try { activeBook.destroy() } catch { /* ignore */ }
+      }
+      if (renditionRef.current?.destroy) {
+        try { renditionRef.current.destroy() } catch { /* ignore */ }
+      }
       if (bookRef.current) {
-        bookRef.current.destroy()
+        try { bookRef.current.destroy() } catch { /* ignore */ }
         bookRef.current = null
         renditionRef.current = null
       }
@@ -902,6 +1292,16 @@ export default function EpubReaderPage({ book = null }) {
     document.addEventListener('pointerdown', onPointerDown)
     return () => document.removeEventListener('pointerdown', onPointerDown)
   }, [menuOpen])
+
+  useEffect(() => {
+    if (!meaningPopup) return undefined
+    const onPointerDown = (event) => {
+      if (meaningPopupRef.current?.contains(event.target)) return
+      handleClosePopup()
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [meaningPopup, selectionContents])
 
   return (
     <section
@@ -1250,6 +1650,180 @@ export default function EpubReaderPage({ book = null }) {
         {toastMessage && (
           <div className="fixed bottom-24 left-1/2 z-[70] -translate-x-1/2 rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-xl">
             {toastMessage}
+          </div>
+        )}
+
+        {toolbarPosition && !meaningPopup && (
+          <div
+            className="highlight-toolbar animate-reader-fade-in"
+            style={{
+              top: `${toolbarPosition.top}px`,
+              left: `${toolbarPosition.left}px`,
+            }}
+          >
+            {['purple', 'yellow', 'green', 'pink'].map((color) => (
+              <button
+                key={color}
+                type="button"
+                className={`highlight-color-dot ${color} ${savingHighlight ? 'opacity-50 cursor-not-allowed' : ''}`}
+                onClick={() => !savingHighlight && handleColorClick(color)}
+                disabled={savingHighlight}
+                title={`Highlight ${color}`}
+              />
+            ))}
+            {(() => {
+              const words = selectedText.trim().split(/\s+/).filter(Boolean)
+              if (words.length > 0 && words.length <= 3) {
+                return (
+                  <>
+                    <div className="toolbar-divider" />
+                    <button
+                      type="button"
+                      className="toolbar-meaning-btn animate-reader-fade-in"
+                      onClick={handleMeaningClick}
+                      title="Look up meaning"
+                    >
+                      <MdBook className="w-4 h-4 mr-1 text-slate-300" />
+                      <span className="text-xs font-medium text-slate-200">Meaning</span>
+                    </button>
+                  </>
+                )
+              }
+              return null
+            })()}
+          </div>
+        )}
+
+        {meaningPopup && (
+          <div
+            ref={meaningPopupRef}
+            className="meaning-popup animate-reader-fade-in"
+            style={{
+              top: `${meaningPopup.position.top}px`,
+              left: `${meaningPopup.position.left}px`,
+            }}
+          >
+            <div className="meaning-popup-header">
+              <span className="meaning-popup-title" title={meaningPopup.word}>
+                {meaningPopup.word}
+              </span>
+              <button
+                type="button"
+                className="meaning-popup-close-btn"
+                onClick={handleClosePopup}
+                aria-label="Close meaning popup"
+              >
+                <MdClose className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="meaning-popup-body">
+              {meaningPopup.loading ? (
+                <div className="meaning-popup-loading">
+                  <div className="meaning-popup-spinner" />
+                  <span>Looking up...</span>
+                </div>
+              ) : (
+                <>
+                  {meaningPopup.error && (
+                    <div className="meaning-popup-error">
+                      {meaningPopup.error === 'No definition found'
+                        ? 'No definition found for this word'
+                        : meaningPopup.error}
+                    </div>
+                  )}
+
+                  {meaningPopup.data && (
+                    <>
+                      <div className="meaning-popup-phonetic-row">
+                        {meaningPopup.data.phonetic && (
+                          <span className="meaning-popup-phonetic">{meaningPopup.data.phonetic}</span>
+                        )}
+                        {meaningPopup.data.audio && (
+                          <button
+                            type="button"
+                            className="meaning-popup-audio-btn"
+                            onClick={() => handlePlayAudio(meaningPopup.data.audio)}
+                            title="Pronounce"
+                          >
+                            <MdVolumeUp className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="meaning-popup-definitions">
+                        {meaningPopup.data.meanings &&
+                          meaningPopup.data.meanings.slice(0, 2).map((m, idx) => (
+                            <div key={idx} className="meaning-item">
+                              <div className="meaning-item-header">
+                                <span className="meaning-number-badge">{idx + 1}</span>
+                                <span className="meaning-part-of-speech">{m.partOfSpeech}</span>
+                              </div>
+                              <p className="meaning-definition">{m.definition}</p>
+                              {m.example && <p className="meaning-example">“{m.example}”</p>}
+                            </div>
+                          ))}
+                        {(!meaningPopup.data.meanings || meaningPopup.data.meanings.length === 0) && (
+                          <div className="meaning-popup-error">No definitions available.</div>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Translation Section */}
+                  <div className="meaning-popup-section-divider" />
+
+                  <div className="translation-controls">
+                    <select
+                      value={selectedLang}
+                      onChange={(e) => setSelectedLang(e.target.value)}
+                      className="translation-lang-select"
+                      aria-label="Select translation language"
+                    >
+                      {SUPPORTED_LANGUAGES.map((lang) => (
+                        <option key={lang.code} value={lang.code}>
+                          {lang.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="translation-submit-btn"
+                      onClick={handleTranslate}
+                      disabled={translationState.loading}
+                    >
+                      {translationState.loading ? (
+                        <div className="translation-spinner" />
+                      ) : (
+                        <>
+                          <MdTranslate className="w-3.5 h-3.5 mr-1" />
+                          <span>Translate</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {(translationState.loading || translationState.text || translationState.error) && (
+                    <div className="translation-result-box animate-reader-fade-in">
+                      {translationState.loading && (
+                        <div className="translation-result-loading">Translating...</div>
+                      )}
+                      {translationState.error && (
+                        <div className="translation-result-error">{translationState.error}</div>
+                      )}
+                      {translationState.text && (
+                        <div className="translation-result-text">
+                          <span className="translation-result-label">
+                            {SUPPORTED_LANGUAGES.find((l) => l.code === selectedLang)?.label || 'Translation'}:
+                          </span>
+                          <p className="translation-output">{translationState.text}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         )}
 

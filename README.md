@@ -40,6 +40,7 @@ Frontend:
 
 - `VITE_API_URL` - public backend origin, for example `https://api.example.com`.
 - `VITE_API_WITH_CREDENTIALS` - set to `true` only when cookie credentials are intentionally used.
+- `PRERENDER_TOKEN` - Prerender.io token used by the Vercel serverless prerender proxy for crawler requests.
 
 ## Admin Setup
 
