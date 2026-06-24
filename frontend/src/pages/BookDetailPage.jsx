@@ -527,12 +527,12 @@ export default function BookDetailPage() {
 
             {/* Action Buttons */}
             <div className="pt-4 flex flex-col sm:flex-row gap-3">
-              <a
-                href={readerLink}
+              <Link
+                to={readerLink}
                 className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 px-8 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/10 hover:from-indigo-600 hover:to-violet-700 hover:shadow-indigo-500/20 hover:scale-[1.01] transition duration-200"
               >
                 Start Reading Book
-              </a>
+              </Link>
               <SaveBookHeart
                 bookId={book._id}
                 book={book}

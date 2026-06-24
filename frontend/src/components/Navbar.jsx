@@ -3,6 +3,8 @@ import useNavItems from '../hooks/useNavItems'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { MdMenu, MdPerson, MdSearch } from 'react-icons/md'
+import useProgress from '../hooks/useProgress'
+import { buildReaderHash } from '../lib/readerLink'
 
 
 function SearchIcon() {
@@ -44,6 +46,18 @@ export default function Navbar() {
   const mobileSearchInputRef = useRef(null)
   const isAdmin = authUser?.role === 'admin'
   const avatarLabel = useMemo(() => (authUser?.username?.trim()?.[0] || 'P').toUpperCase(), [authUser])
+
+  const { progressItems } = useProgress(authUser?._id)
+  const continueReadingLink = useMemo(() => {
+    if (!progressItems || !progressItems.length) return '/saved-books'
+    const inProgress = progressItems.find(
+      (item) => item.book?.slug && Number(item.progressPercentage || 0) < 100
+    )
+    if (inProgress?.book) return buildReaderHash(inProgress.book)
+    const latest = progressItems.find((item) => item.book?.slug)
+    if (latest?.book) return buildReaderHash(latest.book)
+    return '/saved-books'
+  }, [progressItems])
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -200,7 +214,7 @@ export default function Navbar() {
                     <Link to="/profile" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
                       My Profile
                     </Link>
-                    <Link to="/" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
+                    <Link to={continueReadingLink} onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
                       Continue Reading
                     </Link>
                     <Link to="/saved-books" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
@@ -288,7 +302,7 @@ export default function Navbar() {
                     <Link to="/profile" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
                       My Profile
                     </Link>
-                    <Link to="/" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
+                    <Link to={continueReadingLink} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
                       Continue Reading
                     </Link>
                     <Link to="/saved-books" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
@@ -355,7 +369,7 @@ export default function Navbar() {
                   <Link to="/profile" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10">
                     My Profile
                   </Link>
-                  <Link to="/" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10">
+                  <Link to={continueReadingLink} onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10">
                     Continue Reading
                   </Link>
                   <Link to="/saved-books" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10">

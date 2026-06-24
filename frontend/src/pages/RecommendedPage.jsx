@@ -84,12 +84,12 @@ function BookCard({ book, progress }) {
             </div>
           )}
 
-          <a
-            href={readerLink}
+          <Link
+            to={readerLink}
             className="inline-flex w-full items-center justify-center rounded-xl border border-white/10 bg-white/5 py-2.5 min-h-[44px] text-xs font-bold text-white transition hover:border-blue-300/40 hover:bg-white/15"
           >
             {progress?.percent > 0 ? 'Resume' : 'Open'}
-          </a>
+          </Link>
         </div>
       </div>
     </article>

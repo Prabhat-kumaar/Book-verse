@@ -16,7 +16,7 @@ export function getBookFileType(book) {
 
 export function buildReaderHash(book) {
   const slug = String(book?.slug || '').trim()
-  if (slug) return `/read/${encodeURIComponent(slug)}/`
+  if (slug) return `/read/${encodeURIComponent(slug)}`
 
   return book?._id ? `/book/${book._id}` : '/books'
 }

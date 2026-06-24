@@ -176,12 +176,12 @@ const BookCard = memo(function BookCard({ book, index }) {
             </div>
           )}
 
-          <a
-            href={readerLink}
+          <Link
+            to={readerLink}
             className="inline-flex w-full items-center justify-center rounded-lg border border-white/10 bg-white/5 py-1 text-[10px] font-bold text-white transition hover:border-blue-300/40 hover:bg-white/15"
           >
             {book.progress > 0 ? 'Resume' : 'Open'}
-          </a>
+          </Link>
         </div>
       </div>
     </motion.article>
@@ -458,7 +458,7 @@ export default function HomePage() {
                   const link = buildReaderHash(book, { page: currentPage, cfi: item.resumeCfi || '' })
                   return (
                     <div key={item._id} className="group w-[66vw] min-w-[66vw] shrink-0 snap-start rounded-2xl border border-white/10 bg-white/[0.05] p-3 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-blue-300/35 hover:bg-white/[0.09] sm:w-[230px] sm:min-w-[230px]">
-                      <a href={link} className="group relative block h-[150px] overflow-hidden rounded-xl bg-slate-950">
+                      <Link to={link} className="group relative block h-[150px] overflow-hidden rounded-xl bg-slate-950">
                         {book.thumbnail ? (
                           <OptimizedImage
                             src={getBookThumbnailUrl(book)}
@@ -474,16 +474,16 @@ export default function HomePage() {
                           </div>
                         )}
                         <span className="absolute right-2 top-2 rounded-full bg-black/80 px-2 py-0.5 text-[10px] font-bold text-white shadow-md">{percent}%</span>
-                      </a>
+                      </Link>
                       <p className="mt-2 line-clamp-1 text-sm font-bold text-white leading-tight">{book.title}</p>
                       <p className="mt-0.5 text-[11px] font-medium text-slate-400">Page {currentPage} of {computed.totalPages}</p>
                       <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-white/10">
                         <div className="h-full bg-pink-500 transition-all duration-500" style={{ width: `${percent}%` }} />
                       </div>
                       <p className="mt-1 text-[10px] text-slate-500">Last opened {timeAgo(item.lastReadAt)}</p>
-                      <a href={link} className="mt-2.5 inline-flex w-full items-center justify-center rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-bold text-white transition hover:bg-white/15">
+                      <Link to={link} className="mt-2.5 inline-flex w-full items-center justify-center rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-bold text-white transition hover:bg-white/15">
                         Resume
-                      </a>
+                      </Link>
                     </div>
                   )
                 })}

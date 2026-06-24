@@ -349,9 +349,9 @@ export default function SavedBooksPage() {
                         <button onClick={() => handleRemoveSavedBook(savedItem)} className="flex-1 rounded-xl border border-rose-300/25 bg-rose-500/10 py-2.5 min-h-[44px] text-xs font-bold text-rose-200 transition duration-200 hover:bg-rose-500/20">
                           Remove
                         </button>
-                        <a href={readerLink} className="flex-1 text-center rounded-xl border border-white/10 bg-white/5 py-2.5 min-h-[44px] text-xs font-bold text-white transition duration-200 hover:bg-white/15 inline-flex items-center justify-center">
+                        <Link to={readerLink} className="flex-1 text-center rounded-xl border border-white/10 bg-white/5 py-2.5 min-h-[44px] text-xs font-bold text-white transition duration-200 hover:bg-white/15 inline-flex items-center justify-center">
                           Open
-                        </a>
+                        </Link>
                       </div>
                     </div>
                   </div>

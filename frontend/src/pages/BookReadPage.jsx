@@ -62,7 +62,8 @@ export default function BookReadPage() {
       try {
         setLoading(true)
         setError('')
-        const response = await apiClient.get(`/api/books/slug/${encodeURIComponent(bookSlug)}`)
+        const cleanedSlug = String(bookSlug || '').replace(/\/$/, '')
+        const response = await apiClient.get(`/api/books/slug/${encodeURIComponent(cleanedSlug)}`)
         const nextBook = response.data?.data || response.data?.book || response.data
 
         if (!cancelled) {

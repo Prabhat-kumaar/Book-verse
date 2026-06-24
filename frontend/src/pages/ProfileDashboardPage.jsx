@@ -578,12 +578,12 @@ export default function ProfileDashboardPage() {
                             />
                           </div>
                         </div>
-                        <a
-                          href={link}
+                        <Link
+                          to={link}
                           className="flex items-center justify-center rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-indigo-500"
                         >
                           Continue Reading
-                        </a>
+                        </Link>
                       </div>
                     </article>
                   )
