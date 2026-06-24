@@ -870,7 +870,8 @@ export default function EpubReaderPage({ book = null }) {
 
           if (selection.rangeCount === 0) return
           const range = selection.getRangeAt(0)
-          const rect = range.getBoundingClientRect()
+          const rects = range.getClientRects()
+          const rect = rects.length > 0 ? rects[0] : range.getBoundingClientRect()
           const iframe = contents.window.frameElement
           if (!iframe) return
 
@@ -881,8 +882,12 @@ export default function EpubReaderPage({ book = null }) {
           if (top < 65) {
             top = iframeRect.top + rect.bottom + 15
           }
-          // Horizontal bounds to prevent clipping on mobile screens
-          const left = Math.max(80, Math.min(window.innerWidth - 80, iframeRect.left + rect.left + rect.width / 2))
+
+          // Keep vertical coordinates within visible viewport boundaries
+          top = Math.max(65, Math.min(window.innerHeight - 80, top))
+
+          // Horizontal bounds to prevent clipping on mobile screens (toolbar is ~200px wide, centered at left)
+          const left = Math.max(110, Math.min(window.innerWidth - 110, iframeRect.left + rect.left + rect.width / 2))
 
           setSelectedText(selectedText)
           setSelectedCfiRange(cfiRange)
