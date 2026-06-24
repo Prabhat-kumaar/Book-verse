@@ -106,7 +106,7 @@ function getActiveHref(locationHref = '') {
 }
 
 function getReaderPadding(isDesktop = false) {
-  return isDesktop ? 80 : 20
+  return isDesktop ? 80 : 8
 }
 
 function truncateMobileTitle(value = '') {
@@ -257,6 +257,64 @@ function applyReaderStyles(rendition, theme, fontSize, isDesktop) {
     'scroll-behavior': 'smooth !important',
     '-webkit-overflow-scrolling': 'touch !important',
   })
+
+  if (!isDesktop) {
+    rendition.themes.override('p', {
+      'margin-left': '0 !important',
+      'margin-right': '0 !important',
+      'padding-left': '0 !important',
+      'padding-right': '0 !important',
+      'max-width': '100% !important',
+    })
+    rendition.themes.override('div', {
+      'margin-left': '0 !important',
+      'margin-right': '0 !important',
+      'padding-left': '0 !important',
+      'padding-right': '0 !important',
+      'max-width': '100% !important',
+      'width': '100% !important',
+    })
+    rendition.themes.override('blockquote', {
+      'margin-left': '8px !important',
+      'margin-right': '8px !important',
+      'padding-left': '0 !important',
+      'padding-right': '0 !important',
+    })
+    rendition.themes.override('h1', { 'margin-left': '0 !important', 'margin-right': '0 !important' })
+    rendition.themes.override('h2', { 'margin-left': '0 !important', 'margin-right': '0 !important' })
+    rendition.themes.override('h3', { 'margin-left': '0 !important', 'margin-right': '0 !important' })
+    rendition.themes.override('h4', { 'margin-left': '0 !important', 'margin-right': '0 !important' })
+    rendition.themes.override('h5', { 'margin-left': '0 !important', 'margin-right': '0 !important' })
+    rendition.themes.override('h6', { 'margin-left': '0 !important', 'margin-right': '0 !important' })
+  } else {
+    rendition.themes.override('p', {
+      'margin-left': '',
+      'margin-right': '',
+      'padding-left': '',
+      'padding-right': '',
+      'max-width': '',
+    })
+    rendition.themes.override('div', {
+      'margin-left': '',
+      'margin-right': '',
+      'padding-left': '',
+      'padding-right': '',
+      'max-width': '',
+      'width': '',
+    })
+    rendition.themes.override('blockquote', {
+      'margin-left': '',
+      'margin-right': '',
+      'padding-left': '',
+      'padding-right': '',
+    })
+    rendition.themes.override('h1', { 'margin-left': '', 'margin-right': '' })
+    rendition.themes.override('h2', { 'margin-left': '', 'margin-right': '' })
+    rendition.themes.override('h3', { 'margin-left': '', 'margin-right': '' })
+    rendition.themes.override('h4', { 'margin-left': '', 'margin-right': '' })
+    rendition.themes.override('h5', { 'margin-left': '', 'margin-right': '' })
+    rendition.themes.override('h6', { 'margin-left': '', 'margin-right': '' })
+  }
 }
 
 async function loadEpubBook(fileUrl) {
@@ -301,6 +359,7 @@ export default function EpubReaderPage({ book = null }) {
   const [currentChapterLabel, setCurrentChapterLabel] = useState('')
 
   const [currentCfi, setCurrentCfi] = useState('')
+  const [spineIndex, setSpineIndex] = useState(0)
   const [showChrome, setShowChrome] = useState(true)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -381,6 +440,7 @@ export default function EpubReaderPage({ book = null }) {
   const updateSpineIndex = (idx) => {
     if (!Number.isFinite(idx) || idx < 0) return
     spineIndexRef.current = idx
+    setSpineIndex(idx)
   }
 
   const findSpineIndexForHref = (href = '') => {
@@ -853,14 +913,27 @@ export default function EpubReaderPage({ book = null }) {
                 setSelectionContents(null)
               }
             })
+
+            let spineTouchStartX = 0
+            let spineTouchStartY = 0
+            doc.addEventListener('touchstart', (e) => {
+              spineTouchStartX = e.touches[0].clientX
+              spineTouchStartY = e.touches[0].clientY
+            }, { passive: true })
+            doc.addEventListener('touchend', (e) => {
+              const dx = spineTouchStartX - e.changedTouches[0].clientX
+              const dy = Math.abs(spineTouchStartY - e.changedTouches[0].clientY)
+              if (dy > 60) return
+              if (dx > SWIPE_MIN_DISTANCE) {
+                goNextChapter()
+              } else if (dx < -SWIPE_MIN_DISTANCE) {
+                goPrevChapter()
+              }
+            }, { passive: true })
           }
         })
 
         applyReaderStyles(rendition, theme, fontSize, isDesktopRef.current)
-        rendition.themes.override('div', {
-          'max-width': '100% !important',
-          width: '100% !important',
-        })
 
         const rawSavedFontSize = parseInt(localStorage.getItem('reader-font-size') || '', 10)
         const savedFontSize = Number.isFinite(rawSavedFontSize) && rawSavedFontSize >= 12 && rawSavedFontSize <= 28
@@ -1596,7 +1669,7 @@ export default function EpubReaderPage({ book = null }) {
           </aside>          <main className="h-full w-full overflow-hidden">
             <div className="flex h-full w-full flex-col pt-14 pb-6 md:pb-8">
 
-              <div className="relative flex-1 w-full overflow-hidden px-5 sm:px-10 pt-4 pb-2">
+              <div className="relative flex-1 w-full overflow-hidden px-0 sm:px-10 pt-4 pb-2">
                 <div
                   id="viewer"
                   ref={viewerRef}
@@ -1636,7 +1709,37 @@ export default function EpubReaderPage({ book = null }) {
               </div>
 
               {loadingState === 'ready' && (
-                <div className="flex flex-col items-center justify-center py-4 px-6 mt-2">
+                <div className="flex flex-col items-center justify-center py-4 px-6 mt-2 gap-3">
+                  <div className="flex items-center gap-4">
+                    <button
+                      type="button"
+                      onClick={goPrevChapter}
+                      disabled={spineIndex === 0}
+                      className={`rounded-full px-4 py-1.5 text-xs font-semibold border transition duration-200
+                        ${theme === 'dark'
+                          ? 'border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 disabled:opacity-25 disabled:cursor-not-allowed'
+                          : theme === 'sepia'
+                            ? 'border-[#5c4a1e]/20 bg-[#5c4a1e]/5 hover:bg-[#5c4a1e]/10 text-[#5c4a1e] disabled:opacity-25 disabled:cursor-not-allowed'
+                            : 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-25 disabled:cursor-not-allowed'
+                        }`}
+                    >
+                      Previous Chapter
+                    </button>
+                    <button
+                      type="button"
+                      onClick={goNextChapter}
+                      disabled={spineIndex >= spineItemsRef.current.length - 1}
+                      className={`rounded-full px-4 py-1.5 text-xs font-semibold border transition duration-200
+                        ${theme === 'dark'
+                          ? 'border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 disabled:opacity-25 disabled:cursor-not-allowed'
+                          : theme === 'sepia'
+                            ? 'border-[#5c4a1e]/20 bg-[#5c4a1e]/5 hover:bg-[#5c4a1e]/10 text-[#5c4a1e] disabled:opacity-25 disabled:cursor-not-allowed'
+                            : 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-25 disabled:cursor-not-allowed'
+                        }`}
+                    >
+                      Next Chapter
+                    </button>
+                  </div>
                   <p className={`text-center text-[11px] tracking-widest uppercase font-semibold opacity-60
                     ${theme === 'dark' ? 'text-slate-500' : theme === 'sepia' ? 'text-[#5c4a1e]/70' : 'text-slate-500'}`}>
                     Page {currentPage} of {totalPages} <span className="mx-2">•</span> {Math.round(progressPercent)}% complete
@@ -1827,18 +1930,7 @@ export default function EpubReaderPage({ book = null }) {
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={goPrevChapter}
-          className={`fixed bottom-0 left-0 top-14 z-20 w-[30vw] bg-transparent md:hidden ${sidebarOpen || menuOpen ? 'pointer-events-none' : ''}`}
-          aria-label="Previous chapter"
-        />
-        <button
-          type="button"
-          onClick={goNextChapter}
-          className={`fixed bottom-0 right-0 top-14 z-20 w-[30vw] bg-transparent md:hidden ${sidebarOpen || menuOpen ? 'pointer-events-none' : ''}`}
-          aria-label="Next chapter"
-        />
+
       </div>
     </section>
   )
