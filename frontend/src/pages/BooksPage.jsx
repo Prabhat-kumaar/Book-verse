@@ -14,8 +14,6 @@ function normalize(value) {
   return (value || '').toString().trim().toLowerCase()
 }
 
-const categories = ['All', 'Programming', 'AI', 'Business', 'Self-Help', 'Design', 'Productivity']
-
 const categoryEmojis = {
   all: '🌐',
   programming: '💻',
@@ -140,6 +138,21 @@ export default function BooksPage() {
   const [searchParams] = useSearchParams()
   const query = searchParams.get('q') || ''
   const progressMap = useMemo(() => buildProgressMap(progressItems), [progressItems])
+
+  const categories = useMemo(() => {
+    const unique = new Set(['All'])
+    const seen = new Set(['all'])
+    books.forEach((book) => {
+      const rawCategory = (book.category || '').toString().trim()
+      if (!rawCategory) return
+      const normalized = rawCategory.toLowerCase()
+      if (!seen.has(normalized)) {
+        seen.add(normalized)
+        unique.add(rawCategory)
+      }
+    })
+    return Array.from(unique)
+  }, [books])
 
   const [searchTerm, setSearchTerm] = useState(query)
   const [selectedCategory, setSelectedCategory] = useState('All')

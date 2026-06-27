@@ -299,7 +299,7 @@ const getAllBooks = async (req, res, next) => {
             thumbnail: book.thumbnail ? formatUrl(req, book.thumbnail) : null,
             coverImage: book.coverImage ? formatUrl(req, book.coverImage) : null,
         }));
-        res.setHeader('Cache-Control', 'public, max-age=300');
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
         res.json({
             success: true,
             books: formattedBooks,
