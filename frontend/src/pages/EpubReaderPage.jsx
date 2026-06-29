@@ -109,6 +109,34 @@ function getReaderPadding(isDesktop = false) {
   return isDesktop ? 80 : 8
 }
 
+function calculatePopupPosition(geometry, popupHeight, popupWidth = 300) {
+  if (!geometry) return { top: 100, left: 100 }
+
+  const topBoundary = 65
+  let top = geometry.top - 12
+
+  if (top - popupHeight < topBoundary) {
+    // Flip below the selection if there is not enough space above
+    top = geometry.bottom + 12 + popupHeight
+  }
+
+  // Prevent going off the bottom of the viewport
+  if (top > window.innerHeight - 20) {
+    top = window.innerHeight - 20
+  }
+
+  // Ensure it never goes above the top boundary even after clamping
+  if (top - popupHeight < topBoundary) {
+    top = topBoundary + popupHeight
+  }
+
+  const halfWidth = popupWidth / 2
+  const selectionCenterX = geometry.left + geometry.width / 2
+  const left = Math.max(halfWidth + 10, Math.min(window.innerWidth - (halfWidth + 10), selectionCenterX))
+
+  return { top, left }
+}
+
 function truncateMobileTitle(value = '') {
   const title = value || 'Untitled Book'
   return title.length > 20 ? `${title.slice(0, 20)}...` : title
@@ -390,6 +418,7 @@ export default function EpubReaderPage({ book = null }) {
     text: '',
     error: '',
   })
+  const selectionGeometryRef = useRef(null)
 
   const viewerRef = useRef(null)
   const frameRef = useRef(null)
@@ -626,7 +655,7 @@ export default function EpubReaderPage({ book = null }) {
     const cleanedText = selectedText.trim()
     if (!cleanedText) return
 
-    const pos = toolbarPosition || { top: 100, left: 100 }
+    const pos = calculatePopupPosition(selectionGeometryRef.current, 300, 350)
     setTranslatePopup({
       text: cleanedText,
       position: pos
@@ -652,7 +681,7 @@ export default function EpubReaderPage({ book = null }) {
     const cleanedText = selectedText.trim()
     if (!cleanedText) return
 
-    const pos = toolbarPosition || { top: 100, left: 100 }
+    const pos = calculatePopupPosition(selectionGeometryRef.current, 300, 300)
     setMeaningPopup({
       word: cleanedText,
       loading: true,
@@ -938,22 +967,20 @@ export default function EpubReaderPage({ book = null }) {
 
           const iframeRect = iframe.getBoundingClientRect()
 
-          let top = iframeRect.top + rect.top - 55
-          // Boundary check: if it goes under the header bar (which is 56px high), place it below the selection instead.
-          if (top < 65) {
-            top = iframeRect.top + rect.bottom + 15
+          const geometry = {
+            top: iframeRect.top + rect.top,
+            bottom: iframeRect.top + rect.bottom,
+            left: iframeRect.left + rect.left,
+            width: rect.width
           }
+          selectionGeometryRef.current = geometry
 
-          // Keep vertical coordinates within visible viewport boundaries
-          top = Math.max(65, Math.min(window.innerHeight - 80, top))
-
-          // Horizontal bounds to prevent clipping on mobile screens (toolbar is ~200px wide, centered at left)
-          const left = Math.max(110, Math.min(window.innerWidth - 110, iframeRect.left + rect.left + rect.width / 2))
+          const pos = calculatePopupPosition(geometry, 45, 200)
 
           setSelectedText(selectedText)
           setSelectedCfiRange(cfiRange)
           setSelectionContents(contents)
-          setToolbarPosition({ top, left })
+          setToolbarPosition(pos)
         })
 
         rendition.on('selectstart', () => {
