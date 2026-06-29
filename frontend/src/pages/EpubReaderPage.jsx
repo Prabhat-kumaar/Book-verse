@@ -382,6 +382,14 @@ export default function EpubReaderPage({ book = null }) {
     text: '',
     error: '',
   })
+  const [translatePopup, setTranslatePopup] = useState(null)
+  const translatePopupRef = useRef(null)
+  const translatePopupRefState = useRef(null)
+  const [standaloneTranslation, setStandaloneTranslation] = useState({
+    loading: false,
+    text: '',
+    error: '',
+  })
 
   const viewerRef = useRef(null)
   const frameRef = useRef(null)
@@ -561,8 +569,13 @@ export default function EpubReaderPage({ book = null }) {
     setToolbarPosition(null)
     setSelectionContents(null)
     setMeaningPopup(null)
-    setSelectedLang('hi')
+    setTranslatePopup(null)
     setTranslationState({
+      loading: false,
+      text: '',
+      error: '',
+    })
+    setStandaloneTranslation({
       loading: false,
       text: '',
       error: '',
@@ -575,6 +588,53 @@ export default function EpubReaderPage({ book = null }) {
         debugError('Failed to clear selection:', err)
       }
     }
+  }
+
+  const handleTranslateStandalone = async (langCode = selectedLang, textToTranslate = selectedText) => {
+    const cleanedText = textToTranslate.trim()
+    if (!cleanedText) return
+
+    setStandaloneTranslation({
+      loading: true,
+      text: '',
+      error: ''
+    })
+
+    try {
+      const response = await apiClient.get('/api/dictionary/translate', {
+        params: {
+          text: cleanedText,
+          target: langCode,
+        },
+      })
+      setStandaloneTranslation({
+        loading: false,
+        text: response.data?.data?.translatedText || response.data?.translatedText || '',
+        error: '',
+      })
+    } catch (err) {
+      console.error('[Standalone Translation Error]', err)
+      setStandaloneTranslation({
+        loading: false,
+        text: '',
+        error: 'Translation unavailable',
+      })
+    }
+  }
+
+  const handleTranslateClick = () => {
+    const cleanedText = selectedText.trim()
+    if (!cleanedText) return
+
+    const pos = toolbarPosition || { top: 100, left: 100 }
+    setTranslatePopup({
+      text: cleanedText,
+      position: pos
+    })
+    setMeaningPopup(null)
+    setToolbarPosition(null)
+
+    handleTranslateStandalone(selectedLang, cleanedText)
   }
 
   const handlePlayAudio = (url) => {
@@ -663,6 +723,7 @@ export default function EpubReaderPage({ book = null }) {
   }
 
   meaningPopupRefState.current = meaningPopup
+  translatePopupRefState.current = translatePopup
   handleClosePopupRef.current = handleClosePopup
 
   async function goNextChapter() {
@@ -898,6 +959,12 @@ export default function EpubReaderPage({ book = null }) {
         rendition.on('selectstart', () => {
           setToolbarPosition(null)
           setMeaningPopup(null)
+          setTranslatePopup(null)
+          setStandaloneTranslation({
+            loading: false,
+            text: '',
+            error: '',
+          })
         })
 
         book.spine.hooks.content.register((contents) => {
@@ -905,7 +972,7 @@ export default function EpubReaderPage({ book = null }) {
           const doc = contents.document || contents
           if (doc && doc.addEventListener) {
             doc.addEventListener('click', () => {
-              if (meaningPopupRefState.current && handleClosePopupRef.current) {
+              if ((meaningPopupRefState.current || translatePopupRefState.current) && handleClosePopupRef.current) {
                 handleClosePopupRef.current()
                 return
               }
@@ -999,6 +1066,12 @@ export default function EpubReaderPage({ book = null }) {
         const onLocationChanged = (loc) => {
           setToolbarPosition(null)
           setMeaningPopup(null)
+          setTranslatePopup(null)
+          setStandaloneTranslation({
+            loading: false,
+            text: '',
+            error: '',
+          })
           if (!locationsReadyRef.current) {
             debugLog('[Progress] Skipping locationChanged: locations are not ready')
             return
@@ -1372,14 +1445,15 @@ export default function EpubReaderPage({ book = null }) {
   }, [menuOpen])
 
   useEffect(() => {
-    if (!meaningPopup) return undefined
+    if (!meaningPopup && !translatePopup) return undefined
     const onPointerDown = (event) => {
       if (meaningPopupRef.current?.contains(event.target)) return
+      if (translatePopupRef.current?.contains(event.target)) return
       handleClosePopup()
     }
     document.addEventListener('pointerdown', onPointerDown)
     return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [meaningPopup, selectionContents])
+  }, [meaningPopup, translatePopup, selectionContents])
 
   return (
     <section
@@ -1761,7 +1835,7 @@ export default function EpubReaderPage({ book = null }) {
           </div>
         )}
 
-        {toolbarPosition && !meaningPopup && (
+        {toolbarPosition && !meaningPopup && !translatePopup && (
           <div
             className="highlight-toolbar animate-reader-fade-in"
             style={{
@@ -1799,6 +1873,16 @@ export default function EpubReaderPage({ book = null }) {
               }
               return null
             })()}
+            <div className="toolbar-divider" />
+            <button
+              type="button"
+              className="toolbar-meaning-btn animate-reader-fade-in"
+              onClick={handleTranslateClick}
+              title="Translate selection"
+            >
+              <MdTranslate className="w-4 h-4 mr-1 text-slate-300" />
+              <span className="text-xs font-medium text-slate-200">Translate</span>
+            </button>
           </div>
         )}
 
@@ -1931,6 +2015,74 @@ export default function EpubReaderPage({ book = null }) {
                   )}
                 </>
               )}
+            </div>
+          </div>
+        )}
+
+        {translatePopup && (
+          <div
+            ref={translatePopupRef}
+            className="translate-popup animate-reader-fade-in"
+            style={{
+              top: `${translatePopup.position.top}px`,
+              left: `${translatePopup.position.left}px`,
+            }}
+          >
+            <div className="translate-popup-header">
+              <span className="translate-popup-title">
+                Translate
+              </span>
+              <button
+                type="button"
+                className="translate-popup-close-btn"
+                onClick={handleClosePopup}
+                aria-label="Close translate popup"
+              >
+                <MdClose className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="translate-popup-body">
+              <div className="translate-popup-controls">
+                <select
+                  value={selectedLang}
+                  onChange={(e) => {
+                    const newLang = e.target.value
+                    setSelectedLang(newLang)
+                    handleTranslateStandalone(newLang, translatePopup.text)
+                  }}
+                  className="translation-lang-select"
+                  aria-label="Select translation language"
+                >
+                  {SUPPORTED_LANGUAGES.map((lang) => (
+                    <option key={lang.code} value={lang.code}>
+                      {lang.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="translate-popup-content">
+                {standaloneTranslation.loading ? (
+                  <div className="translate-popup-loading">
+                    <div className="translate-popup-spinner" />
+                    <span>Translating...</span>
+                  </div>
+                ) : standaloneTranslation.error ? (
+                  <div className="translate-popup-error">
+                    {standaloneTranslation.error}
+                  </div>
+                ) : standaloneTranslation.text ? (
+                  <div className="translation-result-box" style={{ marginTop: 0 }}>
+                    <div className="translation-result-text">
+                      <span className="translation-result-label">
+                        {SUPPORTED_LANGUAGES.find((l) => l.code === selectedLang)?.label || 'Translation'}:
+                      </span>
+                      <p className="translation-output">{standaloneTranslation.text}</p>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         )}
