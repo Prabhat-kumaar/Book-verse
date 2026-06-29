@@ -874,6 +874,40 @@ export default function EpubReaderPage({ book = null }) {
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
   }, [])
 
+  useEffect(() => {
+    const handleUnhandledRejection = (event) => {
+      const msg = event.reason?.message || ''
+      if (
+        msg.includes('message channel closed') ||
+        msg.includes('A listener indicated') ||
+        msg.includes('message port')
+      ) {
+        event.preventDefault()
+        event.stopPropagation()
+      }
+    }
+
+    const handleGlobalError = (event) => {
+      const msg = event.message || ''
+      if (
+        msg.includes('message channel closed') ||
+        msg.includes('A listener indicated') ||
+        msg.includes('message port')
+      ) {
+        event.preventDefault()
+        event.stopPropagation()
+      }
+    }
+
+    window.addEventListener('unhandledrejection', handleUnhandledRejection)
+    window.addEventListener('error', handleGlobalError)
+
+    return () => {
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection)
+      window.removeEventListener('error', handleGlobalError)
+    }
+  }, [])
+
   const initialProgressLoadedRef = useRef(false)
   const initialCfiRef = useRef('')
 
@@ -928,7 +962,7 @@ export default function EpubReaderPage({ book = null }) {
           flow: 'scrolled',
           width: '100%',
           height: '100%',
-          allowScriptedContent: false,
+          allowScriptedContent: true,
           allowPopups: false,
           spread: 'none',
         })
