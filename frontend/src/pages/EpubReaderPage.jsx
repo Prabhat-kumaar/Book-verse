@@ -419,6 +419,19 @@ export default function EpubReaderPage({ book = null }) {
     error: '',
   })
   const selectionGeometryRef = useRef(null)
+  const [highlights, setHighlights] = useState([])
+  const highlightsRef = useRef([])
+  useEffect(() => {
+    highlightsRef.current = highlights
+  }, [highlights])
+  const [notePopup, setNotePopup] = useState(null)
+  const notePopupRef = useRef(null)
+  const notePopupRefState = useRef(null)
+  const [noteText, setNoteText] = useState('')
+  const [savingNote, setSavingNote] = useState(false)
+  const [saveNoteFeedback, setSaveNoteFeedback] = useState('')
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const handleHighlightClickRef = useRef(null)
 
   const viewerRef = useRef(null)
   const frameRef = useRef(null)
@@ -503,24 +516,47 @@ export default function EpubReaderPage({ book = null }) {
     localStorage.setItem('reader-font-size', String(newSize))
   }
 
-  const handleHighlightClick = async (cfiRange, highlightId) => {
-    if (!window.confirm('Delete this highlight?')) return
+  const handleHighlightClick = (cfiRange, highlightId) => {
+    const hl = highlightsRef.current?.find(h => h._id === highlightId) || highlights.find(h => h._id === highlightId)
+    const noteTextVal = hl ? hl.note : ''
+    const textVal = hl ? hl.text : ''
+    setNoteText(noteTextVal)
 
-    try {
-      setToastMessage('Deleting highlight...')
-      await apiClient.delete(`/api/highlights/${highlightId}`)
-      
-      if (renditionRef.current) {
-        renditionRef.current.annotations.remove(cfiRange, 'highlight')
+    let pos = { top: 150, left: 150 }
+    if (renditionRef.current) {
+      try {
+        const range = renditionRef.current.getRange(cfiRange)
+        const rect = range.getBoundingClientRect()
+        const iframe = viewerRef.current.querySelector('iframe')
+        if (iframe) {
+          const iframeRect = iframe.getBoundingClientRect()
+          const geometry = {
+            top: iframeRect.top + rect.top,
+            bottom: iframeRect.top + rect.bottom,
+            left: iframeRect.left + rect.left,
+            width: rect.width
+          }
+          pos = calculatePopupPosition(geometry, 280, 320)
+        }
+      } catch (err) {
+        console.error('Failed to get highlight rect:', err)
+        pos = { top: 150, left: 150 }
       }
-      
-      setToastMessage('Highlight deleted')
-      setTimeout(() => setToastMessage(''), 2000)
-    } catch (err) {
-      console.error('[Highlight Delete Error]', err)
-      setToastMessage('Failed to delete highlight')
-      setTimeout(() => setToastMessage(''), 2500)
     }
+
+    setNotePopup({
+      highlightId,
+      cfiRange,
+      text: textVal,
+      note: noteTextVal,
+      position: pos
+    })
+
+    setToolbarPosition(null)
+    setMeaningPopup(null)
+    setTranslatePopup(null)
+    setShowDeleteConfirm(false)
+    setSaveNoteFeedback('')
   }
 
   const handleColorClick = async (color) => {
@@ -545,6 +581,7 @@ export default function EpubReaderPage({ book = null }) {
 
       const nextHighlight = response.data?.data || response.data
       const highlightId = nextHighlight?._id
+      setHighlights(prev => [...prev, nextHighlight])
 
       // Wrap the highlighted text visually in the book
       if (renditionRef.current && highlightId) {
@@ -554,7 +591,7 @@ export default function EpubReaderPage({ book = null }) {
           selectedCfiRange,
           { highlightId },
           () => {
-            handleHighlightClick(selectedCfiRange, highlightId)
+            handleHighlightClickRef.current?.(selectedCfiRange, highlightId)
           },
           `hl-${color}`,
           {
@@ -599,6 +636,10 @@ export default function EpubReaderPage({ book = null }) {
     setSelectionContents(null)
     setMeaningPopup(null)
     setTranslatePopup(null)
+    setNotePopup(null)
+    setNoteText('')
+    setShowDeleteConfirm(false)
+    setSaveNoteFeedback('')
     setTranslationState({
       loading: false,
       text: '',
@@ -753,7 +794,55 @@ export default function EpubReaderPage({ book = null }) {
 
   meaningPopupRefState.current = meaningPopup
   translatePopupRefState.current = translatePopup
+  notePopupRefState.current = notePopup
   handleClosePopupRef.current = handleClosePopup
+  handleHighlightClickRef.current = handleHighlightClick
+
+  const handleSaveNote = async (highlightId, noteTextVal) => {
+    try {
+      setSavingNote(true)
+      setSaveNoteFeedback('')
+
+      const response = await apiClient.patch(`/api/highlights/${highlightId}`, {
+        note: noteTextVal
+      })
+
+      const updatedHl = response.data?.data || response.data
+      setHighlights(prev => prev.map(h => h._id === highlightId ? updatedHl : h))
+      setNotePopup(prev => prev ? { ...prev, note: updatedHl.note } : null)
+
+      setSaveNoteFeedback('Saved')
+      setTimeout(() => setSaveNoteFeedback(''), 2000)
+    } catch (err) {
+      console.error('[Note Save Error]', err)
+      setToastMessage('Failed to save note')
+      setTimeout(() => setToastMessage(''), 2500)
+    } finally {
+      setSavingNote(false)
+    }
+  }
+
+  const handleDeleteHighlight = async (cfiRange, highlightId) => {
+    try {
+      setToastMessage('Deleting highlight...')
+      await apiClient.delete(`/api/highlights/${highlightId}`)
+
+      if (renditionRef.current) {
+        renditionRef.current.annotations.remove(cfiRange, 'highlight')
+      }
+
+      setHighlights(prev => prev.filter(h => h._id !== highlightId))
+
+      setToastMessage('Highlight deleted')
+      setTimeout(() => setToastMessage(''), 2000)
+
+      handleClosePopup()
+    } catch (err) {
+      console.error('[Highlight Delete Error]', err)
+      setToastMessage('Failed to delete highlight')
+      setTimeout(() => setToastMessage(''), 2500)
+    }
+  }
 
   async function goNextChapter() {
     const items = spineItemsRef.current
@@ -1021,6 +1110,9 @@ export default function EpubReaderPage({ book = null }) {
           setToolbarPosition(null)
           setMeaningPopup(null)
           setTranslatePopup(null)
+          setNotePopup(null)
+          setShowDeleteConfirm(false)
+          setSaveNoteFeedback('')
           setStandaloneTranslation({
             loading: false,
             text: '',
@@ -1033,7 +1125,7 @@ export default function EpubReaderPage({ book = null }) {
           const doc = contents.document || contents
           if (doc && doc.addEventListener) {
             doc.addEventListener('click', () => {
-              if ((meaningPopupRefState.current || translatePopupRefState.current) && handleClosePopupRef.current) {
+              if ((meaningPopupRefState.current || translatePopupRefState.current || notePopupRefState.current) && handleClosePopupRef.current) {
                 handleClosePopupRef.current()
                 return
               }
@@ -1128,6 +1220,9 @@ export default function EpubReaderPage({ book = null }) {
           setToolbarPosition(null)
           setMeaningPopup(null)
           setTranslatePopup(null)
+          setNotePopup(null)
+          setShowDeleteConfirm(false)
+          setSaveNoteFeedback('')
           setStandaloneTranslation({
             loading: false,
             text: '',
@@ -1218,6 +1313,7 @@ export default function EpubReaderPage({ book = null }) {
         try {
           const highlightsResponse = await apiClient.get(`/api/highlights/${bookId}`)
           const fetchedHighlights = highlightsResponse.data?.data || []
+          setHighlights(fetchedHighlights)
           if (!isDestroyed) {
             fetchedHighlights.forEach((hl) => {
               if (hl.cfiRange) {
@@ -1226,7 +1322,7 @@ export default function EpubReaderPage({ book = null }) {
                   hl.cfiRange,
                   { highlightId: hl._id },
                   () => {
-                    handleHighlightClick(hl.cfiRange, hl._id)
+                    handleHighlightClickRef.current?.(hl.cfiRange, hl._id)
                   },
                   `hl-${hl.color}`,
                   {
@@ -1506,15 +1602,16 @@ export default function EpubReaderPage({ book = null }) {
   }, [menuOpen])
 
   useEffect(() => {
-    if (!meaningPopup && !translatePopup) return undefined
+    if (!meaningPopup && !translatePopup && !notePopup) return undefined
     const onPointerDown = (event) => {
       if (meaningPopupRef.current?.contains(event.target)) return
       if (translatePopupRef.current?.contains(event.target)) return
+      if (notePopupRef.current?.contains(event.target)) return
       handleClosePopup()
     }
     document.addEventListener('pointerdown', onPointerDown)
     return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [meaningPopup, translatePopup, selectionContents])
+  }, [meaningPopup, translatePopup, notePopup, selectionContents])
 
   return (
     <section
@@ -2143,6 +2240,94 @@ export default function EpubReaderPage({ book = null }) {
                     </div>
                   </div>
                 ) : null}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {notePopup && (
+          <div
+            ref={notePopupRef}
+            className="note-popup animate-reader-fade-in"
+            style={{
+              top: `${notePopup.position.top}px`,
+              left: `${notePopup.position.left}px`,
+            }}
+          >
+            <div className="note-popup-header">
+              <span className="note-popup-title">
+                Highlight Options
+              </span>
+              <button
+                type="button"
+                className="note-popup-close-btn"
+                onClick={handleClosePopup}
+                aria-label="Close popup"
+              >
+                <MdClose className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="note-popup-body">
+              <div className="note-popup-context">
+                <p className="note-popup-text-quote">
+                  “{notePopup.text.length > 150 ? `${notePopup.text.slice(0, 150)}...` : notePopup.text}”
+                </p>
+              </div>
+
+              <div className="note-popup-textarea-container">
+                <textarea
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  placeholder="Add a personal note to this highlight..."
+                  className="note-popup-textarea"
+                  maxLength={1000}
+                />
+              </div>
+
+              <div className="note-popup-actions">
+                {!showDeleteConfirm ? (
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="note-save-btn"
+                        onClick={() => handleSaveNote(notePopup.highlightId, noteText)}
+                        disabled={savingNote}
+                      >
+                        {savingNote ? 'Saving...' : 'Save Note'}
+                      </button>
+                      {saveNoteFeedback && (
+                        <span className="note-feedback-text animate-reader-fade-in">{saveNoteFeedback}</span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      className="note-delete-btn"
+                      onClick={() => setShowDeleteConfirm(true)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ) : (
+                  <div className="note-delete-confirm-box animate-reader-fade-in">
+                    <span className="note-delete-confirm-label">Are you sure?</span>
+                    <button
+                      type="button"
+                      className="note-confirm-delete-btn"
+                      onClick={() => handleDeleteHighlight(notePopup.cfiRange, notePopup.highlightId)}
+                    >
+                      Yes, Delete
+                    </button>
+                    <button
+                      type="button"
+                      className="note-cancel-delete-btn"
+                      onClick={() => setShowDeleteConfirm(false)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

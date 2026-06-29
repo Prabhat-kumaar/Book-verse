@@ -4,6 +4,7 @@ const {
     createHighlight,
     getHighlightsByBook,
     deleteHighlight,
+    updateHighlightNote,
 } = require('../controllers/highlightController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -11,5 +12,6 @@ const { protect } = require('../middleware/authMiddleware');
 router.post('/', protect, createHighlight);
 router.get('/:bookId', protect, getHighlightsByBook);
 router.delete('/:id', protect, deleteHighlight);
+router.patch('/:id', protect, updateHighlightNote);
 
 module.exports = router;
