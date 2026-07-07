@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { API_URL, buildApiUrl } from './apiConfig'
+import safeStorage from './safeStorage'
 
 const isDev = import.meta.env.DEV
 isDev && console.log('[apiClient] API URL:', API_URL)
@@ -25,7 +26,7 @@ apiClient.interceptors.request.use(
     }
     const finalUrl = isAbsolute ? url : buildApiUrl(normalizedRelativeUrl)
     isDev && console.log('[apiClient] Final request:', finalUrl)
-    const token = localStorage.getItem('authToken')
+    const token = safeStorage.getItem('authToken')
     const headers = config.headers || {}
     config.headers = headers
 
@@ -55,8 +56,8 @@ apiClient.interceptors.response.use(
     
     // Auto logout if token is expired/failed (401)
     if (status === 401) {
-      localStorage.removeItem('authToken')
-      localStorage.removeItem('authUser')
+      safeStorage.removeItem('authToken')
+      safeStorage.removeItem('authUser')
       window.dispatchEvent(new Event('authChanged'))
       
       const currentPath = window.location.pathname

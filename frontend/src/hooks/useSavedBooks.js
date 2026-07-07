@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import apiClient from '../lib/apiClient'
 import { API_URL, buildApiUrl } from '../lib/apiConfig'
+import safeStorage from '../lib/safeStorage'
 
 const SAVED_CACHE_KEY = 'savedBooksState:v1'
 const isDev = import.meta.env.DEV
@@ -8,7 +9,7 @@ let savedBooksRefreshInFlight = null
 
 function readSavedCache() {
   try {
-    const raw = localStorage.getItem(SAVED_CACHE_KEY)
+    const raw = safeStorage.getItem(SAVED_CACHE_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw)
     if (!parsed || typeof parsed !== 'object') return null
@@ -20,7 +21,7 @@ function readSavedCache() {
 
 function writeSavedCache(value) {
   try {
-    localStorage.setItem(SAVED_CACHE_KEY, JSON.stringify(value))
+    safeStorage.setItem(SAVED_CACHE_KEY, JSON.stringify(value))
   } catch {
     // no-op
   }
@@ -28,7 +29,7 @@ function writeSavedCache(value) {
 
 function readAuthUserId() {
   try {
-    const raw = localStorage.getItem('authUser')
+    const raw = safeStorage.getItem('authUser')
     const parsed = raw ? JSON.parse(raw) : null
     return parsed?._id || ''
   } catch {
@@ -37,7 +38,7 @@ function readAuthUserId() {
 }
 
 function readAuthToken() {
-  return Boolean(localStorage.getItem('authToken'))
+  return Boolean(safeStorage.getItem('authToken'))
 }
 
 function normalizeId(value) {

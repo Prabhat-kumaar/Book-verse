@@ -1,6 +1,7 @@
 import { Navigate, Outlet, Route, Routes, useNavigate, useLocation } from 'react-router-dom'
-import React, { Suspense, useEffect, useState } from 'react'
+import React, { Suspense, useEffect, useState, useMemo } from 'react'
 import apiClient from './lib/apiClient'
+import safeStorage from './lib/safeStorage'
 import LoadingFallback from './components/LoadingFallback'
 import MainLayout from './layout/MainLayout'
 import { initGA, trackPageView } from './utils/analytics'
@@ -143,7 +144,7 @@ function AppErrorFallback({ error }) {
 
 function readAuthUser() {
   try {
-    const raw = localStorage.getItem('authUser')
+    const raw = safeStorage.getItem('authUser')
     return raw ? JSON.parse(raw) : null
   } catch {
     return null
@@ -151,13 +152,13 @@ function readAuthUser() {
 }
 
 function RequireAuth({ children }) {
-  const token = localStorage.getItem('authToken')
+  const token = safeStorage.getItem('authToken')
   if (!token) return <Navigate to="/login" replace />
   return children
 }
 
 function RequireAdmin({ children }) {
-  const token = localStorage.getItem('authToken')
+  const token = safeStorage.getItem('authToken')
   const user = readAuthUser()
   if (!token) return <Navigate to="/login" replace />
   if (user?.role !== 'admin') return <Navigate to="/" replace />
@@ -210,10 +211,10 @@ function App() {
 
   useEffect(() => {
     // Generate or fetch session ID from localStorage
-    let sessionId = localStorage.getItem('readify_session_id')
+    let sessionId = safeStorage.getItem('readify_session_id')
     if (!sessionId) {
       sessionId = 'sess_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36)
-      localStorage.setItem('readify_session_id', sessionId)
+      safeStorage.setItem('readify_session_id', sessionId)
     }
 
     const recordVisit = async () => {

@@ -7,6 +7,30 @@ import './index.css'
 import App from './App.jsx'
 
 if (typeof window !== 'undefined') {
+  // Global safety fallback for localStorage in sandboxed or WebView environments
+  try {
+    const testKey = '__storage_test__'
+    window.localStorage.setItem(testKey, testKey)
+    window.localStorage.removeItem(testKey)
+  } catch (storageError) {
+    const mockStorage = {
+      _data: {},
+      setItem(id, val) { this._data[id] = String(val) },
+      getItem(id) { return this._data.hasOwnProperty(id) ? this._data[id] : null },
+      removeItem(id) { delete this._data[id] },
+      clear() { this._data = {} }
+    }
+    try {
+      Object.defineProperty(window, 'localStorage', {
+        value: mockStorage,
+        writable: true,
+        configurable: true
+      })
+    } catch {
+      window.localStorage = mockStorage
+    }
+  }
+
   // Suppress errors logged by console.error (e.g. from dev tools or page scripts)
   const originalConsoleError = console.error
   console.error = function (...args) {
