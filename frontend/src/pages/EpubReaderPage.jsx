@@ -137,6 +137,34 @@ function calculatePopupPosition(geometry, popupHeight, popupWidth = 300) {
   return { top, left }
 }
 
+function applyTooltipsToAnnotations(rendition) {
+  if (!rendition || !rendition.manager || !rendition.manager.views) return
+
+  rendition.manager.views.forEach((view) => {
+    const doc = view.document
+    if (!doc) return
+
+    const annotations = doc.querySelectorAll('.epubjs-annotation')
+    annotations.forEach((annot) => {
+      let hasNote = false
+      annot.classList.forEach((cls) => {
+        if (cls.endsWith('-has-note')) {
+          hasNote = true
+        }
+      })
+
+      const tooltipText = hasNote ? 'Has a note — click to view' : 'Click to view options'
+
+      let titleEl = annot.querySelector('title')
+      if (!titleEl) {
+        titleEl = doc.createElementNS('http://www.w3.org/2000/svg', 'title')
+        annot.appendChild(titleEl)
+      }
+      titleEl.textContent = tooltipText
+    })
+  })
+}
+
 function truncateMobileTitle(value = '') {
   const title = value || 'Untitled Book'
   return title.length > 20 ? `${title.slice(0, 20)}...` : title
@@ -600,6 +628,9 @@ export default function EpubReaderPage({ book = null }) {
             'mix-blend-mode': 'multiply'
           }
         )
+        setTimeout(() => {
+          applyTooltipsToAnnotations(renditionRef.current)
+        }, 50)
       }
 
       // Clear selection inside the iframe contents
@@ -810,6 +841,32 @@ export default function EpubReaderPage({ book = null }) {
       const updatedHl = response.data?.data || response.data
       setHighlights(prev => prev.map(h => h._id === highlightId ? updatedHl : h))
       setNotePopup(prev => prev ? { ...prev, note: updatedHl.note } : null)
+
+      // Dynamically update the visual indicator of the annotation in the book
+      if (renditionRef.current && updatedHl.cfiRange) {
+        renditionRef.current.annotations.remove(updatedHl.cfiRange, 'highlight')
+
+        const hasNote = Boolean(updatedHl.note && updatedHl.note.trim())
+        const className = hasNote ? `hl-${updatedHl.color}-has-note` : `hl-${updatedHl.color}`
+
+        renditionRef.current.annotations.add(
+          'highlight',
+          updatedHl.cfiRange,
+          { highlightId: updatedHl._id },
+          () => {
+            handleHighlightClickRef.current?.(updatedHl.cfiRange, updatedHl._id)
+          },
+          className,
+          {
+            fill: HIGHLIGHT_COLOR_MAP[updatedHl.color] || '#a855f7',
+            'fill-opacity': '0.35',
+            'mix-blend-mode': 'multiply'
+          }
+        )
+        setTimeout(() => {
+          applyTooltipsToAnnotations(renditionRef.current)
+        }, 50)
+      }
 
       setSaveNoteFeedback('Saved')
       setTimeout(() => setSaveNoteFeedback(''), 2000)
@@ -1122,6 +1179,10 @@ export default function EpubReaderPage({ book = null }) {
 
         book.spine.hooks.content.register((contents) => {
           if (!contents) return
+          setTimeout(() => {
+            applyTooltipsToAnnotations(renditionRef.current)
+          }, 100)
+
           const doc = contents.document || contents
           if (doc && doc.addEventListener) {
             doc.addEventListener('click', () => {
@@ -1317,6 +1378,8 @@ export default function EpubReaderPage({ book = null }) {
           if (!isDestroyed) {
             fetchedHighlights.forEach((hl) => {
               if (hl.cfiRange) {
+                const hasNote = Boolean(hl.note && hl.note.trim())
+                const className = hasNote ? `hl-${hl.color}-has-note` : `hl-${hl.color}`
                 rendition.annotations.add(
                   'highlight',
                   hl.cfiRange,
@@ -1324,7 +1387,7 @@ export default function EpubReaderPage({ book = null }) {
                   () => {
                     handleHighlightClickRef.current?.(hl.cfiRange, hl._id)
                   },
-                  `hl-${hl.color}`,
+                  className,
                   {
                     fill: HIGHLIGHT_COLOR_MAP[hl.color] || '#a855f7',
                     'fill-opacity': '0.35',
@@ -1333,6 +1396,9 @@ export default function EpubReaderPage({ book = null }) {
                 )
               }
             })
+            setTimeout(() => {
+              applyTooltipsToAnnotations(rendition)
+            }, 100)
           }
         } catch (err) {
           console.error('[Highlights Fetch Error]', err)

@@ -123,6 +123,18 @@ function AppErrorFallback({ error }) {
               Create free account
             </a>
           </div>
+
+          {error && (
+            <details className="mt-4 text-left text-xs bg-slate-950/80 rounded-xl border border-white/10 p-3 select-text">
+              <summary className="cursor-pointer font-bold text-slate-400 select-none hover:text-slate-300">
+                Show Technical Details
+              </summary>
+              <div className="mt-2 font-mono overflow-auto max-h-40 whitespace-pre-wrap text-rose-300/90 leading-normal">
+                {error.message || String(error)}
+                {error.stack ? `\n\n${error.stack}` : ''}
+              </div>
+            </details>
+          )}
         </div>
       </div>
     </div>

@@ -1133,4 +1133,29 @@
   }
 }
 
+/* SVG Note Indicators */
+.epubjs-annotation.hl-purple-has-note {
+  stroke: #8b5cf6 !important;
+  stroke-width: 1.5px !important;
+  stroke-dasharray: 4 2 !important;
+}
+
+.epubjs-annotation.hl-yellow-has-note {
+  stroke: #eab308 !important;
+  stroke-width: 1.5px !important;
+  stroke-dasharray: 4 2 !important;
+}
+
+.epubjs-annotation.hl-green-has-note {
+  stroke: #22c55e !important;
+  stroke-width: 1.5px !important;
+  stroke-dasharray: 4 2 !important;
+}
+
+.epubjs-annotation.hl-pink-has-note {
+  stroke: #ec4899 !important;
+  stroke-width: 1.5px !important;
+  stroke-dasharray: 4 2 !important;
+}
+
 
