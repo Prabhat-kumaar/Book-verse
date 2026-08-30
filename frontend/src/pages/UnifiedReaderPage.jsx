@@ -1,5 +1,6 @@
 import { Suspense, lazy, useMemo } from 'react'
 import SEO from '../components/SEO'
+import StitchReaderView from './StitchReaderView'
 
 const CHUNK_RELOAD_KEY = 'readify_reader_chunk_reload_at'
 const CHUNK_RELOAD_TTL_MS = 30000
@@ -34,6 +35,9 @@ const PdfReaderPage = lazyWithRetry(() => import('./PdfReaderPage'))
 const EpubReaderPage = lazyWithRetry(() => import('./EpubReaderPage'))
 
 function getReaderTypeFromBook(book) {
+  if (book?.slug === 'the-design-of-everyday-things' || book?.chapters || (!book?.fileUrl && !book?.pdf)) {
+    return 'stitch'
+  }
   const fileType = (book?.fileType || '').toLowerCase()
   const fileUrl = (book?.fileUrl || book?.pdf || '').toLowerCase()
   if (fileType === 'epub' || fileUrl.endsWith('.epub')) return 'epub'
@@ -45,6 +49,7 @@ function getReaderTypeFromHash(hash) {
   const params = new URLSearchParams(queryString)
   const fileType = (params.get('fileType') || '').toLowerCase()
   const fileUrl = (params.get('fileUrl') || params.get('pdf') || '').toLowerCase()
+  if (!fileUrl && !fileType) return 'stitch'
   if (fileType === 'epub' || fileUrl.endsWith('.epub')) return 'epub'
   return 'pdf'
 }
@@ -54,6 +59,11 @@ export default function UnifiedReaderPage({ book = null }) {
     () => (book ? getReaderTypeFromBook(book) : getReaderTypeFromHash(window.location.hash || '')),
     [book],
   )
+
+  if (readerType === 'stitch') {
+    return <StitchReaderView book={book} />
+  }
+
   return (
     <div className="min-h-screen w-full animate-reader-fade-up">
       {!book && (

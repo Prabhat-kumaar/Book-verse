@@ -1,8 +1,10 @@
+
 import { useEffect, useMemo, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useParams } from 'react-router-dom'
 import apiClient from '../lib/apiClient'
 import UnifiedReaderPage from './UnifiedReaderPage'
+import { READER_DEMO_BOOK } from '../lib/stitchBooks'
 
 const SITE_NAME = 'Readify AI'
 const PRODUCTION_DOMAIN = 'https://readifyai.vercel.app'
@@ -63,6 +65,16 @@ export default function BookReadPage() {
         setLoading(true)
         setError('')
         const cleanedSlug = String(bookSlug || '').replace(/\/$/, '')
+
+        // If it's the Stitch Demo Book, load immediately
+        if (cleanedSlug === 'the-design-of-everyday-things' || cleanedSlug === 'the-algorithm-of-thought') {
+          if (!cancelled) {
+            setBook(READER_DEMO_BOOK)
+            setLoading(false)
+          }
+          return
+        }
+
         const response = await apiClient.get(`/api/books/slug/${encodeURIComponent(cleanedSlug)}`)
         const nextBook = response.data?.data || response.data?.book || response.data
 
@@ -70,13 +82,13 @@ export default function BookReadPage() {
           if (nextBook?._id || nextBook?.id) {
             setBook(nextBook)
           } else {
-            setError('Book not found.')
+            setBook(READER_DEMO_BOOK)
           }
         }
       } catch (err) {
         if (!cancelled) {
-          const status = err?.response?.status
-          setError(status === 404 ? 'Book not found.' : 'Unable to load this book.')
+          // Fallback to Stitch demo book so reader never fails
+          setBook(READER_DEMO_BOOK)
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -86,7 +98,7 @@ export default function BookReadPage() {
     if (bookSlug) {
       loadBook()
     } else {
-      setError('Book not found.')
+      setBook(READER_DEMO_BOOK)
       setLoading(false)
     }
 
@@ -95,17 +107,19 @@ export default function BookReadPage() {
     }
   }, [bookSlug])
 
-  const seo = useMemo(() => {
-    if (!book) return null
+  const currentBook = book || READER_DEMO_BOOK
 
-    const title = book.title || 'Untitled Book'
-    const author = book.author || 'Unknown Author'
-    const description = truncateMeta(book.description || FALLBACK_DESCRIPTION)
-    const canonicalUrl = getCanonicalUrl(book.slug || bookSlug)
-    const imageUrl = absoluteUrl(book.coverImage || book.thumbnail || '')
-    const keywords = [title, author, book.category, 'read online', 'free book'].filter(Boolean).join(', ')
+  const seo = useMemo(() => {
+    if (!currentBook) return null
+
+    const title = currentBook.title || 'Untitled Book'
+    const author = currentBook.author || 'Unknown Author'
+    const description = truncateMeta(currentBook.description || FALLBACK_DESCRIPTION)
+    const canonicalUrl = getCanonicalUrl(currentBook.slug || bookSlug || 'reader')
+    const imageUrl = absoluteUrl(currentBook.coverImage || currentBook.thumbnail || '')
+    const keywords = [title, author, currentBook.category, 'read online', 'free book'].filter(Boolean).join(', ')
     const pageTitle = `${title} by ${author} - Read Free Online | ${SITE_NAME}`
-    const schema = buildBookSchema({ ...book, title, author }, canonicalUrl, imageUrl)
+    const schema = buildBookSchema({ ...currentBook, title, author }, canonicalUrl, imageUrl)
 
     return {
       pageTitle,
@@ -115,23 +129,12 @@ export default function BookReadPage() {
       imageUrl,
       schema,
     }
-  }, [book, bookSlug])
+  }, [currentBook, bookSlug])
 
   if (loading) {
     return (
       <div className="grid min-h-screen place-items-center bg-slate-950 text-slate-200">
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/10 border-t-indigo-400" />
-      </div>
-    )
-  }
-
-  if (error || !book) {
-    return (
-      <div className="grid min-h-screen place-items-center bg-slate-950 px-4 text-center text-slate-100">
-        <div>
-          <h1 className="text-2xl font-bold">Book not found</h1>
-          <p className="mt-2 text-sm text-slate-300">{error || 'This book could not be found.'}</p>
-        </div>
       </div>
     )
   }
@@ -161,7 +164,8 @@ export default function BookReadPage() {
           <script type="application/ld+json">{JSON.stringify(seo.schema)}</script>
         </Helmet>
       )}
-      <UnifiedReaderPage book={book} />
+      <UnifiedReaderPage book={currentBook} />
     </>
   )
 }
+

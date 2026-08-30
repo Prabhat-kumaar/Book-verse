@@ -5,6 +5,7 @@ import safeStorage from './lib/safeStorage'
 import LoadingFallback from './components/LoadingFallback'
 import MainLayout from './layout/MainLayout'
 import { initGA, trackPageView } from './utils/analytics'
+import ServerWakeupBanner from './components/ServerWakeupBanner'
 
 const isDev = import.meta.env.DEV
 const VISIT_DEDUPE_TTL_MS = 1800000
@@ -303,12 +304,18 @@ function App() {
         ) : (
           <Routes>
             <Route path="/" element={<MainLayout><HomePage /></MainLayout>} />
+            <Route path="/library" element={<MainLayout><SavedBooksPage /></MainLayout>} />
+            <Route path="/saved-books" element={<MainLayout><SavedBooksPage /></MainLayout>} />
+            <Route path="/stats" element={<MainLayout><ProfileDashboardPage /></MainLayout>} />
+            <Route path="/profile" element={<MainLayout><ProfileDashboardPage /></MainLayout>} />
+            <Route path="/me" element={<Navigate to="/stats" replace />} />
+            <Route path="/read" element={<MainLayout hideChrome fullBleed><BookReadPage /></MainLayout>} />
+            <Route path="/read/:bookSlug" element={<MainLayout hideChrome fullBleed><BookReadPage /></MainLayout>} />
+            <Route path="/reader" element={<MainLayout hideChrome fullBleed><BookReadPage /></MainLayout>} />
             <Route path="/books" element={<MainLayout><BooksPage /></MainLayout>} />
             <Route path="/blog" element={<BlogPage />} />
             <Route path="/blog/:slug" element={<BlogDetailPage />} />
             <Route path="/book/:id" element={<MainLayout><BookDetailPage /></MainLayout>} />
-            <Route path="/read/:bookSlug" element={<MainLayout hideChrome fullBleed><BookReadPage /></MainLayout>} />
-            <Route path="/reader" element={<Navigate to="/read" replace />} />
             <Route path="/categories" element={<MainLayout><CategoriesPage /></MainLayout>} />
             <Route path="/recommended" element={<MainLayout><RecommendedPage /></MainLayout>} />
             <Route path="/login" element={<LoginPage />} />
@@ -328,13 +335,11 @@ function App() {
               <Route index element={<Navigate to="/admin/dashboard" replace />} />
               <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
             </Route>
-            <Route path="/profile" element={<RequireAuth><MainLayout><ProfileDashboardPage /></MainLayout></RequireAuth>} />
-            <Route path="/me" element={<Navigate to="/profile" replace />} />
-            <Route path="/saved-books" element={<RequireAuth><MainLayout><SavedBooksPage /></MainLayout></RequireAuth>} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         )}
       </Suspense>
+      <ServerWakeupBanner />
     </AppErrorBoundary>
   )
 }

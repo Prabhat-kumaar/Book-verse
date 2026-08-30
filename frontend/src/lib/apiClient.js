@@ -5,7 +5,17 @@ import safeStorage from './safeStorage'
 const isDev = import.meta.env.DEV
 isDev && console.log('[apiClient] API URL:', API_URL)
 
-const REQUEST_TIMEOUT_MS = 20000
+const REQUEST_TIMEOUT_MS = 120000
+const SLOW_THRESHOLD_MS = 3000
+const activeRequests = new Map()
+
+function triggerWakeupStateChange() {
+  const isSlow = activeRequests.size > 0
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('api-wakeup-state', { detail: { isSlow } }))
+  }
+}
+
 const inFlightGetRequests = new Map()
 
 const apiClient = axios.create({
@@ -16,6 +26,14 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use(
   (config) => {
+    // Track slow request state
+    const requestId = Math.random().toString(36).substring(7)
+    const timer = setTimeout(() => {
+      activeRequests.set(requestId, true)
+      triggerWakeupStateChange()
+    }, SLOW_THRESHOLD_MS)
+    config.metadata = { requestId, timer }
+
     const url = config.url || ''
     const isAbsolute = /^https?:\/\//i.test(url)
     const normalizedRelativeUrl = isAbsolute
@@ -48,8 +66,26 @@ apiClient.interceptors.request.use(
 )
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const metadata = response?.config?.metadata
+    if (metadata) {
+      clearTimeout(metadata.timer)
+      if (activeRequests.has(metadata.requestId)) {
+        activeRequests.delete(metadata.requestId)
+        triggerWakeupStateChange()
+      }
+    }
+    return response
+  },
   (error) => {
+    const metadata = error?.config?.metadata
+    if (metadata) {
+      clearTimeout(metadata.timer)
+      if (activeRequests.has(metadata.requestId)) {
+        activeRequests.delete(metadata.requestId)
+        triggerWakeupStateChange()
+      }
+    }
     const status = error?.response?.status
     const message = error?.response?.data?.message || error?.message || 'Request failed'
     isDev && console.error('[apiClient] Request failed:', { status, message, url: error?.config?.url })
