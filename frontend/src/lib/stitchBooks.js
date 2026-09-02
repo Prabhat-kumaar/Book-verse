@@ -456,3 +456,12 @@ export const READER_DEMO_BOOK = {
     },
   ],
 }
+
+export const ALL_FALLBACK_BOOKS = [
+  BOOK_OF_THE_WEEK,
+  ...TRENDING_BOOKS,
+  ...NEW_ARRIVALS,
+  ...CONTINUE_READING_BOOKS,
+  ...MY_LIBRARY_BOOKS,
+]
+

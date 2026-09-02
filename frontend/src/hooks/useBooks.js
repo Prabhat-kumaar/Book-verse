@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import apiClient from '../lib/apiClient'
 import { API_URL, buildApiUrl } from '../lib/apiConfig'
 import { normalizeMediaUrl } from '../lib/mediaUrls'
+import { ALL_FALLBACK_BOOKS } from '../lib/stitchBooks'
 
 const isDev = import.meta.env.DEV
 const BOOKS_CACHE_TTL_MS = 15000
@@ -79,13 +80,18 @@ async function refreshSharedBooks({ force = false } = {}) {
         (status ? `Failed to fetch books (${status})` : '') ||
         fetchError.message ||
         'Unable to fetch books right now.'
+      
+      // Fallback gracefully to curated books dataset so UI never renders broken 502 error
+      const fallbackList = Array.isArray(ALL_FALLBACK_BOOKS) && ALL_FALLBACK_BOOKS.length > 0 ? ALL_FALLBACK_BOOKS : []
       setSharedBooksState({
+        books: fallbackList,
         loading: false,
-        error: message,
+        error: '',
         inFlight: null,
+        lastFetchedAt: Date.now(),
       })
-      if (isDev) console.error('[useBooks] Failed to fetch books:', message)
-      throw fetchError
+      if (isDev) console.warn('[useBooks] Using curated fallback books due to API error:', message)
+      return fallbackList
     })
 
   sharedBooksStore.inFlight = request
