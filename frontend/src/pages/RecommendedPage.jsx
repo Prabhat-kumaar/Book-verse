@@ -112,8 +112,8 @@ export default function RecommendedPage() {
   return (
     <section className="rounded-2xl border border-white/10 bg-white/[0.05] p-5 sm:p-7">
       <SEO
-        title="Recommended Books - Readify AI"
-        description="Get personalized book recommendations and curated collections based on your reading history. Discover top classic books and free ebooks online on Readify AI."
+        title="Recommended Books - Readify"
+        description="Get personalized book recommendations and curated collections based on your reading history. Discover top classic books and free ebooks online on Readify."
         path="/recommended"
       />
       <h1 className="text-2xl font-bold text-white sm:text-3xl">Personalized Book Recommendations</h1>

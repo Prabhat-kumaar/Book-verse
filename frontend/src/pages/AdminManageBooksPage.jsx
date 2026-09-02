@@ -167,7 +167,7 @@ export default function AdminManageBooksPage() {
           <div className="mb-6">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-100/80">Catalog Control</p>
             <h2 className="mt-1 text-3xl font-black text-white sm:text-4xl">Manage Books</h2>
-            <p className="mt-2 text-sm text-slate-300">Search, filter, update, or remove books from the Readify AI catalog.</p>
+            <p className="mt-2 text-sm text-slate-300">Search, filter, update, or remove books from the Readify catalog.</p>
           </div>
 
           <div className="mb-5 grid gap-4 md:grid-cols-[1fr_220px_auto]">

@@ -4,7 +4,7 @@ const buildOrganizationSchema = () => ({
     '@context': 'https://schema.org',
     '@type': 'Organization',
     '@id': `${PRODUCTION_DOMAIN}/#organization`,
-    name: 'Readify AI',
+    name: 'Readify',
     url: PRODUCTION_DOMAIN,
     logo: `${PRODUCTION_DOMAIN}/favicon.svg`,
 })
@@ -17,12 +17,12 @@ const buildBookSchema = (book = {}, canonicalUrl, imageUrl) => {
         '@type': 'Book',
         '@id': canonicalUrl,
         mainEntityOfPage: canonicalUrl,
-        name: book.title || 'Readify AI Book',
+        name: book.title || 'Readify Book',
         author: {
             '@type': 'Person',
-            name: book.author || 'Readify AI',
+            name: book.author || 'Readify',
         },
-        description: description || 'Read this book free online on Readify AI.',
+        description: description || 'Read this book free online on Readify.',
         image: imageUrl || `${PRODUCTION_DOMAIN}/favicon.svg`,
         url: canonicalUrl,
         genre: book.category || undefined,
@@ -39,7 +39,7 @@ const buildBookSchema = (book = {}, canonicalUrl, imageUrl) => {
             : undefined,
         publisher: {
             '@type': 'Organization',
-            name: 'Readify AI',
+            name: 'Readify',
             logo: {
                 '@type': 'ImageObject',
                 url: `${PRODUCTION_DOMAIN}/favicon.svg`,

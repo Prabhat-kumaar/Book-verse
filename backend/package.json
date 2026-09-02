@@ -1,7 +1,7 @@
 {
-  "name": "book-reading-system-backend",
+  "name": "readify-backend",
   "version": "1.0.0",
-  "description": "Express + MongoDB backend for Book Reading System",
+  "description": "Express + MongoDB backend for Readify",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

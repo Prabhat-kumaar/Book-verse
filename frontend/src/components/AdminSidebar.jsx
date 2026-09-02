@@ -39,7 +39,7 @@ export default function AdminSidebar() {
 
       <aside className="hidden rounded-3xl border border-white/15 bg-gradient-to-b from-white/[0.11] to-white/[0.05] p-4 backdrop-blur-2xl lg:block lg:p-5">
         <div className="mb-5 rounded-2xl border border-blue-300/30 bg-blue-500/10 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-100/80">Readify AI</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-100/80">Readify</p>
           <h1 className="mt-1 bg-gradient-to-r from-blue-300 to-violet-300 bg-clip-text text-2xl font-black text-transparent">Admin Panel</h1>
         </div>
 
@@ -94,7 +94,7 @@ export default function AdminSidebar() {
         </div>
 
         <div className="mb-4 rounded-xl border border-blue-300/30 bg-blue-500/10 p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-100/80">Readify AI</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-100/80">Readify</p>
           <h2 className="mt-1 bg-gradient-to-r from-blue-300 to-violet-300 bg-clip-text text-xl font-black text-transparent">Admin Panel</h2>
         </div>
 

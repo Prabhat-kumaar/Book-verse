@@ -130,8 +130,8 @@ export default function ProfileDashboardPage() {
   return (
     <>
       <SEO
-        title={`${displayName} - Profile & Analytics | LuminaBooks`}
-        description="View reading stats, personal goals, and active library on LuminaBooks."
+        title={`${displayName} - Profile & Analytics | Readify`}
+        description="View reading stats, personal goals, and active library on Readify."
       />
 
       <div className="space-y-10 pb-16 pt-2 max-w-6xl mx-auto text-left">

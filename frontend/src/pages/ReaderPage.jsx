@@ -336,7 +336,7 @@ export default function ReaderPage({ book: initialBook = null }) {
     <div data-reader-theme={theme} className="reader-canvas-container min-h-screen relative">
       {/* Top Floating Pill Toolbar */}
       <ReaderTopBar
-        bookTitle={bookDetails?.title || 'Book-Verse Reader'}
+        bookTitle={bookDetails?.title || 'Readify Reader'}
         chapterTitle={currentChapter?.chapterTitle}
         chapterNumber={currentChapterNumber}
         progressPercent={progressPercent}
@@ -356,7 +356,7 @@ export default function ReaderPage({ book: initialBook = null }) {
       <ReaderSidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        bookTitle={bookDetails?.title || 'Book-Verse'}
+        bookTitle={bookDetails?.title || 'Readify'}
         currentChapterTitle={currentChapter?.chapterTitle}
         currentChapterNumber={currentChapterNumber}
         chapters={chapters}

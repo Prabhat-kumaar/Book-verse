@@ -142,7 +142,7 @@ const Hero = React.memo(function Hero() {
                     Literary Journal
                 </span>
                 <h1 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-none bg-gradient-to-r from-white via-slate-100 to-purple-200 bg-clip-text text-transparent">
-                    Readify AI Blog - Book Reviews & Guides
+                    Readify Blog - Book Reviews & Guides
                 </h1>
                 <p className="mt-4 text-sm sm:text-base text-slate-350 leading-relaxed font-medium">
                     Deep dive into <TypingEffect texts={typingTexts} speed={85} delay={1800} />
@@ -1101,8 +1101,8 @@ export default function BlogPage() {
         <React.Fragment>
             {/* 1. SEO Helmet Wrapper */}
             <SEO
-                title="Readify AI Blog - Book Reviews & Guides"
-                description="Readify AI Blog: Discover free book reviews, comprehensive study guides, and deep literary analyses to help you find and read the best classic books online."
+                title="Readify Blog - Book Reviews & Guides"
+                description="Readify Blog: Discover free book reviews, comprehensive study guides, and deep literary analyses to help you find and read the best classic books online."
                 path="/blog"
             />
 

@@ -1,4 +1,4 @@
-// Curated books and design presets matching LuminaBooks aesthetic exactly
+// Curated books and design presets matching Readify aesthetic exactly
 
 export const BOOK_OF_THE_WEEK = {
   id: 'the-silent-stars',
@@ -297,7 +297,7 @@ export const NEW_ARRIVALS = [
     title: 'Synthetic Minds',
     author: 'Dr. E. Turing',
     coverImage: 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=600&auto=format&fit=crop',
-    coverBadge: 'READIFY AI',
+    coverBadge: 'READIFY',
     category: 'AI & Robotics',
   },
 ]

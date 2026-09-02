@@ -253,7 +253,7 @@ export default function AdminDashboardPage() {
                 <MdPeople className="h-5 w-5 text-indigo-400" />
                 Recent User Registrations
               </h3>
-              <p className="mt-1 text-xs text-slate-400">Latest 5 readers who joined Readify AI</p>
+              <p className="mt-1 text-xs text-slate-400">Latest 5 readers who joined Readify</p>
 
               <div className="mt-5 overflow-x-auto">
                 <table className="w-full text-left text-xs">

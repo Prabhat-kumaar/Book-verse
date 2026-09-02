@@ -94,7 +94,7 @@ function AppErrorFallback({ error }) {
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-md flex-col items-center justify-center text-center">
         <div className="w-full rounded-2xl border border-white/10 bg-slate-900/90 p-5 shadow-2xl backdrop-blur-xl">
           <p className="text-xs font-extrabold uppercase tracking-wider text-indigo-300">
-            Readify AI
+            Readify
           </p>
           <h1 className="mt-3 text-2xl font-bold leading-tight">
             {isChunkError ? 'Updating your reading space' : 'Something went wrong'}

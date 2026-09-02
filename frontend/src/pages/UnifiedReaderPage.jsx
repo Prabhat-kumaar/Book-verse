@@ -70,8 +70,8 @@ export default function UnifiedReaderPage({ book = null }) {
     <div className="min-h-screen w-full animate-reader-fade-up">
       {!book && (
         <SEO
-          title="Reader - Readify AI"
-          description="Read classic books online free with the Readify AI reader. Experience fast, distraction-free EPUB and PDF reading with bookmarks and progress tracking tools."
+          title="Reader - Readify"
+          description="Read classic books online free with the Readify reader. Experience fast, distraction-free EPUB and PDF reading with bookmarks and progress tracking tools."
           path="/reader"
         />
       )}

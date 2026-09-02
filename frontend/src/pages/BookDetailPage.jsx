@@ -80,7 +80,7 @@ export default function BookDetailPage() {
     }
   }
 
-  // Fetch book details from backend or use LuminaBooks preset
+  // Fetch book details from backend or use Readify preset
   useEffect(() => {
     const fetchBookDetails = async () => {
       try {
@@ -121,7 +121,7 @@ export default function BookDetailPage() {
             rating: Number(foundBook.averageRating || foundBook.rating || 4.8).toFixed(1),
             totalReviews: foundBook.totalReviews || 120,
             pages: foundBook.pages || 320,
-            publisher: foundBook.publisher || 'LuminaBooks Publishing',
+            publisher: foundBook.publisher || 'Readify Publishing',
             releaseDate: foundBook.createdAt ? new Date(foundBook.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '2026',
             language: foundBook.language || 'English',
             description: foundBook.description || 'An inspiring literary masterpiece ready for your digital reading experience.',
@@ -283,8 +283,8 @@ export default function BookDetailPage() {
   return (
     <>
       <SEO
-        title={`${book?.title || 'Book Details'} - LuminaBooks`}
-        description={book?.description?.slice(0, 150) || 'Read on LuminaBooks.'}
+        title={`${book?.title || 'Book Details'} - Readify`}
+        description={book?.description?.slice(0, 150) || 'Read on Readify.'}
       />
 
       <div className="space-y-12 pb-16 pt-2">

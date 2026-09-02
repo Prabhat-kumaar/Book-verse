@@ -126,8 +126,8 @@ export default function StitchReaderView({ book = null }) {
   return (
     <>
       <SEO
-        title={`${currentBook.title || 'The Great Gatsby'} - Chapter 3 | LuminaReader`}
-        description="Distraction-free digital reading experience on LuminaBooks."
+        title={`${currentBook.title || 'The Great Gatsby'} - Chapter 3 | Readify`}
+        description="Distraction-free digital reading experience on Readify."
       />
 
       <div

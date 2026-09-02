@@ -289,7 +289,7 @@ export default function AdminBlogAnalyticsPage() {
 
             {/* SEO Metadata */}
             <SEO
-                title="Blog Analytics | Readify AI Admin"
+                title="Blog Analytics | Readify Admin"
                 description="Monitor blog views, category performance, and book redirect traffic"
                 path="/admin/blogs/analytics"
             />

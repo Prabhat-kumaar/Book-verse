@@ -356,7 +356,7 @@ export default function BlogDetailPage() {
 
         if (isThinkAndGrowRich) {
             internalLinkUrl = '/read/think-and-grow-rich/';
-            internalLinkText = 'Read Think and Grow Rich free on Readify AI';
+            internalLinkText = 'Read Think and Grow Rich free on Readify';
             
             sections = [
                 {
@@ -386,7 +386,7 @@ export default function BlogDetailPage() {
             ];
         } else if (isClassicBooks) {
             internalLinkUrl = '/read/pride-and-prejudice/';
-            internalLinkText = 'Read Pride and Prejudice free on Readify AI';
+            internalLinkText = 'Read Pride and Prejudice free on Readify';
 
             sections = [
                 {
@@ -416,7 +416,7 @@ export default function BlogDetailPage() {
             ];
         } else if (isTop10Books) {
             internalLinkUrl = '/read/the-great-gatsby/';
-            internalLinkText = 'Read The Great Gatsby free on Readify AI';
+            internalLinkText = 'Read The Great Gatsby free on Readify';
 
             sections = [
                 {
@@ -425,7 +425,7 @@ export default function BlogDetailPage() {
                 },
                 {
                     h: 'Modern Student and Learner Profile Analysis',
-                    p: `In today's fast-paced digital environment, the profile of the online reader has changed significantly. Modern students and lifelong learners are no longer restricted to physical libraries or expensive textbooks. They seek high-quality, formatted, and easily readable versions of classic texts that can be accessed on tablets, phones, or laptops. This top 10 list caters to this need by bridging the gap between historical literature and modern digital reading habits. It supports learners who are analyzing text structure for academic purposes, professionals seeking to improve their communication skills through classic prose, and casual readers looking for enriching stories. By providing clean typography, reading progress tracking, and easy navigation, digital libraries like Readify AI turn public domain text into an interactive and engaging learning experience.`
+                    p: `In today's fast-paced digital environment, the profile of the online reader has changed significantly. Modern students and lifelong learners are no longer restricted to physical libraries or expensive textbooks. They seek high-quality, formatted, and easily readable versions of classic texts that can be accessed on tablets, phones, or laptops. This top 10 list caters to this need by bridging the gap between historical literature and modern digital reading habits. It supports learners who are analyzing text structure for academic purposes, professionals seeking to improve their communication skills through classic prose, and casual readers looking for enriching stories. By providing clean typography, reading progress tracking, and easy navigation, digital libraries like Readify turn public domain text into an interactive and engaging learning experience.`
                 },
                 {
                     h: 'Why Read These Top 10 Books Today',
@@ -437,7 +437,7 @@ export default function BlogDetailPage() {
                 },
                 {
                     h: 'Comparisons of Digital Reading Platforms',
-                    p: `When looking at where to read these top books, there is a clear difference between older public domain repositories and modern, reader-first platforms. While websites like Project Gutenberg offer a massive collection of free books, their plain text or basic HTML formats lack visual appeal and progress-saving features. Modern platforms like Readify AI improve the reading experience by offering clean dark modes, responsive mobile layouts, bookmarking systems, and curated lists. This ensures that the process of reading a 400-page classic online feels as comfortable and engaging as reading a physical book, removing the friction that often prevents people from finishing longer texts.`
+                    p: `When looking at where to read these top books, there is a clear difference between older public domain repositories and modern, reader-first platforms. While websites like Project Gutenberg offer a massive collection of free books, their plain text or basic HTML formats lack visual appeal and progress-saving features. Modern platforms like Readify improve the reading experience by offering clean dark modes, responsive mobile layouts, bookmarking systems, and curated lists. This ensures that the process of reading a 400-page classic online feels as comfortable and engaging as reading a physical book, removing the friction that often prevents people from finishing longer texts.`
                 },
                 {
                     h: 'Reader Testimonials on Free Digital Books',
@@ -608,7 +608,7 @@ export default function BlogDetailPage() {
                         const a = doc.createElement('a');
                         a.href = readLink;
                         a.className = "text-purple-400 hover:text-purple-300 font-semibold inline-flex items-center gap-1 transition-colors";
-                        a.textContent = `Read ${matchedBook.title} Free on Readify AI`;
+                        a.textContent = `Read ${matchedBook.title} Free on Readify`;
                         linkPara.appendChild(a);
                         detailsCol.appendChild(linkPara);
                     }
@@ -670,7 +670,7 @@ export default function BlogDetailPage() {
         if (!blog) return '';
         let clean = (blog.excerpt || blog.title || '').replace(/\s+/g, ' ').trim();
         if (clean.length < 150) {
-            const pad = ' Read this detailed book review, analysis, and guide on the Readify AI journal to improve your study skills and discover classic literature for free.';
+            const pad = ' Read this detailed book review, analysis, and guide on the Readify journal to improve your study skills and discover classic literature for free.';
             clean = (clean + pad).slice(0, 157) + '...';
         }
         if (clean.length > 160) {
@@ -768,7 +768,7 @@ export default function BlogDetailPage() {
             {/* 1. SEO Helmet Wrapper */}
             {blog && (
                 <SEO
-                    title={`${blog.title} | Readify AI`}
+                    title={`${blog.title} | Readify`}
                     description={blogDescription}
                     image={blog.coverImage}
                     path={`/blog/${blog.slug}`}
@@ -930,7 +930,7 @@ export default function BlogDetailPage() {
                                     <div>
                                         <h4 className="text-base font-bold text-white">About the Author: {blog.author?.username || 'Admin'}</h4>
                                         <p className="text-sm text-slate-300 mt-2 leading-relaxed">
-                                            {blog.author?.bio || 'Passionate writer, literary analyst, and curator of the Readify AI journal. Sharing the best reading recommendations, studying insights, and classic book deep dives.'}
+                                            {blog.author?.bio || 'Passionate writer, literary analyst, and curator of the Readify journal. Sharing the best reading recommendations, studying insights, and classic book deep dives.'}
                                         </p>
                                     </div>
                                 </div>

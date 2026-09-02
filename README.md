@@ -1,6 +1,6 @@
-# Book-verse
+# Readify
 
-Book-verse is a MERN reading app with a React/Vite frontend, Express/MongoDB backend, PDF/EPUB reader, admin panel, analytics, authentication, and book uploads.
+Readify is a modern MERN reading web application with a React/Vite frontend, Express/MongoDB backend, custom EPUB/PDF reader, admin panel, reading analytics, authentication, and book uploads.
 
 ## Local Development
 

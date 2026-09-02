@@ -5,8 +5,8 @@ export default function NotFoundPage() {
   return (
     <div className="min-h-screen bg-[#050914] bg-[radial-gradient(circle_at_12%_8%,rgba(56,96,255,0.22),transparent_34%),radial-gradient(circle_at_86%_4%,rgba(120,80,255,0.2),transparent_30%),linear-gradient(165deg,#05070f_0%,#0a0f1f_46%,#06070d_100%)] px-4 py-10 text-white flex flex-col justify-center items-center">
       <SEO 
-        title="Page Not Found | Readify AI" 
-        description="The page you are looking for does not exist on Readify AI. Return to your library or home page to continue reading."
+        title="Page Not Found | Readify" 
+        description="The page you are looking for does not exist on Readify. Return to your library or home page to continue reading."
         path="/404"
       />
       <div className="mx-auto flex w-full max-w-md flex-col items-center justify-center text-center">

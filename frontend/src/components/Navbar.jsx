@@ -133,7 +133,7 @@ export default function Navbar() {
           {/* Left: Brand Logo */}
           <Link to="/" className="group flex shrink-0 items-center gap-2">
             <span className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center">
-              Lumina<span className="bg-gradient-to-r from-violet-400 via-pink-400 to-rose-400 bg-clip-text text-transparent">Books</span>
+              Read<span className="bg-gradient-to-r from-violet-400 via-pink-400 to-rose-400 bg-clip-text text-transparent">ify</span>
             </span>
           </Link>
 

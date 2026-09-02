@@ -52,8 +52,8 @@ export default function SignUpPage() {
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#070913] px-4 py-12 text-slate-100 sm:px-6">
       <SEO
-        title="Create Account - LuminaBooks"
-        description="Sign up for a free LuminaBooks account to track your reading progress and books."
+        title="Create Account - Readify"
+        description="Sign up for a free Readify account to track your reading progress and books."
         path="/signup"
       />
 
@@ -70,7 +70,7 @@ export default function SignUpPage() {
         {/* Brand & Heading */}
         <div className="space-y-2">
           <h1 className="text-3xl sm:text-4xl font-black font-serif tracking-tight text-white">
-            Lumina<span className="bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent">Books</span>
+            Read<span className="bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent">ify</span>
           </h1>
           <h2 className="text-xl sm:text-2xl font-bold text-white pt-1">
             Create an Account
@@ -132,7 +132,7 @@ export default function SignUpPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="reader@luminabooks.com"
+              placeholder="reader@readify.com"
               className="h-12 w-full rounded-2xl border border-white/10 bg-[#070a14] px-4 text-xs text-white placeholder:text-slate-600 outline-none transition focus:border-violet-400 focus:bg-[#090d1a]"
             />
           </div>

@@ -115,7 +115,7 @@ export default function AdminBlogAutoGeneratePage() {
         try {
             const title = `Read ${book.title} Free Online — Full Book Review & Summary`;
             const slug = `read-${book.slug || slugify(book.title)}-free-online-review`;
-            const excerpt = `${book.title} by ${book.author || 'Unknown'} — discover why this ${book.category || 'classic'} classic is a must-read. Available free on Readify AI.`;
+            const excerpt = `${book.title} by ${book.author || 'Unknown'} — discover why this ${book.category || 'classic'} classic is a must-read. Available free on Readify.`;
             
             // Map to valid category enums
             const validCategories = [
@@ -141,8 +141,8 @@ export default function AdminBlogAutoGeneratePage() {
 <p>${book.description || 'No description available for this book.'}</p>
 <h2>Why Read ${book.title}?</h2>
 <p>${book.title} is a stellar example of ${book.category || 'classic'} literature. It features compelling characters, rich storytelling, and explores themes that continue to resonate with readers today.</p>
-<h2>Read ${book.title} Free on Readify AI</h2>
-<p>Start reading ${book.title} free on Readify AI now. <a href="/read/${encodeURIComponent(book.slug || '')}/">${book.title} Free Online</a></p>
+<h2>Read ${book.title} Free on Readify</h2>
+<p>Start reading ${book.title} free on Readify now. <a href="/read/${encodeURIComponent(book.slug || '')}/">${book.title} Free Online</a></p>
 <h2>Reader Reviews</h2>
 <p>Join thousands of readers who have read ${book.title} and shared their thoughts. Add your review and rating to help others discover this work.</p>`;
 
@@ -195,7 +195,7 @@ export default function AdminBlogAutoGeneratePage() {
             <div className="pointer-events-none absolute right-0 top-40 h-80 w-80 rounded-full bg-purple-500/10 blur-[130px]" />
 
             <SEO
-                title="Auto-Generate Blog | Readify AI Admin"
+                title="Auto-Generate Blog | Readify Admin"
                 description="Auto-generate blog posts for books automatically using the generator tool."
                 path="/admin/blog/auto-generate"
             />

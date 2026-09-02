@@ -1,6 +1,6 @@
-# Book-verse Backend
+# Readify Backend
 
-Express + MongoDB API for Book-verse.
+Express + MongoDB API for Readify.
 
 ## Setup
 

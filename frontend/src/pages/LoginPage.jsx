@@ -52,8 +52,8 @@ export default function LoginPage() {
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#070913] px-4 py-12 text-slate-100 sm:px-6">
       <SEO
-        title="Sign In - LuminaBooks"
-        description="Sign in to your LuminaBooks account to continue your digital reading journey."
+        title="Sign In - Readify"
+        description="Sign in to your Readify account to continue your digital reading journey."
         path="/login"
       />
 
@@ -70,7 +70,7 @@ export default function LoginPage() {
         {/* Brand & Heading */}
         <div className="space-y-2">
           <h1 className="text-3xl sm:text-4xl font-black font-serif tracking-tight text-white">
-            Lumina<span className="bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent">Books</span>
+            Read<span className="bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent">ify</span>
           </h1>
           <h2 className="text-xl sm:text-2xl font-bold text-white pt-1">
             Welcome Back
@@ -85,7 +85,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => {
-              setEmail('demo@luminabooks.com')
+              setEmail('demo@readify.com')
               setPassword('password123')
             }}
             className="w-full flex items-center justify-center gap-3 rounded-2xl border border-white/[0.08] bg-[#141828]/90 hover:bg-[#191e32] py-3 px-4 text-xs font-semibold text-slate-200 transition active:scale-[0.98]"
@@ -97,7 +97,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => {
-              setEmail('alex@luminabooks.com')
+              setEmail('alex@readify.com')
               setPassword('password123')
             }}
             className="w-full flex items-center justify-center gap-3 rounded-2xl border border-white/[0.08] bg-[#141828]/90 hover:bg-[#191e32] py-3 px-4 text-xs font-semibold text-slate-200 transition active:scale-[0.98]"
@@ -127,7 +127,7 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="reader@luminabooks.com"
+              placeholder="reader@readify.com"
               className="h-12 w-full rounded-2xl border border-white/10 bg-[#070a14] px-4 text-xs text-white placeholder:text-slate-600 outline-none transition focus:border-violet-400 focus:bg-[#090d1a]"
             />
           </div>

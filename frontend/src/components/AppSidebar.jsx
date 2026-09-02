@@ -62,7 +62,7 @@ export default function AppSidebar({ mobileOpen = false, onCloseMobile = () => {
               </div>
               <div className="flex flex-col">
                 <span className="text-base font-black tracking-tight text-white flex items-center">
-                  Lumina<span className="bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent">Books</span>
+                  Read<span className="bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent">ify</span>
                 </span>
                 <span className="text-[8px] font-bold tracking-[0.2em] text-slate-400 uppercase">
                   PREMIUM READING
@@ -161,7 +161,7 @@ export default function AppSidebar({ mobileOpen = false, onCloseMobile = () => {
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-500 shadow-lg shadow-purple-600/30">
               <MdStar className="h-6 w-6 text-amber-300" />
             </div>
-            <h3 className="mt-4 text-xl font-bold text-white">Readify AI Pro</h3>
+            <h3 className="mt-4 text-xl font-bold text-white">Readify Pro</h3>
             <p className="mt-1 text-xs text-slate-400">
               Unlock unlimited AI book summaries, voice narration, synced highlights, and offline downloads.
             </p>
@@ -215,7 +215,7 @@ export default function AppSidebar({ mobileOpen = false, onCloseMobile = () => {
             </button>
             <h3 className="text-lg font-bold text-white">Help & Support</h3>
             <p className="mt-2 text-xs text-slate-300 leading-relaxed">
-              Readify AI is designed to help you read and absorb books faster with AI assistance and reading analytics.
+              Readify is designed to help you read and absorb books faster with AI assistance and reading analytics.
             </p>
             <div className="mt-4 space-y-2 text-xs text-slate-400">
               <p>• <strong>Home</strong>: Discover featured books of the week, trending titles, and recent arrivals.</p>

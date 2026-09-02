@@ -6,9 +6,9 @@ import apiClient from '../lib/apiClient'
 import UnifiedReaderPage from './UnifiedReaderPage'
 import { READER_DEMO_BOOK } from '../lib/stitchBooks'
 
-const SITE_NAME = 'Readify AI'
+const SITE_NAME = 'Readify'
 const PRODUCTION_DOMAIN = 'https://readifyai.vercel.app'
-const FALLBACK_DESCRIPTION = 'Read this book free online on Readify AI.'
+const FALLBACK_DESCRIPTION = 'Read this book free online on Readify.'
 
 function truncateMeta(value = '', maxLength = 160) {
   const normalized = String(value || '').replace(/\s+/g, ' ').trim()

@@ -120,7 +120,7 @@ export default function BooksPage() {
   return (
     <div className="space-y-8 pb-12">
       <SEO
-        title="Explore Catalog - LuminaBooks"
+        title="Explore Catalog - Readify"
         description="Discover our immersive library of digital books across topics and reading levels."
       />
 
@@ -330,8 +330,8 @@ export default function BooksPage() {
       {/* ========================================================================= */}
       <footer className="mt-16 pt-8 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400 font-mono">
         <div className="flex items-center gap-2">
-          <span className="font-bold text-white">LuminaBooks</span>
-          <span>© 2024 LuminaBooks. Immersive Reading Experience.</span>
+          <span className="font-bold text-white">Readify</span>
+          <span>© 2026 Readify. Immersive Reading Experience.</span>
         </div>
 
         <div className="flex items-center gap-5">

@@ -52,7 +52,7 @@ export default function SavedBooksPage() {
   return (
     <>
       <SEO
-        title="My Library - Readify AI"
+        title="My Library - Readify"
         description="View your personal reading list, continue in-progress books, and track completion progress."
       />
 

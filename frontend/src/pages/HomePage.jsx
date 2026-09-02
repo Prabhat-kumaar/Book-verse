@@ -135,7 +135,7 @@ export default function HomePage() {
   return (
     <>
       <SEO
-        title="LuminaBooks - Your Next Chapter Awaits"
+        title="Readify - Your Next Chapter Awaits"
         description="Immerse yourself in a world of infinite stories. Experience reading redefined with our premium digital library."
       />
 
@@ -190,7 +190,7 @@ export default function HomePage() {
                 <div className="relative rounded-[2rem] border-4 border-[#1e2436] bg-[#0c101a] p-3 shadow-2xl shadow-violet-950/60 ring-1 ring-white/10">
                   {/* Tablet Top Header Bar Simulation */}
                   <div className="mb-2 flex items-center justify-between px-3 text-[10px] text-slate-400 font-medium">
-                    <span className="text-slate-300 font-semibold">LuminaReader</span>
+                    <span className="text-slate-300 font-semibold">Readify</span>
                     <div className="flex items-center gap-1.5">
                       <span className="text-[9px]">Browse</span>
                       <div className="h-1.5 w-1.5 rounded-full bg-violet-400" />
@@ -376,7 +376,7 @@ export default function HomePage() {
 
                       {/* Header Notch on Tablet */}
                       <div className="absolute top-2.5 inset-x-3 flex items-center justify-between text-[8px] text-slate-300 font-bold drop-shadow">
-                        <span>LuminaBooks</span>
+                        <span>Readify</span>
                         <div className="h-1.5 w-1.5 rounded-full bg-pink-400" />
                       </div>
 

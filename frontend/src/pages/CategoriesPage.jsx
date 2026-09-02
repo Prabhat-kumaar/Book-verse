@@ -153,8 +153,8 @@ export default function CategoriesPage() {
   return (
     <section className="rounded-2xl border border-white/10 bg-white/[0.05] p-5 sm:p-7">
       <SEO
-        title="Book Categories - Readify AI"
-        description="Browse books by category on Readify AI: Programming, AI, Business, Self-Help, Design, and more. Find the best curated classics and free ebooks by subject."
+        title="Book Categories - Readify"
+        description="Browse books by category on Readify: Programming, AI, Business, Self-Help, Design, and more. Find the best curated classics and free ebooks by subject."
         path="/categories"
       />
       <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">Browse Books by Category</h1>

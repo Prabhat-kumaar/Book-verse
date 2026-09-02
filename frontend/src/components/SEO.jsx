@@ -1,9 +1,9 @@
 import { Helmet } from 'react-helmet-async'
 
 const PRODUCTION_DOMAIN = 'https://readifyai.vercel.app'
-const SITE_NAME = 'Readify AI'
+const SITE_NAME = 'Readify'
 const DEFAULT_IMAGE = `${PRODUCTION_DOMAIN}/favicon.svg`
-const TWITTER_CREATOR = '@ReadifyAI'
+const TWITTER_CREATOR = '@ReadifyApp'
 
 const normalizePath = (value = '') => {
   const path = String(value || '').trim()
@@ -31,8 +31,8 @@ const renderStructuredData = (schema) => {
 export default function SEO({ title, description, image, path, schema }) {
   const canonicalUrl = buildCanonicalUrl(path)
   const robots = path?.startsWith('/admin') ? 'noindex, nofollow' : 'index, follow'
-  const pageTitle = title ? title : 'Readify AI - Read Books Online Free'
-  const pageDescription = description || 'Read books, track your reading, and discover free ebooks on Readify AI.'
+  const pageTitle = title ? title : 'Readify - Read Books Online Free'
+  const pageDescription = description || 'Read books, track your reading, and discover free ebooks on Readify.'
   const openGraphImage = image || DEFAULT_IMAGE
 
   return (
@@ -51,9 +51,9 @@ export default function SEO({ title, description, image, path, schema }) {
       <meta property="og:url" content={canonicalUrl} />
       <meta property="og:site_name" content={SITE_NAME} />
       <meta property="og:image" content={openGraphImage} />
-      <meta property="og:image:alt" content={description || 'Readify AI book reader and library'} />
+      <meta property="og:image:alt" content={description || 'Readify book reader and library'} />
       <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:site" content="@ReadifyAI" />
+      <meta name="twitter:site" content="@ReadifyApp" />
       <meta name="twitter:creator" content={TWITTER_CREATOR} />
       <meta name="twitter:title" content={pageTitle} />
       <meta name="twitter:description" content={pageDescription} />

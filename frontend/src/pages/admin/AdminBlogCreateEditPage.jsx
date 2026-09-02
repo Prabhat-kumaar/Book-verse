@@ -406,7 +406,7 @@ export default function AdminBlogCreateEditPage() {
         slug: '',
         category: 'Classic Books',
         excerpt: '',
-        content: '<p><a href="https://readifyai.vercel.app/read/pride-and-prejudice">Read Pride and Prejudice Free on Readify AI</a></p>',
+        content: '<p><a href="https://readifyai.vercel.app/read/pride-and-prejudice">Read Pride and Prejudice Free on Readify</a></p>',
         coverImage: '',
         tags: [],
         relatedBooks: [],
@@ -1802,8 +1802,8 @@ export default function AdminBlogCreateEditPage() {
 
             {/* SEO Helmet metadata */}
             <SEO
-                title={mode === 'create' ? 'Create Blog | Readify AI Admin' : `Edit Blog | ${formData.title || 'Readify AI Admin'}`}
-                description="Manage Readify AI Blog contents"
+                title={mode === 'create' ? 'Create Blog | Readify Admin' : `Edit Blog | ${formData.title || 'Readify Admin'}`}
+                description="Manage Readify Blog contents"
                 path="/admin/blogs"
             />
 
