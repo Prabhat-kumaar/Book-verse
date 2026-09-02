@@ -126,25 +126,53 @@ export default function Navbar() {
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.55, ease: 'easeOut' }}
-      className="sticky top-0 z-50 px-2 pt-2 sm:px-6 sm:pt-3 lg:px-10"
+      className="sticky top-0 z-50 px-3 pt-3 sm:px-6 sm:pt-4 lg:px-8"
     >
-      <nav className="mx-auto w-full max-w-7xl rounded-2xl border border-white/10 bg-gradient-to-r from-[#0f0f0f]/95 via-[#131313]/95 to-[#0f0f0f]/95 shadow-lg shadow-[0_18px_60px_rgba(0,0,0,0.62)] backdrop-blur-2xl">
-        <div className="flex items-center gap-2 px-3 py-2.5 sm:gap-4 sm:px-6 sm:py-3.5">
-          <Link to="/" className="group flex shrink-0 items-center gap-2.5 sm:gap-3">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600 text-sm font-bold text-white shadow-[0_0_35px_rgba(100,105,255,0.55)] transition duration-300 group-hover:scale-105 group-hover:rotate-3 sm:h-11 sm:w-11 sm:rounded-2xl">
-              R
+      <nav className="mx-auto w-full max-w-7xl rounded-2xl border border-white/[0.08] bg-[#0c101a]/90 shadow-2xl shadow-black/60 backdrop-blur-2xl">
+        <div className="flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
+          {/* Left: Brand Logo */}
+          <Link to="/" className="group flex shrink-0 items-center gap-2">
+            <span className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center">
+              Lumina<span className="bg-gradient-to-r from-violet-400 via-pink-400 to-rose-400 bg-clip-text text-transparent">Books</span>
             </span>
-            <div className="hidden min-[380px]:block">
-              <p className="hidden sm:block text-[10px] font-semibold uppercase tracking-[0.36em] text-blue-200/75">Intelligent Reading</p>
-              <p className="bg-gradient-to-r from-blue-300 via-indigo-200 to-violet-300 bg-clip-text text-base font-extrabold text-transparent sm:text-lg">
-                Readify AI
-              </p>
-            </div>
           </Link>
 
-          <div className="hidden min-w-0 flex-1 items-center justify-center lg:flex">
-            <label className="group relative w-full max-w-md">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 transition group-focus-within:text-blue-300">
+          {/* Center: Nav Links with active indicator */}
+          <ul className="hidden md:flex items-center gap-6 lg:gap-8">
+            {navItems.map((item) => {
+              const isActive =
+                item.href === '/'
+                  ? location.pathname === '/'
+                  : location.pathname.startsWith(item.href)
+              return (
+                <li key={item.label}>
+                  <Link
+                    to={item.href}
+                    className={`relative py-1 text-sm font-medium transition-colors duration-200 ${
+                      isActive
+                        ? 'text-white font-semibold'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <span>{item.label}</span>
+                    {isActive && (
+                      <motion.div
+                        layoutId="navIndicator"
+                        className="absolute -bottom-1.5 left-0 right-0 h-0.5 rounded-full bg-gradient-to-r from-violet-400 to-pink-400"
+                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                      />
+                    )}
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+
+          {/* Right: Search, Icons & Auth */}
+          <div className="flex items-center gap-2.5 sm:gap-3.5">
+            {/* Search Input Pill */}
+            <div className="hidden sm:block relative w-48 md:w-56 lg:w-64">
+              <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
                 <SearchIcon />
               </span>
               <input
@@ -154,133 +182,65 @@ export default function Navbar() {
                   setSearch(e.target.value)
                   setSearchDirty(true)
                 }}
-                placeholder="Search books, genres, or authors..."
-                className="h-11 w-full rounded-xl border border-white/10 bg-black/60 pl-10 pr-4 text-sm text-white placeholder:text-zinc-400 outline-none transition duration-300 focus:border-blue-300/60 focus:bg-black/80"
+                placeholder="Search books, authors..."
+                className="h-9 w-full rounded-full border border-white/10 bg-[#141824]/90 pl-9 pr-4 text-xs text-white placeholder:text-slate-400 outline-none transition duration-200 focus:border-violet-400/50 focus:bg-[#181e2e]"
               />
-            </label>
-          </div>
+            </div>
 
-          <ul className="hidden items-center gap-1 lg:flex">
-            {navItems.map((item) => {
-              const isBlog = item.label === 'Blog'
-              return (
-                <li key={item.label}>
-                  <Link
-                    to={item.href}
-                    className={`group relative rounded-lg px-4 py-2 text-sm font-medium transition duration-300 hover:-translate-y-0.5 flex items-center gap-1.5 ${
-                      isBlog ? 'text-purple-305/90 hover:text-purple-400' : 'text-slate-200/90 hover:text-white'
-                    }`}
-                  >
-                    {isBlog && <span className="select-none text-sm">📝</span>}
-                    <span>{item.label}</span>
-                    <span className={`absolute inset-x-3 -bottom-0.5 h-px scale-x-0 transition duration-300 group-hover:scale-x-100 ${
-                      isBlog ? 'bg-gradient-to-r from-purple-400 to-purple-500' : 'bg-gradient-to-r from-blue-400 to-violet-400'
-                    }`} />
-                  </Link>
-                </li>
-              )
-            })}
-            {!authUser ? (
-              <li>
-                <Link
-                  to="/login"
-                  className="btn btn-primary"
-                >
-                  Login
-                </Link>
-              </li>
-            ) : null}
-          </ul>
-
-          {/* Tablet controls */}
-          <div className="relative ml-auto hidden md:flex lg:hidden items-center gap-2">
+            {/* Notification Icon */}
             <button
               type="button"
-              aria-label="Open menu"
-              onClick={() => setMenuOpen((prev) => !prev)}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-slate-100 transition hover:border-blue-300/45 hover:bg-white/15"
+              aria-label="Notifications"
+              className="relative hidden sm:grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-[#141824]/60 text-slate-300 transition hover:bg-white/10 hover:text-white"
             >
-              <MdMenu className="h-5 w-5" />
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
             </button>
-            {menuOpen ? (
-              <div className="absolute right-0 top-12 w-52 overflow-hidden rounded-2xl border border-white/15 bg-slate-950/90 p-2 shadow-lg shadow-[0_20px_60px_rgba(0,0,0,0.55)] backdrop-blur-2xl z-50">
-                <Link to="/blog" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10 flex items-center justify-between mb-1">
-                  <span>📝 Blog</span>
-                  <span className="bg-purple-650 bg-gradient-to-r from-purple-600 to-purple-700 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">New</span>
-                </Link>
-                <div className="border-b border-white/10 my-1" />
-                {authUser ? (
-                  <>
-                    <Link to="/profile" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
-                      My Profile
-                    </Link>
-                    <Link to={continueReadingLink} onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
-                      Continue Reading
-                    </Link>
-                    <Link to="/saved-books" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
-                      Saved Books
-                    </Link>
-                    <Link to="/#continue-reading" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
-                      Reading History
-                    </Link>
-                    <Link to="/profile" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
-                      Settings
-                    </Link>
-                    {isAdmin ? (
-                      <Link to="/admin/dashboard" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
-                        Admin Dashboard
-                      </Link>
-                    ) : null}
-                  </>
-                ) : (
-                  <Link to="/login" onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm font-semibold text-blue-200 transition hover:bg-blue-500/15">
-                    Login
-                  </Link>
-                )}
-              </div>
-            ) : null}
-          </div>
 
-          {/* Mobile controls */}
-          <div className="ml-auto flex items-center gap-1.5 md:hidden">
-            <button
-              type="button"
-              aria-label="Open menu"
-              onClick={() => setMenuOpen((prev) => !prev)}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-slate-100 transition hover:border-blue-300/45 hover:bg-white/15"
-            >
-              <MdMenu className="h-5 w-5" />
-            </button>
-            <button
-              type="button"
-              aria-label="Search books"
-              onClick={() => {
-                if (!location.pathname.startsWith('/books')) {
-                  navigate('/books')
-                }
-                setMobileSearchOpen((prev) => !prev)
-              }}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-slate-100 transition hover:border-blue-300/45 hover:bg-white/15"
-            >
-              <MdSearch className="h-5 w-5" />
-            </button>
+            {/* Saved Bookmark Icon */}
             <Link
-              to={authUser ? '/profile' : '/login'}
-              aria-label="Account"
-              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-slate-100 transition hover:border-blue-300/45 hover:bg-white/15"
+              to="/saved-books"
+              aria-label="Bookmarks"
+              className="hidden sm:grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-[#141824]/60 text-slate-300 transition hover:bg-white/10 hover:text-white"
             >
-              {authUser ? (
-                <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-blue-500 to-violet-600 text-xs font-bold text-white">
-                  {avatarLabel}
-                </span>
-              ) : (
-                <MdPerson className="h-5 w-5" />
-              )}
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+              </svg>
             </Link>
-          </div>
 
-          {/* Desktop User Menu */}
-          <div className="hidden lg:flex items-center gap-3">
+            {/* Subscribe / Auth Button */}
+            {!authUser ? (
+              <Link
+                to="/signup"
+                className="rounded-full bg-[#c4b5fd] hover:bg-[#d8b4fe] px-4 py-1.5 text-xs font-bold text-[#090d16] shadow-sm transition-all duration-200 active:scale-95"
+              >
+                Subscribe
+              </Link>
+            ) : (
+              <div ref={profileRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setProfileOpen((prev) => !prev)}
+                  aria-label="Profile menu"
+                  className="grid h-9 w-9 place-items-center rounded-full border border-violet-400/40 bg-gradient-to-br from-violet-500 to-pink-500 text-xs font-black text-white shadow-md transition hover:scale-105"
+                >
+                  {avatarLabel}
+                </button>
+              </div>
+            )}
+
+            {/* Mobile Menu Trigger */}
+            <button
+              type="button"
+              aria-label="Open menu"
+              onClick={() => setMenuOpen((prev) => !prev)}
+              className="md:hidden grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-[#141824] text-slate-200"
+            >
+              <MdMenu className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
             {authUser ? (
               <div ref={profileRef} className="relative">
                 <motion.button

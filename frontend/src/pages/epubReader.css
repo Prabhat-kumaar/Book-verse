@@ -1,8 +1,8 @@
 .epub-reader-root {
   height: 100vh;
   width: 100%;
-  background: #2d2d3d;
-  color: #e2e8f0;
+  background: #090c15;
+  color: #cbd5e1;
 }
 
 .epub-reader-shell {
@@ -19,8 +19,8 @@
   justify-content: space-between;
   padding: 8px 12px;
   min-height: 50px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: #1e1e2e;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #0c101d;
   z-index: 15;
 }
 
@@ -70,10 +70,10 @@
 }
 
 .toc-sidebar {
-  width: 260px;
-  min-width: 260px;
-  background: #1e1e2e;
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  width: 280px;
+  min-width: 280px;
+  background: #0c101d;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
   overflow-y: auto;
   padding: 16px 0;
   z-index: 11;
@@ -108,17 +108,17 @@
   border-bottom: 0;
 }
 .toc-item.active {
-  background: rgba(99, 102, 241, 0.12) !important;
+  background: rgba(139, 92, 246, 0.15) !important;
   color: #fff !important;
-  border-left: 3px solid #6366f1 !important;
+  border-left: 3px solid #8b5cf6 !important;
 }
 .toc-item.sub-item { padding-left: 28px; font-size: 13px; color: #94a3b8; }
 
-.reader-main { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-.reader-content { flex: 1; background: #2d2d3d; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding: 24px 16px 72px; }
-.epub-viewer { width: 100%; max-width: none; margin: 0; background: transparent; border-radius: 0; box-shadow: none; min-height: calc(100vh - 160px); overflow: hidden; }
-.epub-viewer > div { width: 100% !important; }
-.epub-viewer iframe { width: 100% !important; border: none !important; min-height: calc(100vh - 160px); }
+.reader-main { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; background: #090c15; }
+.reader-content { flex: 1; background: #090c15; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding: 24px 16px 72px; }
+.epub-viewer { width: 100%; max-width: 780px; margin: 0 auto; background: transparent; border-radius: 0; box-shadow: none; min-height: calc(100vh - 160px); overflow: hidden; }
+.epub-viewer > div { width: 100% !important; max-width: 780px !important; margin: 0 auto !important; }
+.epub-viewer iframe { width: 100% !important; max-width: 780px !important; margin: 0 auto !important; border: none !important; min-height: calc(100vh - 160px); }
 
 /* Prevent browser scroll anchoring shifts and jumps in continuous manager & enable smooth scrolling */
 #viewer,

@@ -1,356 +1,484 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
-  MdMenu,
   MdBookmark,
   MdBookmarkBorder,
-  MdMoreVert,
-  MdFormatSize,
+  MdMenuBook,
+  MdFormatListBulleted,
+  MdCreate,
+  MdNote,
   MdClose,
-  MdArrowBack,
-  MdOutlineTextFormat,
+  MdWbSunny,
+  MdNightlightRound,
+  MdCoffee,
+  MdTranslate,
+  MdCheck,
 } from 'react-icons/md'
 import { READER_DEMO_BOOK } from '../lib/stitchBooks'
 import SEO from '../components/SEO'
 
+const THEMES = {
+  dark: {
+    name: 'Lumina Noir',
+    bg: 'bg-[#090c15]',
+    text: 'text-slate-200',
+    titleColor: 'text-white',
+    border: 'border-white/10',
+    highlightBg: 'bg-indigo-500/25 text-indigo-200 border-b border-indigo-400/40',
+    drawerBg: 'bg-[#0c101d]',
+  },
+  sepia: {
+    name: 'Lumina Sepia',
+    bg: 'bg-[#f4ecd8]',
+    text: 'text-[#3d2b1f]',
+    titleColor: 'text-[#2b1810]',
+    border: 'border-[#d6c7b0]',
+    highlightBg: 'bg-amber-400/35 text-[#2b1810] border-b border-amber-600/40',
+    drawerBg: 'bg-[#ebe0c8]',
+  },
+  light: {
+    name: 'Lumina Pure',
+    bg: 'bg-[#f8fafc]',
+    text: 'text-slate-800',
+    titleColor: 'text-slate-950',
+    border: 'border-slate-200',
+    highlightBg: 'bg-yellow-300/40 text-slate-900 border-b border-yellow-500/50',
+    drawerBg: 'bg-slate-100',
+  },
+}
+
 export default function StitchReaderView({ book = null }) {
   const navigate = useNavigate()
   const currentBook = book || READER_DEMO_BOOK
-  const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [activeChapterIndex, setActiveChapterIndex] = useState(1) // Chapter 2
+
+  // Reader States
+  const [drawerOpen, setDrawerOpen] = useState(true)
+  const [activeDrawerTab, setActiveDrawerTab] = useState('toc') // 'toc' | 'highlights' | 'notes'
+  const [themeMode, setThemeMode] = useState('dark') // 'dark' | 'sepia' | 'light'
+  const [fontSizeLevel, setFontSizeLevel] = useState(2) // 1: small, 2: base, 3: large, 4: extra large
   const [isBookmarked, setIsBookmarked] = useState(false)
-  const [fontMenuOpen, setFontMenuOpen] = useState(false)
-  const [optionsMenuOpen, setOptionsMenuOpen] = useState(false)
+  const [progressPercent, setProgressPercent] = useState(32)
 
-  // Typography state
-  const [fontSize, setFontSize] = useState('text-base sm:text-lg') // 'text-sm', 'text-base sm:text-lg', 'text-xl'
-  const [fontFamily, setFontFamily] = useState('font-serif') // 'font-sans', 'font-serif', 'font-mono'
-  const [lineSpacing, setLineSpacing] = useState('leading-relaxed') // 'leading-normal', 'leading-relaxed', 'leading-loose'
+  // Selection & Highlight Popover state
+  const [selectedText, setSelectedText] = useState('')
+  const [popoverPosition, setPopoverPosition] = useState(null)
+  const [highlights, setHighlights] = useState([
+    'In his blue gardens men and girls came and went like moths among the whisperings and the champagne and the stars.',
+  ])
+  const [notes, setNotes] = useState([
+    { text: 'Metaphor for the ephemeral luxury of the Jazz Age.', date: 'Chapter 3' },
+  ])
+  const [dictionaryDefinition, setDictionaryDefinition] = useState(null)
 
-  const chapters = currentBook.chapters || READER_DEMO_BOOK.chapters
-  const activeChapter = chapters[activeChapterIndex] || chapters[0]
+  const contentRef = useRef(null)
+  const currentTheme = THEMES[themeMode]
+
+  // Font size class mapping
+  const fontSizeClasses = [
+    'text-base leading-relaxed',
+    'text-lg leading-relaxed',
+    'text-xl leading-loose',
+    'text-2xl leading-loose',
+  ]
+
+  // Handle Text Selection for Popover
+  const handleMouseUp = () => {
+    const selection = window.getSelection()
+    const text = selection?.toString()?.trim()
+    if (text && text.length > 2) {
+      const range = selection.getRangeAt(0)
+      const rect = range.getBoundingClientRect()
+      setSelectedText(text)
+      setPopoverPosition({
+        top: rect.top - 50,
+        left: rect.left + rect.width / 2,
+      })
+      setDictionaryDefinition(null)
+    } else {
+      setPopoverPosition(null)
+      setSelectedText('')
+      setDictionaryDefinition(null)
+    }
+  }
+
+  const addHighlight = () => {
+    if (selectedText && !highlights.includes(selectedText)) {
+      setHighlights((prev) => [...prev, selectedText])
+    }
+    setPopoverPosition(null)
+    window.getSelection()?.removeAllRanges()
+  }
+
+  const addNote = () => {
+    const userNote = window.prompt(`Add note for: "${selectedText.slice(0, 30)}..."`)
+    if (userNote) {
+      setNotes((prev) => [...prev, { text: userNote, quote: selectedText, date: 'Chapter 3' }])
+    }
+    setPopoverPosition(null)
+    window.getSelection()?.removeAllRanges()
+  }
+
+  const lookupDictionary = () => {
+    setDictionaryDefinition(`"${selectedText}": Evoking vivid atmosphere, sensory imagery, or literary expression.`)
+  }
 
   return (
     <>
       <SEO
-        title={`${currentBook.title} - Reader | Readify AI`}
-        description={`Read ${currentBook.title} online free with Readify AI distraction-free reader.`}
+        title={`${currentBook.title || 'The Great Gatsby'} - Chapter 3 | LuminaReader`}
+        description="Distraction-free digital reading experience on LuminaBooks."
       />
 
-      <div className="flex h-screen w-full flex-col overflow-hidden bg-[#0a0c16] text-slate-100 select-text">
+      <div
+        className={`relative flex h-screen w-full overflow-hidden ${currentTheme.bg} ${currentTheme.text} select-text transition-colors duration-300 font-serif`}
+        onMouseUp={handleMouseUp}
+      >
         {/* ========================================================================= */}
-        {/* 1. TOP HEADER BAR (Screen 3 exact match)                                  */}
+        {/* 1. LEFT SLIDING TABLE OF CONTENTS DRAWER                                   */}
         {/* ========================================================================= */}
-        <header className="sticky top-0 z-40 flex h-16 w-full items-center justify-between border-b border-white/[0.08] bg-[#0c0e1a]/95 px-4 backdrop-blur-md">
-          {/* Left: Hamburger Menu & Book Title */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setSidebarOpen((prev) => !prev)}
-              type="button"
-              className={`flex h-9 w-9 items-center justify-center rounded-xl transition ${
-                sidebarOpen
-                  ? 'bg-white/10 text-white'
-                  : 'bg-white/[0.03] text-slate-300 hover:bg-white/10 hover:text-white'
-              }`}
-              title="Toggle Table of Contents"
+        <AnimatePresence>
+          {drawerOpen && (
+            <motion.aside
+              initial={{ x: -280, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -280, opacity: 0 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+              className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col justify-between border-r ${currentTheme.border} ${currentTheme.drawerBg} p-5 shadow-2xl backdrop-blur-xl md:static font-sans`}
             >
-              <MdMenu className="h-5 w-5" />
-            </button>
-
-            <Link
-              to="/library"
-              className="flex items-center gap-2 text-slate-400 hover:text-slate-200 transition"
-              title="Back to Library"
-            >
-              <MdArrowBack className="h-4 w-4" />
-            </Link>
-
-            <h1 className="line-clamp-1 text-sm sm:text-base font-bold text-white max-w-[200px] sm:max-w-md">
-              {currentBook.title}
-            </h1>
-          </div>
-
-          {/* Center: Reading Progress Bar & Percentage */}
-          <div className="hidden md:flex items-center gap-3">
-            <div className="h-1.5 w-36 sm:w-48 overflow-hidden rounded-full bg-[#1e2238]">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-400"
-                style={{ width: `${currentBook.progress || 34}%` }}
-              />
-            </div>
-            <span className="text-xs font-semibold text-slate-300">
-              {currentBook.progress || 34}% Read
-            </span>
-          </div>
-
-          {/* Right Action Icons: Font 'A', Bookmark, Three Dots */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            {/* Font Style Toggle Button */}
-            <div className="relative">
-              <button
-                onClick={() => setFontMenuOpen((prev) => !prev)}
-                type="button"
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.03] text-slate-300 transition hover:bg-white/10 hover:text-white"
-                title="Typography & Appearance"
-              >
-                <span className="font-serif text-base font-bold">A</span>
-              </button>
-
-              {/* Font Settings Dropdown */}
-              {fontMenuOpen && (
-                <div className="absolute right-0 mt-2 w-64 rounded-2xl border border-white/10 bg-[#121528] p-4 shadow-2xl backdrop-blur-xl animate-fadeIn z-50">
-                  <div className="flex items-center justify-between pb-2 border-b border-white/10">
-                    <span className="text-xs font-bold text-white uppercase">Reader Settings</span>
-                    <button
-                      onClick={() => setFontMenuOpen(false)}
-                      className="text-slate-400 hover:text-white"
-                    >
-                      <MdClose className="h-4 w-4" />
-                    </button>
+              {/* Drawer Top Header */}
+              <div className="space-y-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className={`text-base font-bold tracking-tight ${currentTheme.titleColor}`}>
+                      Table of Contents
+                    </h2>
+                    <p className="text-[10px] font-bold tracking-wider text-slate-400 uppercase mt-0.5">
+                      THE GREAT GATSBY - CHAPTER 3
+                    </p>
                   </div>
-
-                  <div className="mt-3 space-y-3 text-xs">
-                    {/* Font Size */}
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-400">Font Size</label>
-                      <div className="mt-1 grid grid-cols-3 gap-1.5">
-                        {[
-                          { label: 'Small', val: 'text-sm sm:text-base' },
-                          { label: 'Medium', val: 'text-base sm:text-lg' },
-                          { label: 'Large', val: 'text-lg sm:text-xl' },
-                        ].map((sz) => (
-                          <button
-                            key={sz.label}
-                            onClick={() => setFontSize(sz.val)}
-                            className={`rounded-lg py-1.5 font-bold transition ${
-                              fontSize === sz.val
-                                ? 'bg-indigo-600 text-white'
-                                : 'bg-white/5 text-slate-300 hover:bg-white/10'
-                            }`}
-                          >
-                            {sz.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Font Family */}
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-400">Typography</label>
-                      <div className="mt-1 grid grid-cols-2 gap-1.5">
-                        <button
-                          onClick={() => setFontFamily('font-serif')}
-                          className={`rounded-lg py-1.5 font-serif text-sm font-bold transition ${
-                            fontFamily === 'font-serif'
-                              ? 'bg-indigo-600 text-white'
-                              : 'bg-white/5 text-slate-300 hover:bg-white/10'
-                          }`}
-                        >
-                          Serif
-                        </button>
-                        <button
-                          onClick={() => setFontFamily('font-sans')}
-                          className={`rounded-lg py-1.5 font-sans text-xs font-bold transition ${
-                            fontFamily === 'font-sans'
-                              ? 'bg-indigo-600 text-white'
-                              : 'bg-white/5 text-slate-300 hover:bg-white/10'
-                          }`}
-                        >
-                          Sans
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDrawerOpen(false)}
+                    className="p-1 text-slate-400 hover:text-white"
+                    title="Close Drawer"
+                  >
+                    <MdClose className="h-4 w-4" />
+                  </button>
                 </div>
-              )}
-            </div>
 
-            {/* Bookmark Button */}
-            <button
-              onClick={() => setIsBookmarked((prev) => !prev)}
-              type="button"
-              className={`flex h-9 w-9 items-center justify-center rounded-xl transition ${
-                isBookmarked
-                  ? 'bg-purple-600/20 text-purple-400'
-                  : 'bg-white/[0.03] text-slate-300 hover:bg-white/10 hover:text-white'
-              }`}
-              title={isBookmarked ? 'Bookmarked' : 'Bookmark Page'}
-            >
-              {isBookmarked ? (
-                <MdBookmark className="h-5 w-5 fill-current" />
-              ) : (
-                <MdBookmarkBorder className="h-5 w-5" />
-              )}
-            </button>
-
-            {/* Three Dots More Options */}
-            <div className="relative">
-              <button
-                onClick={() => setOptionsMenuOpen((prev) => !prev)}
-                type="button"
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.03] text-slate-300 transition hover:bg-white/10 hover:text-white"
-                title="More Options"
-              >
-                <MdMoreVert className="h-5 w-5" />
-              </button>
-
-              {optionsMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 rounded-2xl border border-white/10 bg-[#121528] p-2 shadow-2xl backdrop-blur-xl animate-fadeIn z-50">
-                  <button
-                    onClick={() => {
-                      alert('Fullscreen mode activated')
-                      setOptionsMenuOpen(false)
-                    }}
-                    className="w-full text-left rounded-xl px-3 py-2 text-xs font-medium text-slate-200 hover:bg-white/10"
-                  >
-                    Fullscreen Mode
-                  </button>
-                  <button
-                    onClick={() => {
-                      alert('Progress reset for demo')
-                      setOptionsMenuOpen(false)
-                    }}
-                    className="w-full text-left rounded-xl px-3 py-2 text-xs font-medium text-slate-200 hover:bg-white/10"
-                  >
-                    Reset Progress
-                  </button>
+                {/* Navigation Items List */}
+                <nav className="space-y-1.5 text-xs font-semibold">
                   <Link
-                    to="/"
-                    className="block w-full text-left rounded-xl px-3 py-2 text-xs font-medium text-slate-200 hover:bg-white/10"
+                    to="/saved-books"
+                    className="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-slate-400 transition hover:bg-white/5 hover:text-slate-200"
                   >
-                    Exit to Home
+                    <MdMenuBook className="h-4 w-4 text-slate-400" />
+                    <span>Library</span>
                   </Link>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveDrawerTab('toc')}
+                    className={`flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 transition text-left ${
+                      activeDrawerTab === 'toc'
+                        ? 'bg-[#1a2035] text-white shadow-inner font-bold'
+                        : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                    }`}
+                  >
+                    <MdFormatListBulleted className="h-4 w-4 text-violet-400" />
+                    <span>Table of Contents</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveDrawerTab('highlights')}
+                    className={`flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 transition text-left ${
+                      activeDrawerTab === 'highlights'
+                        ? 'bg-[#1a2035] text-white shadow-inner font-bold'
+                        : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <MdCreate className="h-4 w-4 text-pink-400" />
+                      <span>Highlights</span>
+                    </div>
+                    {highlights.length > 0 && (
+                      <span className="rounded-full bg-pink-500/20 px-2 py-0.5 text-[9px] font-bold text-pink-300">
+                        {highlights.length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveDrawerTab('notes')}
+                    className={`flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 transition text-left ${
+                      activeDrawerTab === 'notes'
+                        ? 'bg-[#1a2035] text-white shadow-inner font-bold'
+                        : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <MdNote className="h-4 w-4 text-amber-400" />
+                      <span>Notes</span>
+                    </div>
+                    {notes.length > 0 && (
+                      <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[9px] font-bold text-amber-300">
+                        {notes.length}
+                      </span>
+                    )}
+                  </button>
+                </nav>
+
+                {/* Sub-view: TOC Chapter list */}
+                {activeDrawerTab === 'toc' && (
+                  <div className="space-y-1 pt-2 border-t border-white/[0.06] max-h-60 overflow-y-auto pr-1">
+                    {[
+                      'Chapter I',
+                      'Chapter II',
+                      'Chapter III',
+                      'Chapter IV',
+                      'Chapter V',
+                      'Chapter VI',
+                      'Chapter VII',
+                      'Chapter VIII',
+                      'Chapter IX',
+                    ].map((chap, i) => (
+                      <div
+                        key={chap}
+                        className={`rounded-lg px-3 py-2 text-xs transition cursor-pointer ${
+                          i === 2
+                            ? 'bg-violet-500/15 text-violet-300 font-bold border-l-2 border-violet-400'
+                            : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                        }`}
+                      >
+                        {chap}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Drawer Bottom: Reader Profile */}
+              <div className="flex items-center gap-3 border-t border-white/[0.06] pt-4">
+                <div className="grid h-9 w-9 place-items-center rounded-full border border-violet-400/40 bg-gradient-to-br from-violet-500 to-pink-500 text-xs font-black text-white shadow-md">
+                  R
                 </div>
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-white">Reader Profile</span>
+                  <span className="text-[10px] text-slate-400 font-medium">Premium Member</span>
+                </div>
+              </div>
+            </motion.aside>
+          )}
+        </AnimatePresence>
+
+        {/* ========================================================================= */}
+        {/* 2. MAIN READING AREA CANVAS                                               */}
+        {/* ========================================================================= */}
+        <div className="relative flex flex-1 flex-col h-full overflow-y-auto">
+          {/* Top Floating Minimalist Pill Toolbar */}
+          <div className="sticky top-4 z-30 flex justify-center px-4 font-sans pointer-events-none">
+            <div className="pointer-events-auto flex items-center gap-4 sm:gap-6 rounded-full border border-white/10 bg-[#0e121e]/90 px-5 sm:px-6 py-2 shadow-2xl backdrop-blur-2xl text-xs font-semibold text-slate-200">
+              {/* Drawer Toggle Icon if closed */}
+              {!drawerOpen && (
+                <button
+                  type="button"
+                  onClick={() => setDrawerOpen(true)}
+                  className="text-slate-400 hover:text-white transition"
+                  title="Open Table of Contents"
+                >
+                  <MdFormatListBulleted className="h-4 w-4" />
+                </button>
               )}
+
+              {/* Theme Preset / Title Name */}
+              <span className="font-bold text-white tracking-wide">{currentTheme.name}</span>
+
+              {/* Progress Percentage */}
+              <span className="text-slate-400 font-medium">{progressPercent}% Read</span>
+
+              <span className="text-slate-600">|</span>
+
+              {/* Font Size Adjuster Stepper: A- / A+ */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFontSizeLevel((l) => Math.max(0, l - 1))}
+                  className="px-1.5 py-0.5 rounded hover:bg-white/10 text-slate-300 font-bold"
+                  title="Decrease Font Size"
+                >
+                  A-
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFontSizeLevel((l) => Math.min(3, l + 1))}
+                  className="px-1.5 py-0.5 rounded hover:bg-white/10 text-slate-300 font-bold"
+                  title="Increase Font Size"
+                >
+                  A+
+                </button>
+              </div>
+
+              <span className="text-slate-600">|</span>
+
+              {/* Theme Switcher Pill (Light, Dark, Sepia) */}
+              <div className="flex items-center gap-1 rounded-full bg-black/40 p-0.5 border border-white/5">
+                <button
+                  type="button"
+                  onClick={() => setThemeMode('light')}
+                  className={`p-1.5 rounded-full transition ${
+                    themeMode === 'light' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Light Mode"
+                >
+                  <MdWbSunny className="h-3.5 w-3.5" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setThemeMode('dark')}
+                  className={`p-1.5 rounded-full transition ${
+                    themeMode === 'dark' ? 'bg-[#1a2238] text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Lumina Noir Mode"
+                >
+                  <MdNightlightRound className="h-3.5 w-3.5" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setThemeMode('sepia')}
+                  className={`p-1.5 rounded-full transition ${
+                    themeMode === 'sepia' ? 'bg-[#c7b28b] text-[#2b1810] shadow-sm' : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Sepia Mode"
+                >
+                  <MdCoffee className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              {/* Bookmark Toggle */}
+              <button
+                type="button"
+                onClick={() => setIsBookmarked((b) => !b)}
+                className="text-slate-300 hover:text-pink-400 transition"
+                title={isBookmarked ? 'Bookmarked' : 'Bookmark Page'}
+              >
+                {isBookmarked ? (
+                  <MdBookmark className="h-4 w-4 text-pink-400" />
+                ) : (
+                  <MdBookmarkBorder className="h-4 w-4" />
+                )}
+              </button>
             </div>
           </div>
-        </header>
 
-        {/* ========================================================================= */}
-        {/* 2. BODY LAYOUT: TABLE OF CONTENTS SIDEBAR + MAIN CANVAS                   */}
-        {/* ========================================================================= */}
-        <div className="relative flex flex-1 overflow-hidden">
-          {/* Left Table of Contents Sidebar */}
-          <aside
-            className={`flex flex-col border-r border-white/[0.08] bg-[#0c0e1a] transition-all duration-300 ease-in-out shrink-0 overflow-y-auto ${
-              sidebarOpen ? 'w-72 sm:w-80 p-5' : 'w-0 p-0 border-transparent overflow-hidden'
-            }`}
+          {/* Reader Chapter Text Body */}
+          <main
+            ref={contentRef}
+            className="mx-auto w-full max-w-3xl px-6 sm:px-12 py-16 sm:py-24 space-y-8 tracking-normal"
           >
-            {sidebarOpen && (
-              <div className="space-y-4">
-                <h2 className="text-xl font-bold tracking-tight text-white">Contents</h2>
+            {/* Chapter Header */}
+            <div className="text-center pb-6">
+              <h1 className={`text-2xl sm:text-3xl lg:text-4xl font-black tracking-widest uppercase ${currentTheme.titleColor}`}>
+                CHAPTER III
+              </h1>
+            </div>
 
-                <nav className="flex flex-col gap-1.5 pt-2">
-                  {chapters.map((ch, idx) => {
-                    const isActive = idx === activeChapterIndex
-                    return (
-                      <div key={ch.id || idx} className="flex flex-col">
-                        <button
-                          onClick={() => setActiveChapterIndex(idx)}
-                          type="button"
-                          className={`flex items-start text-left rounded-xl p-3 text-xs sm:text-sm font-semibold transition duration-200 ${
-                            isActive
-                              ? 'bg-[#22253d] text-white border-l-4 border-indigo-500 shadow-md'
-                              : 'text-slate-400 hover:bg-white/[0.03] hover:text-slate-200'
-                          }`}
-                        >
-                          <span className="leading-snug">{ch.title}</span>
-                        </button>
-
-                        {/* Indented Subsections if Active Chapter */}
-                        {isActive && ch.subsections && ch.subsections.length > 0 && (
-                          <div className="pl-6 pt-1.5 pb-2 space-y-1">
-                            {ch.subsections.map((sub) => (
-                              <p
-                                key={sub.id}
-                                className="text-xs text-slate-300 font-medium hover:text-white cursor-pointer py-1 transition"
-                              >
-                                {sub.title}
-                              </p>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </nav>
-              </div>
-            )}
-          </aside>
-
-          {/* Main Reading Canvas */}
-          <main className="flex-1 overflow-y-auto px-6 py-8 sm:py-12 md:px-16 lg:px-24">
-            <div className={`mx-auto max-w-3xl ${fontFamily}`}>
-              {/* Chapter Badge */}
-              <p className="text-xs font-black tracking-widest text-indigo-400 uppercase mb-3">
-                {activeChapter.content?.chapterLabel || `CHAPTER ${activeChapter.number || 2}`}
+            {/* Reading Paragraphs with interactive highlight */}
+            <div className={`space-y-6 text-left ${fontSizeClasses[fontSizeLevel]}`}>
+              <p>
+                There was music from my neighbor's house through the summer nights.{' '}
+                <mark className={`${currentTheme.highlightBg} px-1.5 py-0.5 rounded transition-colors`}>
+                  In his blue gardens men and girls came and went like moths among the whisperings and the champagne and the stars.
+                </mark>{' '}
+                At high tide in the afternoon I watched his guests diving from the tower of his raft, or taking the sun on the hot sand of his beach while his two motor-boats slit the waters of the Sound, drawing aquaplanes over cataracts of foam.
               </p>
 
-              {/* Chapter Main Title */}
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-8 leading-tight">
-                {activeChapter.content?.title || activeChapter.title}
-              </h2>
+              <p>
+                On week-ends his Rolls-Royce became an omnibus, bearing parties to and from the city between nine in the morning and long past midnight, while his station wagon scampered like a brisk yellow bug to meet all trains. And on Mondays eight servants, including an extra gardener, toiled all day with mops and scrubbing-brushes and hammers and garden-shears, repairing the ravages of the night before.
+              </p>
 
-              {/* Main Reading Paragraphs */}
-              <div className={`space-y-6 text-slate-200 ${fontSize} ${lineSpacing}`}>
-                {activeChapter.content?.paragraphs?.map((p, i) => (
-                  <p key={i} className="leading-relaxed">
-                    {p}
-                  </p>
-                )) || (
-                  <>
-                    <p className="leading-relaxed">
-                      When people use something, they face two gulfs: the Gulf of Execution, where they try to figure out how it operates, and the Gulf of Evaluation, where they try to figure out what happened. The role of the designer is to help people bridge the two gulfs.
-                    </p>
-                    <p className="leading-relaxed">
-                      We bridge the Gulf of Execution through the use of signifiers, constraints, mappings, and a conceptual model. We bridge the Gulf of Evaluation through the use of feedback and a good conceptual model.
-                    </p>
-                  </>
-                )}
+              <p>
+                Every Friday five crates of oranges and lemons arrived from a fruiterer in New York—every Monday these same oranges and lemons left his back door in a pyramid of pulpless halves. There was a machine in the kitchen which could extract the juice of two hundred oranges in half an hour if a little button was pressed two hundred times by a butler's thumb.
+              </p>
 
-                {/* Subheading */}
-                <h3 className="pt-4 text-2xl font-bold text-white tracking-tight">
-                  {activeChapter.content?.subheading || 'Knowledge in the Head and in the World'}
-                </h3>
+              <p>
+                At least once a fortnight a corps of caterers came down with several hundred feet of canvas and enough colored lights to make a Christmas tree of Gatsby's enormous gardens. On buffet tables, garnished with glistening hors-d'oeuvre, spiced baked hams crowded against salads of harlequin designs and pastry pigs and turkeys bewitched to a dark gold. In the main hall a bar with a real brass rail was set up, and stocked with gins and liquors and with cordials so long forgotten that most of his female guests were too young to know one from another.
+              </p>
+            </div>
 
-                {activeChapter.content?.subheadingParagraphs?.map((p, i) => (
-                  <p key={i} className="leading-relaxed">
-                    {p}
-                  </p>
-                )) || (
-                  <p className="leading-relaxed">
-                    Human memory is notoriously flawed. People are apt to forget things, or to remember them incorrectly. Fortunately, we don't have to have all the knowledge we need in our heads. A lot of knowledge can be placed in the world.
-                  </p>
-                )}
-              </div>
-
-              {/* Bottom Chapter Navigation Controls */}
-              <div className="mt-16 flex items-center justify-between border-t border-white/10 pt-6">
-                <button
-                  onClick={() => setActiveChapterIndex((prev) => Math.max(0, prev - 1))}
-                  disabled={activeChapterIndex === 0}
-                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-slate-300 hover:bg-white/10 disabled:opacity-40"
-                >
-                  &larr; Previous Chapter
-                </button>
-
-                <span className="text-xs font-semibold text-slate-400">
-                  Chapter {activeChapterIndex + 1} of {chapters.length}
-                </span>
-
-                <button
-                  onClick={() =>
-                    setActiveChapterIndex((prev) => Math.min(chapters.length - 1, prev + 1))
-                  }
-                  disabled={activeChapterIndex === chapters.length - 1}
-                  className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-500 disabled:opacity-40 shadow-lg shadow-indigo-600/30"
-                >
-                  Next Chapter &rarr;
-                </button>
+            {/* Bottom Segmented Chapter Progress Indicator */}
+            <div className="pt-12 pb-4 flex justify-center">
+              <div className="h-1 w-48 rounded-full bg-slate-800 overflow-hidden flex">
+                <div className="h-full w-1/3 bg-gradient-to-r from-violet-400 to-pink-400 rounded-full" />
               </div>
             </div>
           </main>
         </div>
+
+        {/* ========================================================================= */}
+        {/* 3. INTERACTIVE TEXT SELECTION POPOVER TOOLTIP                             */}
+        {/* ========================================================================= */}
+        <AnimatePresence>
+          {popoverPosition && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              style={{
+                position: 'fixed',
+                top: `${popoverPosition.top}px`,
+                left: `${popoverPosition.left}px`,
+                transform: 'translateX(-50%)',
+              }}
+              className="z-50 font-sans"
+            >
+              <div className="flex items-center gap-1.5 rounded-full border border-white/15 bg-[#0e121e]/95 px-3 py-1.5 shadow-2xl backdrop-blur-xl text-xs font-semibold text-white">
+                <button
+                  type="button"
+                  onClick={addHighlight}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full hover:bg-violet-600/30 text-violet-300 transition"
+                >
+                  <MdCreate className="h-3.5 w-3.5" />
+                  <span>Highlight</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={addNote}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full hover:bg-pink-600/30 text-pink-300 transition"
+                >
+                  <MdNote className="h-3.5 w-3.5" />
+                  <span>Note</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={lookupDictionary}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full hover:bg-amber-600/30 text-amber-300 transition"
+                >
+                  <MdTranslate className="h-3.5 w-3.5" />
+                  <span>Define</span>
+                </button>
+              </div>
+
+              {/* Dictionary definition popup if selected */}
+              {dictionaryDefinition && (
+                <motion.div
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-2 max-w-xs rounded-xl border border-white/10 bg-[#0e121e] p-3 text-[11px] text-slate-300 shadow-2xl text-left font-sans"
+                >
+                  <p className="font-bold text-amber-300 mb-0.5">Dictionary Definition</p>
+                  <p>{dictionaryDefinition}</p>
+                </motion.div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </>
   )

@@ -1,9 +1,8 @@
 const navItems = [
-  { label: 'Home', href: '/' },
+  { label: 'Discover', href: '/' },
+  { label: 'Library', href: '/saved-books' },
   { label: 'Categories', href: '/categories' },
-  { label: 'Recommended', href: '/recommended' },
-  { label: 'Explore Books', href: '/books' },
-  { label: 'Blog', href: '/blog' },
+  { label: 'Community', href: '/blog' },
 ]
 
 export default function useNavItems() {

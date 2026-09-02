@@ -20,16 +20,18 @@ export default function AppSidebar({ mobileOpen = false, onCloseMobile = () => {
 
   const pathname = location.pathname
 
-  const isHomeActive = pathname === '/'
+  const isDiscoverActive = pathname === '/books' || pathname === '/'
   const isLibraryActive = pathname === '/library' || pathname === '/saved-books'
-  const isStatsActive = pathname === '/stats' || pathname === '/profile' || pathname === '/me'
-  const isSettingsActive = pathname === '/settings' || pathname.startsWith('/admin')
+  const isAnalyticsActive = pathname === '/analytics' || (pathname === '/profile' && location.hash === '#analytics')
+  const isCommunityActive = pathname === '/blog' || pathname.startsWith('/blog')
+  const isProfileActive = pathname === '/profile' && location.hash !== '#analytics'
 
   const navItems = [
-    { label: 'Home', href: '/', icon: MdHome, active: isHomeActive },
-    { label: 'Library', href: '/library', icon: MdCollectionsBookmark, active: isLibraryActive },
-    { label: 'Stats', href: '/stats', icon: MdBarChart, active: isStatsActive },
-    { label: 'Settings', href: '/profile', icon: MdSettings, active: isSettingsActive },
+    { label: 'Discover', href: '/books', active: isDiscoverActive },
+    { label: 'Library', href: '/saved-books', active: isLibraryActive },
+    { label: 'Analytics', href: '/profile#analytics', active: isAnalyticsActive },
+    { label: 'Community', href: '/blog', active: isCommunityActive },
+    { label: 'Profile', href: '/profile', active: isProfileActive },
   ]
 
   const handleSignOut = () => {
@@ -42,25 +44,29 @@ export default function AppSidebar({ mobileOpen = false, onCloseMobile = () => {
   return (
     <>
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col justify-between border-r border-[#1e2238] bg-[#0c0e18] px-4 py-6 transition-transform duration-300 ease-in-out md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col justify-between border-r border-white/[0.06] bg-[#0c101a] px-4 py-6 transition-transform duration-300 ease-in-out md:translate-x-0 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         {/* Top: Logo & Main Navigation */}
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-7">
           {/* Logo Brand Header */}
           <div className="flex items-center justify-between px-2">
             <Link
               to="/"
               onClick={onCloseMobile}
-              className="flex items-center gap-3.5 transition-transform duration-200 active:scale-95"
+              className="flex items-center gap-3 transition-transform duration-200 active:scale-95"
             >
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-violet-500 font-extrabold text-white text-lg shadow-lg shadow-purple-900/30">
-                R
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-tr from-violet-600 to-pink-500 text-white shadow-md shadow-purple-900/30">
+                <MdHome className="h-5 w-5" />
               </div>
               <div className="flex flex-col">
-                <span className="text-base font-black tracking-tight text-white">Readify AI</span>
-                <span className="text-[11px] font-medium text-slate-400">Intelligent Reading</span>
+                <span className="text-base font-black tracking-tight text-white flex items-center">
+                  Lumina<span className="bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent">Books</span>
+                </span>
+                <span className="text-[8px] font-bold tracking-[0.2em] text-slate-400 uppercase">
+                  PREMIUM READING
+                </span>
               </div>
             </Link>
 
@@ -77,24 +83,25 @@ export default function AppSidebar({ mobileOpen = false, onCloseMobile = () => {
           {/* Navigation Links */}
           <nav className="flex flex-col gap-1.5">
             {navItems.map((item) => {
-              const Icon = item.icon
               const active = item.active
               return (
                 <Link
                   key={item.label}
                   to={item.href}
                   onClick={onCloseMobile}
-                  className={`group flex items-center gap-3.5 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-200 ${
+                  className={`group flex items-center gap-3.5 rounded-xl px-4 py-3 text-xs font-semibold transition-all duration-200 ${
                     active
-                      ? 'bg-[#21243b] text-white shadow-inner shadow-black/20'
+                      ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-lg shadow-purple-900/40'
                       : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-100'
                   }`}
                 >
-                  <Icon
-                    className={`h-5 w-5 transition-transform duration-200 group-hover:scale-110 ${
-                      active ? 'text-indigo-400' : 'text-slate-400 group-hover:text-slate-200'
-                    }`}
-                  />
+                  <span className="text-sm">
+                    {item.label === 'Discover' && '🧭'}
+                    {item.label === 'Library' && '📖'}
+                    {item.label === 'Analytics' && '📈'}
+                    {item.label === 'Community' && '👥'}
+                    {item.label === 'Profile' && '👤'}
+                  </span>
                   <span>{item.label}</span>
                 </Link>
               )
@@ -102,22 +109,15 @@ export default function AppSidebar({ mobileOpen = false, onCloseMobile = () => {
           </nav>
         </div>
 
-        {/* Bottom Section: Pro Upgrade, Help, Sign Out */}
-        <div className="flex flex-col gap-4 border-t border-[#1a1e33] pt-5">
-          {/* Upgrade to Pro Button */}
-          <button
-            onClick={() => setProModalOpen(true)}
-            type="button"
-            className="group relative flex w-full items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r from-[#6e3df6] via-[#854bfb] to-[#a155f9] px-4 py-3 text-sm font-bold text-white shadow-xl shadow-purple-950/40 transition-all duration-300 hover:brightness-110 hover:shadow-purple-700/30 active:scale-[0.98]"
+        {/* Bottom Section: Start Reading Button & Controls */}
+        <div className="flex flex-col gap-3 pt-4 border-t border-white/[0.06]">
+          <Link
+            to="/read/the-silent-stars"
+            className="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-pink-500 py-3 px-4 text-xs font-bold text-white shadow-lg shadow-purple-950/40 transition hover:brightness-110 active:scale-[0.98]"
           >
-            <span className="relative z-10 flex items-center gap-1.5">
-              <MdStar className="h-4 w-4 text-amber-300 animate-pulse" />
-              Upgrade to Pro
-            </span>
-            <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-1000 group-hover:translate-x-full" />
-          </button>
+            Start Reading
+          </Link>
 
-          {/* Help & Sign Out links */}
           <div className="flex flex-col gap-1">
             <button
               onClick={() => setHelpModalOpen(true)}
@@ -134,7 +134,7 @@ export default function AppSidebar({ mobileOpen = false, onCloseMobile = () => {
               className="flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium text-slate-400 transition hover:bg-rose-500/10 hover:text-rose-300"
             >
               <MdLogout className="h-4 w-4" />
-              <span>Sign Out</span>
+              <span>Logout</span>
             </button>
           </div>
         </div>

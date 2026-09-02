@@ -99,6 +99,20 @@ const bookSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
+        parseStatus: {
+            type: String,
+            enum: ['pending', 'processing', 'completed', 'failed'],
+            default: 'pending',
+            index: true,
+        },
+        parseError: {
+            type: String,
+            default: null,
+        },
+        totalChapters: {
+            type: Number,
+            default: 0,
+        },
     },
     {
         timestamps: true,
@@ -106,6 +120,7 @@ const bookSchema = new mongoose.Schema(
 );
 
 bookSchema.index({ createdAt: -1 });
+bookSchema.index({ parseStatus: 1 });
 bookSchema.index({ category: 1 });
 bookSchema.index({ title: 'text', author: 'text', description: 'text', tags: 'text' }, { language_override: 'none' });
 

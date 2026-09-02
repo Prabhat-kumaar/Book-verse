@@ -393,8 +393,26 @@ app.use(errorMiddleware);
 // ================= SERVER =================
 const PORT = process.env.PORT || 5000;
 
-const startServer = () => {
+const startServer = async () => {
     const server = http.createServer(app);
+
+    try {
+        await connectDB();
+
+        // Reset any books stuck in "processing" from a previous run or server crash.
+        // Because epubParseQueue is an in-process memory queue without external persistence,
+        // any job that was active when the process terminated needs to be returned to "pending"
+        // so it can be picked up and parsed automatically by the on-demand reader queue.
+        const resetResult = await Book.updateMany(
+            { parseStatus: 'processing' },
+            { $set: { parseStatus: 'pending' } }
+        );
+        if (resetResult.modifiedCount > 0) {
+            console.log(`[Startup] Reset ${resetResult.modifiedCount} stuck book(s) from 'processing' -> 'pending'`);
+        }
+    } catch (error) {
+        console.error('MongoDB connection failed:', error.message);
+    }
 
     server.listen(
         PORT,
@@ -410,10 +428,6 @@ const startServer = () => {
             `);
         }
     );
-
-    connectDB().catch((error) => {
-        console.error('MongoDB connection failed:', error.message);
-    });
 
     const shutdown = () => {
         server.close(async () => {

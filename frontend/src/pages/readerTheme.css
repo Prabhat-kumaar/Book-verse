@@ -1,0 +1,150 @@
+/* ============================================================
+   LuminaBooks Native Reader Theme & Typography Styles
+   ============================================================ */
+
+:root,
+[data-reader-theme="dark"] {
+  --reader-bg: #090c15;
+  --reader-text: #cbd5e1;
+  --reader-subtext: #94a3b8;
+  --reader-heading: #ffffff;
+  --reader-accent: #a855f7;
+  --reader-dropcap: #f472b6;
+  --reader-quote-bg: rgba(244, 114, 182, 0.04);
+  --reader-quote-border: #f472b6;
+  --reader-quote-text: #f1f5f9;
+  --reader-card-bg: rgba(14, 18, 30, 0.92);
+  --reader-border: rgba(255, 255, 255, 0.08);
+  --reader-glow: rgba(168, 85, 247, 0.15);
+  --reader-selection: rgba(168, 85, 247, 0.35);
+}
+
+[data-reader-theme="light"] {
+  --reader-bg: #faf8f4;
+  --reader-text: #1e293b;
+  --reader-subtext: #64748b;
+  --reader-heading: #0f172a;
+  --reader-accent: #8b5cf6;
+  --reader-dropcap: #ec4899;
+  --reader-quote-bg: rgba(236, 72, 153, 0.04);
+  --reader-quote-border: #ec4899;
+  --reader-quote-text: #334155;
+  --reader-card-bg: rgba(255, 255, 255, 0.95);
+  --reader-border: rgba(0, 0, 0, 0.08);
+  --reader-glow: rgba(139, 92, 246, 0.12);
+  --reader-selection: rgba(139, 92, 246, 0.25);
+}
+
+[data-reader-theme="sepia"] {
+  --reader-bg: #f4ecd8;
+  --reader-text: #3d2b1f;
+  --reader-subtext: #7c6853;
+  --reader-heading: #2b1810;
+  --reader-accent: #d97706;
+  --reader-dropcap: #d97706;
+  --reader-quote-bg: rgba(217, 119, 6, 0.06);
+  --reader-quote-border: #d97706;
+  --reader-quote-text: #451a03;
+  --reader-card-bg: rgba(244, 236, 216, 0.95);
+  --reader-border: rgba(61, 43, 31, 0.12);
+  --reader-glow: rgba(217, 119, 6, 0.15);
+  --reader-selection: rgba(217, 119, 6, 0.25);
+}
+
+/* Base Native Reader Container */
+.reader-canvas-container {
+  background-color: var(--reader-bg);
+  color: var(--reader-text);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  min-height: 100vh;
+}
+
+.reader-canvas-container ::selection {
+  background-color: var(--reader-selection);
+}
+
+/* Reading Typography Scale */
+.reader-prose-body {
+  font-family: 'Charter', 'Merriweather', 'Lora', 'Georgia', 'Cambria', serif;
+  line-height: 1.85;
+  letter-spacing: 0.008em;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Drop-cap on first paragraph */
+.reader-drop-cap::first-letter {
+  float: left;
+  font-size: 3.4em;
+  line-height: 0.82;
+  margin-right: 0.14em;
+  margin-top: 0.06em;
+  font-weight: 800;
+  color: var(--reader-dropcap);
+  font-family: 'Charter', 'Merriweather', 'Georgia', serif;
+}
+
+/* Pull-Quote Styling */
+.reader-pull-quote {
+  position: relative;
+  border-left: 3px solid var(--reader-quote-border);
+  background: var(--reader-quote-bg);
+  padding: 1.25rem 1.5rem 1.25rem 2.25rem;
+  margin: 2.5rem 0;
+  border-radius: 0 1rem 1rem 0;
+  font-style: italic;
+  font-size: 1.15em;
+  color: var(--reader-quote-text);
+  line-height: 1.75;
+}
+
+.reader-pull-quote::before {
+  content: '“';
+  position: absolute;
+  left: 0.5rem;
+  top: -0.1rem;
+  font-size: 3rem;
+  line-height: 1;
+  color: var(--reader-quote-border);
+  font-family: serif;
+  opacity: 0.6;
+}
+
+/* Pill Toolbar & Floating Glass Components */
+.reader-floating-pill {
+  background: var(--reader-card-bg);
+  border: 1px solid var(--reader-border);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.4), 0 0 20px 0 var(--reader-glow);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+@keyframes readerFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes readerScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-reader-fade-up {
+  animation: readerFadeUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-reader-scale-in {
+  animation: readerScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+

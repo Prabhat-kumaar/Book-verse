@@ -2,13 +2,12 @@ import { useEffect, useState } from 'react'
 import apiClient from '../lib/apiClient'
 import { API_URL, buildApiUrl } from '../lib/apiConfig'
 import { normalizeMediaUrl } from '../lib/mediaUrls'
-import { ALL_EXPLORE_BOOKS } from '../lib/stitchBooks'
 
 const isDev = import.meta.env.DEV
 const BOOKS_CACHE_TTL_MS = 15000
 
 const sharedBooksStore = {
-  books: ALL_EXPLORE_BOOKS,
+  books: [],
   loading: false,
   error: '',
   inFlight: null,
@@ -40,18 +39,13 @@ function normalizeBooks(payload) {
         ? payload.data
         : []
 
-  if (resolvedBooks.length === 0) {
-    return ALL_EXPLORE_BOOKS
-  }
-
   return resolvedBooks.map((book) => ({
     ...book,
     fileUrl: normalizeMediaUrl(book?.fileUrl || ''),
     pdf: normalizeMediaUrl(book?.pdf || ''),
-    thumbnail: normalizeMediaUrl(book?.thumbnail || book?.coverImage || ''),
+    thumbnail: normalizeMediaUrl(book?.thumbnail || ''),
   }))
 }
-
 
 async function refreshSharedBooks({ force = false } = {}) {
   if (!force && sharedBooksStore.inFlight) return sharedBooksStore.inFlight
@@ -86,13 +80,12 @@ async function refreshSharedBooks({ force = false } = {}) {
         fetchError.message ||
         'Unable to fetch books right now.'
       setSharedBooksState({
-        books: sharedBooksStore.books.length > 0 ? sharedBooksStore.books : ALL_EXPLORE_BOOKS,
         loading: false,
-        error: '',
+        error: message,
         inFlight: null,
       })
       if (isDev) console.error('[useBooks] Failed to fetch books:', message)
-      return ALL_EXPLORE_BOOKS
+      throw fetchError
     })
 
   sharedBooksStore.inFlight = request

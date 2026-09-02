@@ -9,6 +9,10 @@ const {
     updateBook,
     deleteBook,
     getRecommendations,
+    getParseStatus,
+    reparseBook,
+    getChapters,
+    getChapterByNumber,
 } = require('../controllers/bookController');
 const { protect, admin } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
@@ -29,7 +33,14 @@ router.post(
 router.get('/', getAllBooks);
 router.get('/recommendations', getRecommendations);
 router.get('/category/:category', getBooksByCategory);
+
+// Slug-based Chapter & Status Routes
+router.get('/slug/:slug/parse-status', getParseStatus);
+router.get('/slug/:slug/chapters', getChapters);
+router.get('/slug/:slug/chapters/:chapterNumber', getChapterByNumber);
+router.post('/slug/:slug/reparse', reparseBook);
 router.get('/slug/:slug', getBookBySlug);
+
 router.get('/all', async (req, res, next) => {
     try {
         const Book = require('../models/Book');
@@ -40,7 +51,14 @@ router.get('/all', async (req, res, next) => {
         next(error);
     }
 });
+
+// ID-based Chapter & Status Routes
+router.get('/:id/parse-status', getParseStatus);
+router.get('/:id/chapters', getChapters);
+router.get('/:id/chapters/:chapterNumber', getChapterByNumber);
+router.post('/:id/reparse', reparseBook);
 router.get('/:id', getBookById);
+
 router.put(
     '/:id',
     uploadLimiter,

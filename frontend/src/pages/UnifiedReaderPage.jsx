@@ -32,16 +32,18 @@ function lazyWithRetry(importer) {
 }
 
 const PdfReaderPage = lazyWithRetry(() => import('./PdfReaderPage'))
+const ReaderPage = lazyWithRetry(() => import('./ReaderPage'))
 const EpubReaderPage = lazyWithRetry(() => import('./EpubReaderPage'))
 
 function getReaderTypeFromBook(book) {
-  if (book?.slug === 'the-design-of-everyday-things' || book?.chapters || (!book?.fileUrl && !book?.pdf)) {
-    return 'stitch'
-  }
   const fileType = (book?.fileType || '').toLowerCase()
   const fileUrl = (book?.fileUrl || book?.pdf || '').toLowerCase()
   if (fileType === 'epub' || fileUrl.endsWith('.epub')) return 'epub'
-  return 'pdf'
+  if (fileType === 'pdf' || fileUrl.endsWith('.pdf')) return 'pdf'
+  if (book?.slug === 'the-design-of-everyday-things' || book?.chapters || (!book?.fileUrl && !book?.pdf)) {
+    return 'stitch'
+  }
+  return 'epub'
 }
 
 function getReaderTypeFromHash(hash) {
@@ -80,7 +82,7 @@ export default function UnifiedReaderPage({ book = null }) {
           </div>
         )}
       >
-        {readerType === 'epub' ? <EpubReaderPage book={book} /> : <PdfReaderPage book={book} />}
+        {readerType === 'epub' ? <ReaderPage book={book} /> : <PdfReaderPage book={book} />}
       </Suspense>
     </div>
   )

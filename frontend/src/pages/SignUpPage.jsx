@@ -1,11 +1,9 @@
 import { motion } from 'framer-motion'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { FaGoogle, FaGithub } from 'react-icons/fa'
 import apiClient from '../lib/apiClient'
 import SEO from '../components/SEO'
-
-const inputClass =
-  'w-full rounded-xl border border-white/15 bg-slate-950/55 px-4 py-3 text-sm text-white outline-none transition duration-300 placeholder:text-slate-400 focus:border-blue-300/55 focus:bg-slate-900/75 focus:shadow-[0_0_0_4px_rgba(98,108,255,0.2)]'
 
 export default function SignUpPage() {
   const navigate = useNavigate()
@@ -52,83 +50,126 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#050914] px-4 py-10 text-slate-100 sm:px-6">
-      <SEO 
-        title="Create Free Account | Readify AI" 
-        description="Sign up for a free Readify AI account to track your books, bookmarks, streaks, and progress." 
-        path="/signup" 
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#070913] px-4 py-12 text-slate-100 sm:px-6">
+      <SEO
+        title="Create Account - LuminaBooks"
+        description="Sign up for a free LuminaBooks account to track your reading progress and books."
+        path="/signup"
       />
-      <div className="pointer-events-none absolute -left-20 top-20 h-72 w-72 rounded-full bg-blue-500/20 blur-[120px]" />
-      <div className="pointer-events-none absolute right-0 top-24 h-80 w-80 rounded-full bg-violet-500/20 blur-[130px]" />
 
-      <div className="relative mx-auto mt-8 w-full max-w-md">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45 }}
-          className="rounded-3xl border border-white/15 bg-gradient-to-b from-white/[0.12] to-white/[0.05] p-6 shadow-[0_22px_70px_rgba(6,10,35,0.52)] backdrop-blur-2xl sm:p-8"
-        >
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-100/80">Readify AI</p>
-          <h1 className="mt-2 bg-gradient-to-r from-blue-300 to-violet-300 bg-clip-text text-3xl font-black text-transparent">
-            Sign Up
+      {/* Ambient background glows */}
+      <div className="pointer-events-none absolute -left-32 top-10 h-96 w-96 rounded-full bg-violet-600/15 blur-[130px]" />
+      <div className="pointer-events-none absolute -right-32 bottom-10 h-96 w-96 rounded-full bg-blue-600/15 blur-[130px]" />
+
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: 'easeOut' }}
+        className="relative z-10 w-full max-w-md rounded-[2.5rem] border border-white/[0.08] bg-[#0c101d]/90 p-8 sm:p-10 shadow-2xl shadow-black/80 backdrop-blur-2xl text-center space-y-6"
+      >
+        {/* Brand & Heading */}
+        <div className="space-y-2">
+          <h1 className="text-3xl sm:text-4xl font-black font-serif tracking-tight text-white">
+            Lumina<span className="bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent">Books</span>
           </h1>
-          <p className="mt-2 text-sm text-slate-300">Create your reading account in seconds.</p>
-
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-            <label className="block">
-              <span className="mb-2 block text-sm font-semibold text-slate-200">Name</span>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Your name"
-                className={inputClass}
-              />
-            </label>
-
-            <label className="block">
-              <span className="mb-2 block text-sm font-semibold text-slate-200">Email</span>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className={inputClass}
-              />
-            </label>
-
-            <label className="block">
-              <span className="mb-2 block text-sm font-semibold text-slate-200">Password</span>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Create a password"
-                className={inputClass}
-              />
-            </label>
-
-            {error ? <p className="text-sm text-rose-300">{error}</p> : null}
-
-            <motion.button
-              whileHover={{ y: -2, scale: 1.01 }}
-              whileTap={{ scale: 0.98 }}
-              type="submit"
-              disabled={submitting}
-              className="mt-2 w-full rounded-xl bg-gradient-to-r from-blue-500 to-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_35px_rgba(88,103,255,0.45)] transition hover:shadow-[0_0_28px_rgba(111,108,255,0.52)] disabled:cursor-not-allowed disabled:opacity-65"
-            >
-              {submitting ? 'Creating account...' : 'Create Account'}
-            </motion.button>
-          </form>
-
-          <p className="mt-5 text-sm text-slate-300">
-            Already have an account?{' '}
-            <Link to="/login" className="font-semibold text-blue-200 transition hover:text-blue-100">
-              Login
-            </Link>
+          <h2 className="text-xl sm:text-2xl font-bold text-white pt-1">
+            Create an Account
+          </h2>
+          <p className="text-xs text-slate-400">
+            Start your digital reading journey in seconds.
           </p>
-        </motion.div>
-      </div>
+        </div>
+
+        {/* Social Authentication Buttons */}
+        <div className="space-y-3 pt-2">
+          <button
+            type="button"
+            className="w-full flex items-center justify-center gap-3 rounded-2xl border border-white/[0.08] bg-[#141828]/90 hover:bg-[#191e32] py-3 px-4 text-xs font-semibold text-slate-200 transition active:scale-[0.98]"
+          >
+            <FaGoogle className="h-3.5 w-3.5 text-slate-300" />
+            <span>Sign up with Google</span>
+          </button>
+
+          <button
+            type="button"
+            className="w-full flex items-center justify-center gap-3 rounded-2xl border border-white/[0.08] bg-[#141828]/90 hover:bg-[#191e32] py-3 px-4 text-xs font-semibold text-slate-200 transition active:scale-[0.98]"
+          >
+            <FaGithub className="h-4 w-4 text-slate-300" />
+            <span>Sign up with GitHub</span>
+          </button>
+        </div>
+
+        {/* Divider */}
+        <div className="relative flex items-center justify-center py-1">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-white/[0.06]" />
+          </div>
+          <span className="relative bg-[#0c101d] px-3 text-[10px] font-bold tracking-widest text-slate-500 uppercase">
+            OR CREATE WITH EMAIL
+          </span>
+        </div>
+
+        {/* Form Inputs */}
+        <form onSubmit={handleSubmit} className="space-y-4 text-left">
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-300 mb-1.5">
+              Full Name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Alex Sterling"
+              className="h-12 w-full rounded-2xl border border-white/10 bg-[#070a14] px-4 text-xs text-white placeholder:text-slate-600 outline-none transition focus:border-violet-400 focus:bg-[#090d1a]"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-300 mb-1.5">
+              Email Address
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="reader@luminabooks.com"
+              className="h-12 w-full rounded-2xl border border-white/10 bg-[#070a14] px-4 text-xs text-white placeholder:text-slate-600 outline-none transition focus:border-violet-400 focus:bg-[#090d1a]"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-300 mb-1.5">
+              Password
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Create a strong password"
+              className="h-12 w-full rounded-2xl border border-white/10 bg-[#070a14] px-4 text-xs text-white placeholder:text-slate-600 outline-none transition focus:border-violet-400 focus:bg-[#090d1a]"
+            />
+          </div>
+
+          {error && <p className="text-xs text-rose-400 pt-1 font-medium">{error}</p>}
+
+          {/* Submit CTA Button */}
+          <button
+            type="submit"
+            disabled={submitting}
+            className="mt-2 w-full rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 py-3.5 px-4 text-xs font-bold text-white shadow-xl shadow-indigo-950/60 transition hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
+          >
+            {submitting ? 'Creating account...' : 'Create Account'}
+          </button>
+        </form>
+
+        {/* Footer Link */}
+        <p className="text-xs text-slate-400 pt-2">
+          Already have an account?{' '}
+          <Link to="/login" className="font-bold text-white hover:text-violet-300 transition">
+            Sign In.
+          </Link>
+        </p>
+      </motion.div>
     </div>
   )
 }

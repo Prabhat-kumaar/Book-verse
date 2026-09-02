@@ -1,4 +1,6 @@
-const Book = require('../models/Book');
+const Book = require('../models/Book');
+const Chapter = require('../models/Chapter');
+const epubParseQueue = require('../queues/epubParseQueue');
 const { cloudinary, uploadToCloudinary, isCloudinaryConfigured } = require('../utils/cloudinary');
 const validate = require('../utils/validate');
 const isDev = process.env.NODE_ENV !== 'production';
@@ -251,8 +253,15 @@ const addBook = async (req, res, next) => {
             fileType,
             pdf,
             thumbnail,
-            coverImage
+            coverImage,
+            parseStatus: fileType === 'epub' ? 'pending' : 'completed',
+            totalChapters: 0,
         });
+
+        // Enqueue background EPUB parsing non-blockingly
+        if (fileType === 'epub') {
+            epubParseQueue.add(book._id, { filePath: uploadFile?.path });
+        }
 
         const formattedBook = {
             ...book._doc,
@@ -529,6 +538,195 @@ const deleteBook = async (req, res, next) => {
     }
 };
 
+const findBookByIdOrSlug = async (identifier) => {
+    if (!identifier) return null;
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(identifier);
+    if (isObjectId) {
+        const book = await Book.findById(identifier);
+        if (book) return book;
+    }
+    return Book.findOne({ slug: identifier });
+};
+
+const getParseStatus = async (req, res, next) => {
+    try {
+        const identifier = req.params.id || req.params.slug;
+        const book = await findBookByIdOrSlug(identifier);
+        if (!book) {
+            return res.status(404).json({ success: false, message: 'Book not found' });
+        }
+
+        if (book.fileType !== 'epub') {
+            return res.json({
+                success: true,
+                parseStatus: 'completed',
+                totalChapters: 0,
+                bookId: book._id,
+                slug: book.slug,
+            });
+        }
+
+        // Auto-enqueue if pending or not set and queue is not currently busy
+        if ((!book.parseStatus || book.parseStatus === 'pending') && !epubParseQueue.isBusy(book._id)) {
+            epubParseQueue.add(book._id);
+        }
+
+        res.json({
+            success: true,
+            parseStatus: book.parseStatus || 'pending',
+            parseError: book.parseError || null,
+            totalChapters: book.totalChapters || 0,
+            bookId: book._id,
+            slug: book.slug,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const reparseBook = async (req, res, next) => {
+    try {
+        const identifier = req.params.id || req.params.slug;
+        const book = await findBookByIdOrSlug(identifier);
+        if (!book) {
+            return res.status(404).json({ success: false, message: 'Book not found' });
+        }
+
+        if (book.fileType !== 'epub') {
+            return res.status(400).json({ success: false, message: 'Only EPUB books can be parsed' });
+        }
+
+        await Book.findByIdAndUpdate(book._id, { parseStatus: 'pending', parseError: null });
+        epubParseQueue.add(book._id);
+
+        res.json({
+            success: true,
+            message: 'Reparsing scheduled in background',
+            parseStatus: 'pending',
+            bookId: book._id,
+            slug: book.slug,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const getChapters = async (req, res, next) => {
+    try {
+        const identifier = req.params.id || req.params.slug;
+        const book = await findBookByIdOrSlug(identifier);
+        if (!book) {
+            return res.status(404).json({ success: false, message: 'Book not found' });
+        }
+
+        if (book.fileType !== 'epub') {
+            return res.status(400).json({ success: false, message: 'Chapters are only available for EPUB books' });
+        }
+
+        if (book.parseStatus !== 'completed') {
+            if (book.parseStatus === 'failed') {
+                return res.status(200).json({
+                    success: false,
+                    status: 'failed',
+                    error: book.parseError || 'Parsing failed',
+                    bookId: book._id,
+                    slug: book.slug,
+                });
+            }
+            if (!epubParseQueue.isBusy(book._id)) {
+                epubParseQueue.add(book._id);
+            }
+            return res.status(202).json({
+                success: false,
+                status: book.parseStatus || 'pending',
+                message: 'Book is being prepared in the background',
+                bookId: book._id,
+                slug: book.slug,
+            });
+        }
+
+        const chapters = await Chapter.find({ book: book._id })
+            .select('chapterNumber chapterTitle wordCount readingTimeMinutes pullQuote')
+            .sort({ chapterNumber: 1 })
+            .lean();
+
+        res.json({
+            success: true,
+            bookId: book._id,
+            slug: book.slug,
+            title: book.title,
+            author: book.author,
+            totalChapters: chapters.length,
+            chapters,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const getChapterByNumber = async (req, res, next) => {
+    try {
+        const identifier = req.params.id || req.params.slug;
+        const chapterNumber = parseInt(req.params.chapterNumber, 10) || 1;
+        const book = await findBookByIdOrSlug(identifier);
+        if (!book) {
+            return res.status(404).json({ success: false, message: 'Book not found' });
+        }
+
+        if (book.fileType !== 'epub') {
+            return res.status(400).json({ success: false, message: 'Chapters are only available for EPUB books' });
+        }
+
+        if (book.parseStatus !== 'completed') {
+            if (book.parseStatus === 'failed') {
+                return res.status(200).json({
+                    success: false,
+                    status: 'failed',
+                    error: book.parseError || 'Parsing failed',
+                    bookId: book._id,
+                    slug: book.slug,
+                });
+            }
+            if (!epubParseQueue.isBusy(book._id)) {
+                epubParseQueue.add(book._id);
+            }
+            return res.status(202).json({
+                success: false,
+                status: book.parseStatus || 'pending',
+                message: 'Book is being prepared in the background',
+                bookId: book._id,
+                slug: book.slug,
+            });
+        }
+
+        const chapter = await Chapter.findOne({ book: book._id, chapterNumber }).lean();
+        if (!chapter) {
+            return res.status(404).json({ success: false, message: `Chapter ${chapterNumber} not found` });
+        }
+
+        res.json({
+            success: true,
+            bookId: book._id,
+            slug: book.slug,
+            bookTitle: book.title,
+            author: book.author,
+            totalChapters: book.totalChapters || 1,
+            chapter: {
+                chapterNumber: chapter.chapterNumber,
+                chapterTitle: chapter.chapterTitle,
+                paragraphs: chapter.paragraphs,
+                quotes: chapter.quotes,
+                pullQuote: chapter.pullQuote,
+                wordCount: chapter.wordCount,
+                readingTimeMinutes: chapter.readingTimeMinutes,
+                sourceHref: chapter.sourceHref,
+            },
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     addBook,
     getAllBooks,
@@ -538,4 +736,8 @@ module.exports = {
     updateBook,
     deleteBook,
     getRecommendations,
+    getParseStatus,
+    reparseBook,
+    getChapters,
+    getChapterByNumber,
 };

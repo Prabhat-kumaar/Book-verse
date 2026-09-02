@@ -1,266 +1,187 @@
-import { memo, useMemo, useState, useEffect } from 'react'
-import { useSearchParams, Link } from 'react-router-dom'
+import React, { useState, useMemo, useEffect } from 'react'
+import { useSearchParams, Link, useNavigate } from 'react-router-dom'
+import {
+  MdStar,
+  MdBookmark,
+  MdBookmarkBorder,
+  MdAccessTime,
+  MdChevronLeft,
+  MdChevronRight,
+  MdSchool,
+  MdLightbulb,
+  MdMilitaryTech,
+} from 'react-icons/md'
 import useBooks from '../hooks/useBooks'
-import useProgress from '../hooks/useProgress'
-import SaveBookHeart from '../components/SaveBookHeart'
-import EmptyState from '../components/EmptyState'
-import { GridSkeleton } from '../components/Skeletons'
-import { buildProgressMap } from '../lib/readingProgress'
-import { getBookThumbnailUrl } from '../lib/mediaUrls'
+import { CATALOG_PRESET_BOOKS } from '../lib/stitchBooks'
 import SEO from '../components/SEO'
-import OptimizedImage from '../components/OptimizedImage'
 
-function normalize(value) {
-  return (value || '').toString().trim().toLowerCase()
-}
-
-const categoryEmojis = {
-  all: '🌐',
-  programming: '💻',
-  ai: '🤖',
-  'artificial intelligence': '🤖',
-  business: '💼',
-  'self-help': '🌱',
-  selfhelp: '🌱',
-  design: '🎨',
-  productivity: '⚡',
-  fiction: '📚',
-  technology: '⚙️',
-  science: '🔬',
-  history: '📜',
-  biography: '👤',
-  mystery: '🕵️',
-  fantasy: '🧙',
-  thriller: '🗡️',
-  romance: '💖'
-}
-
-function getCategoryEmoji(cat) {
-  const normalized = normalize(cat)
-  return categoryEmojis[normalized] || '📘'
-}
-
-function getCategoryColor(category) {
-  const cat = (category || '').toString().trim().toLowerCase()
-  if (cat.includes('business') || cat.includes('finance')) return '#10b981' // green
-  if (cat.includes('programming') || cat.includes('code') || cat.includes('software')) return '#3b82f6' // blue
-  if (cat.includes('self-help') || cat.includes('selfhelp') || cat.includes('psychology')) return '#a855f7' // purple
-  if (cat.includes('productivity') || cat.includes('time')) return '#f97316' // orange
-  if (cat.includes('startup') || cat.includes('entrepreneur')) return '#06b6d4' // cyan
-  if (cat.includes('design') || cat.includes('ui') || cat.includes('ux') || cat.includes('art')) return '#ec4899' // pink
-  if (cat.includes('ai') || cat.includes('artificial') || cat.includes('machine')) return '#6366f1' // indigo
-  if (cat.includes('lifestyle') || cat.includes('health') || cat.includes('fitness')) return '#eab308' // yellow
-  return '#6b7280' // default gray
-}
-
-const BookCard = memo(function BookCard({ book, progress }) {
-  const readerLink = book.slug ? `/read/${book.slug}` : `/book/${book._id}`
-  const [thumbFailed, setThumbFailed] = useState(false)
-
-  return (
-    <article className="book-card min-h-[245px] sm:min-h-[345px] shadow-md shadow-black/20 rounded-2xl p-3 sm:p-4 flex flex-col justify-between transition-all duration-300">
-      <SaveBookHeart bookId={book._id} book={book} />
-      <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition duration-500 group-hover:opacity-100 [background:linear-gradient(145deg,rgba(84,132,255,0.1),rgba(146,92,255,0.08))]" />
-      <div className="pointer-events-none absolute inset-0 rounded-2xl border border-transparent opacity-0 transition duration-500 group-hover:opacity-100 [background:linear-gradient(135deg,rgba(95,144,255,0.35),rgba(165,111,255,0.25))_border-box] [mask:linear-gradient(#fff_0_0)_padding-box,linear-gradient(#fff_0_0)] [mask-composite:exclude]" />
-
-      <div className="relative flex flex-col h-full justify-between">
-        <Link to={`/book/${book._id}`} className="group/link block cursor-pointer text-left">
-          <div className="mb-2 aspect-[3/4] w-full overflow-hidden rounded-lg bg-slate-950/50 shadow-inner ring-1 ring-white/10 relative block">
-            {book.thumbnail && !thumbFailed ? (
-              <OptimizedImage
-                src={getBookThumbnailUrl(book)}
-                onError={() => setThumbFailed(true)}
-                alt={book.title}
-                loading="lazy"
-                fetchPriority="low"
-                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-            ) : (
-              <div className="grid h-full w-full place-items-center bg-gradient-to-br from-blue-500/50 to-violet-600/50 p-2 text-center text-sm font-semibold text-white">
-                {book.title}
-              </div>
-            )}
-          </div>
-
-          <h4 className="line-clamp-1 text-xs sm:text-sm font-bold text-white leading-tight group-hover/link:text-indigo-400 transition-colors">{book.title}</h4>
-          <p className="mt-0.5 line-clamp-1 text-[10px] text-slate-400 font-medium">{book.author || 'Unknown Author'}</p>
-          {book.totalReviews > 0 && (
-            <div className="mt-1 flex items-center gap-1 text-[10px] text-amber-400 font-semibold select-none">
-              <span>★</span>
-              <span>{Number(book.averageRating || 0).toFixed(1)}</span>
-              <span className="text-slate-500 font-normal">({book.totalReviews})</span>
-            </div>
-          )}
-        </Link>
-
-        <div className="mt-auto pt-1">
-          {progress?.percent > 0 ? (
-            <div className="mb-1.5">
-              <div className="h-1 w-full overflow-hidden rounded-full bg-white/10">
-                <div className="h-full rounded-full bg-gradient-to-r from-blue-400 to-violet-500" style={{ width: `${progress.percent}%` }} />
-              </div>
-              <p className="mt-0.5 text-[9px] font-medium text-slate-500">{progress.percent}% completed</p>
-            </div>
-          ) : (
-            <div className="mb-1.5 flex items-center">
-              <span
-                className="inline-block text-[9px] font-bold uppercase tracking-wider truncate max-w-full block"
-                style={{ color: getCategoryColor(book.category) }}
-              >
-                {book.category || 'New to shelf'}
-              </span>
-            </div>
-          )}
-
-          <Link
-            to={readerLink}
-            className="inline-flex w-full items-center justify-center rounded-xl border border-white/10 bg-white/5 py-2.5 min-h-[44px] text-xs font-bold text-white transition hover:border-blue-300/40 hover:bg-white/15"
-          >
-            {progress?.percent > 0 ? 'Resume' : 'Open'}
-          </Link>
-        </div>
-      </div>
-    </article>
-  )
-})
+const TOPICS = ['All', 'Fiction', 'Tech', 'Business', 'Science', 'History']
+const LEVELS = [
+  { id: 'Beginner', label: 'Beginner', icon: MdSchool },
+  { id: 'Intermediate', label: 'Intermediate', icon: MdLightbulb },
+  { id: 'Advanced', label: 'Advanced', icon: MdMilitaryTech },
+]
 
 export default function BooksPage() {
-  const { books, loading, error } = useBooks()
-  const authUser = useMemo(() => {
-    try {
-      const raw = localStorage.getItem('authUser')
-      return raw ? JSON.parse(raw) : null
-    } catch {
-      return null
-    }
-  }, [])
-  const { progressItems } = useProgress(authUser?._id)
-  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const { books: backendBooks, loading } = useBooks()
+  const [searchParams, setSearchParams] = useSearchParams()
   const query = searchParams.get('q') || ''
-  const progressMap = useMemo(() => buildProgressMap(progressItems), [progressItems])
 
-  const categories = useMemo(() => {
-    const unique = new Set(['All'])
-    const seen = new Set(['all'])
-    books.forEach((book) => {
-      const rawCategory = (book.category || '').toString().trim()
-      if (!rawCategory) return
-      const normalized = rawCategory.toLowerCase()
-      if (!seen.has(normalized)) {
-        seen.add(normalized)
-        unique.add(rawCategory)
-      }
+  const [selectedTopic, setSelectedTopic] = useState('All')
+  const [selectedLevel, setSelectedLevel] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [savedBookIds, setSavedBookIds] = useState(() => {
+    try {
+      const raw = localStorage.getItem('saved_book_slugs')
+      return raw ? JSON.parse(raw) : ['shattered-markets']
+    } catch {
+      return ['shattered-markets']
+    }
+  })
+
+  const toggleSaveBook = (slug) => {
+    setSavedBookIds((prev) => {
+      const exists = prev.includes(slug)
+      const next = exists ? prev.filter((s) => s !== slug) : [...prev, slug]
+      localStorage.setItem('saved_book_slugs', JSON.stringify(next))
+      return next
     })
-    return Array.from(unique)
-  }, [books])
+  }
 
-  const [searchTerm, setSearchTerm] = useState(query)
-  const [selectedCategory, setSelectedCategory] = useState('All')
-  const [sortBy, setSortBy] = useState('Newest')
-
-  // Sync with URL query parameter
-  useEffect(() => {
-    setSearchTerm(query)
-  }, [query])
-
-  const filteredBooks = useMemo(() => {
-    let result = [...books]
-
-    // 1. Filter by search term
-    const q = normalize(searchTerm)
-    if (q) {
-      result = result.filter((book) => {
-        const title = normalize(book.title)
-        const author = normalize(book.author)
-        const category = normalize(book.category)
-        return title.includes(q) || author.includes(q) || category.includes(q)
+  // Combine backend books with preset catalog books (real database books first)
+  const allCatalogBooks = useMemo(() => {
+    if (backendBooks && backendBooks.length > 0) {
+      const mapped = backendBooks.map((b, idx) => ({
+        id: b._id || b.id,
+        slug: b.slug || b._id,
+        title: b.title,
+        coverTitle: (b.title || '').toUpperCase(),
+        author: b.author || 'Author',
+        coverAuthor: (b.author || '').toUpperCase(),
+        category: b.category || 'General',
+        difficulty: b.difficulty || (idx % 3 === 0 ? 'Beginner' : idx % 3 === 1 ? 'Intermediate' : 'Advanced'),
+        readTime: b.readTime || `${Math.max(4, Math.round((b.pages || 200) / 30))}h read`,
+        rating: Number(b.averageRating || 4.7).toFixed(1),
+        coverImage: b.coverImage || b.thumbnail || CATALOG_PRESET_BOOKS[idx % CATALOG_PRESET_BOOKS.length].coverImage,
+      }))
+      const seen = new Set()
+      return [...mapped, ...CATALOG_PRESET_BOOKS].filter((book) => {
+        if (!book.title || seen.has(book.title.toLowerCase())) return false
+        seen.add(book.title.toLowerCase())
+        return true
       })
     }
+    return CATALOG_PRESET_BOOKS
+  }, [backendBooks])
 
-    // 2. Filter by category
-    if (selectedCategory !== 'All') {
+  // Filter books by Search, Topic, and Level
+  const filteredBooks = useMemo(() => {
+    let result = [...allCatalogBooks]
+
+    // 1. Filter by query
+    const q = (query || '').trim().toLowerCase()
+    if (q) {
       result = result.filter(
-        (book) => normalize(book.category) === normalize(selectedCategory)
+        (b) =>
+          b.title.toLowerCase().includes(q) ||
+          b.author.toLowerCase().includes(q) ||
+          b.category.toLowerCase().includes(q)
       )
     }
 
-    // 3. Sort
-    result.sort((a, b) => {
-      if (sortBy === 'Newest') {
-        const dateA = new Date(a.createdAt || 0).getTime()
-        const dateB = new Date(b.createdAt || 0).getTime()
-        return dateB - dateA
-      }
-      if (sortBy === 'Most Read') {
-        return (b.openCount || 0) - (a.openCount || 0)
-      }
-      if (sortBy === 'A-Z') {
-        return (a.title || '').localeCompare(b.title || '')
-      }
-      return 0
-    })
+    // 2. Filter by Topic
+    if (selectedTopic !== 'All') {
+      result = result.filter((b) => {
+        const cat = (b.category || '').toLowerCase()
+        const topic = selectedTopic.toLowerCase()
+        if (topic === 'tech') return cat.includes('tech') || cat.includes('program') || cat.includes('code')
+        return cat.includes(topic)
+      })
+    }
+
+    // 3. Filter by Level
+    if (selectedLevel) {
+      result = result.filter(
+        (b) => (b.difficulty || '').toLowerCase() === selectedLevel.toLowerCase()
+      )
+    }
 
     return result
-  }, [books, searchTerm, selectedCategory, sortBy])
+  }, [allCatalogBooks, query, selectedTopic, selectedLevel])
+
+  const booksPerPage = 8
+  const totalPages = Math.max(1, Math.ceil(filteredBooks.length / booksPerPage))
+  const paginatedBooks = filteredBooks.slice(
+    (currentPage - 1) * booksPerPage,
+    currentPage * booksPerPage
+  )
 
   return (
-    <section id="books-section" className="rounded-2xl border border-white/10 bg-white/[0.05] p-5 sm:p-7">
+    <div className="space-y-8 pb-12">
       <SEO
-        title="Explore Books - Readify AI"
-        description="Explore our curated library of free ebooks and classics. Search, filter, and discover books to read online or save to your personal library on Readify AI."
-        path="/books"
+        title="Explore Catalog - LuminaBooks"
+        description="Discover our immersive library of digital books across topics and reading levels."
       />
-      <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">Explore Our Collection of 50+ Books</h1>
-      <p className="mt-1 text-sm text-slate-300">Search, filter, and discover your next read.</p>
 
-      {/* Premium Search and Filtering Controls */}
-      <div className="mt-6 flex flex-col gap-4 rounded-2xl border border-white/10 bg-slate-900/40 p-4 sm:p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
-            <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
-              🔍
-            </span>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search books, authors, or categories..."
-              className="w-full rounded-xl border border-white/15 bg-slate-950/60 py-3 pl-10 pr-4 text-sm text-white outline-none transition duration-300 placeholder:text-slate-400 focus:border-indigo-500 focus:bg-slate-900/80"
-            />
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0">
-            <label className="shrink-0 text-xs font-semibold uppercase tracking-wider text-slate-400">Sort By</label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="rounded-xl border border-white/15 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500 focus:bg-slate-900/80"
-            >
-              <option value="Newest" className="text-white bg-slate-950">📅 Newest</option>
-              <option value="Most Read" className="text-white bg-slate-950">🔥 Most Read</option>
-              <option value="A-Z" className="text-white bg-slate-950">🔤 A-Z</option>
-            </select>
+      {/* ========================================================================= */}
+      {/* 1. FILTER ROWS: TOPICS & LEVEL                                            */}
+      {/* ========================================================================= */}
+      <div className="space-y-4 pt-2">
+        {/* Row 1: TOPICS */}
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-[11px] font-bold tracking-[0.2em] text-slate-400 uppercase w-16">
+            TOPICS
+          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            {TOPICS.map((topic) => {
+              const active = selectedTopic === topic
+              return (
+                <button
+                  key={topic}
+                  type="button"
+                  onClick={() => {
+                    setSelectedTopic(topic)
+                    setCurrentPage(1)
+                  }}
+                  className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all duration-200 ${
+                    active
+                      ? 'bg-[#2b3558] text-white shadow-sm ring-1 ring-white/10'
+                      : 'border border-white/[0.06] bg-[#121624] text-slate-400 hover:bg-white/[0.06] hover:text-slate-200'
+                  }`}
+                >
+                  {topic}
+                </button>
+              )
+            })}
           </div>
         </div>
 
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2.5">Filter by Category</p>
-          <div className="flex flex-row overflow-x-auto gap-2 scrollbar-none flex-nowrap pb-1.5 pt-0.5 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap">
-            {categories.map((cat) => {
-              const active = selectedCategory === cat
-              const emoji = getCategoryEmoji(cat)
+        {/* Row 2: LEVEL */}
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-[11px] font-bold tracking-[0.2em] text-slate-400 uppercase w-16">
+            LEVEL
+          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            {LEVELS.map((lvl) => {
+              const Icon = lvl.icon
+              const active = selectedLevel === lvl.id
               return (
                 <button
-                  key={cat}
+                  key={lvl.id}
                   type="button"
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`shrink-0 rounded-full px-4 py-2 text-xs font-bold transition-all duration-300 flex items-center gap-1.5 ${active
-                      ? 'bg-gradient-to-r from-blue-500 to-violet-600 text-white shadow-[0_0_15px_rgba(99,102,241,0.4)] scale-105'
-                      : 'border border-white/10 bg-white/[0.04] text-slate-300 hover:border-indigo-400/30 hover:text-white'
-                    }`}
+                  onClick={() => {
+                    setSelectedLevel((prev) => (prev === lvl.id ? null : lvl.id))
+                    setCurrentPage(1)
+                  }}
+                  className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-medium transition-all duration-200 ${
+                    active
+                      ? 'bg-[#2b3558] text-white ring-1 ring-violet-400/40 shadow-sm'
+                      : 'border border-white/[0.06] bg-[#121624] text-slate-400 hover:bg-white/[0.06] hover:text-slate-200'
+                  }`}
                 >
-                  <span className="text-sm">{emoji}</span>
-                  <span className="truncate max-w-[100px] block">{cat}</span>
+                  <Icon className="h-3.5 w-3.5" />
+                  <span>{lvl.label}</span>
                 </button>
               )
             })}
@@ -268,32 +189,158 @@ export default function BooksPage() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="mt-6 animate-[fadeIn_220ms_ease-out]">
-          <GridSkeleton count={8} />
+      {/* ========================================================================= */}
+      {/* 2. BOOKS GRID (4 COLUMNS EXACT MATCH)                                     */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+        {paginatedBooks.map((book) => {
+          const isSaved = savedBookIds.includes(book.slug)
+          return (
+            <div
+              key={book.id}
+              onClick={() => navigate(`/read/${book.slug}`)}
+              className="group relative cursor-pointer flex flex-col justify-between rounded-2xl border border-white/[0.07] bg-[#101420]/95 p-3.5 transition-all duration-300 hover:-translate-y-1.5 hover:border-violet-500/40 hover:bg-[#151928] hover:shadow-2xl shadow-black/60"
+            >
+              {/* Vertical Book Cover Ratio */}
+              <div className="relative aspect-[3/4.2] w-full overflow-hidden rounded-xl bg-slate-950 border border-white/5 shadow-inner">
+                <img
+                  src={book.coverImage}
+                  alt={book.title}
+                  className="h-full w-full object-cover rounded-lg opacity-85 transition-transform duration-500 group-hover:scale-105"
+                  onError={(e) => {
+                    e.target.style.display = 'none'
+                  }}
+                />
+
+                {/* Cover Overlay Top & Bottom */}
+                <div className="absolute inset-0 flex flex-col justify-between p-3 bg-gradient-to-t from-black/80 via-transparent to-black/50 rounded-xl">
+                  {/* Top Right Heart Bookmark Button */}
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        toggleSaveBook(book.slug)
+                      }}
+                      className="grid h-7 w-7 place-items-center rounded-full bg-black/50 text-slate-300 backdrop-blur-sm transition hover:scale-110 hover:text-pink-400"
+                      title={isSaved ? 'Remove Bookmark' : 'Bookmark Book'}
+                    >
+                      {isSaved ? (
+                        <MdBookmark className="h-4 w-4 text-pink-500" />
+                      ) : (
+                        <MdBookmarkBorder className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Middle Cover Title Text Simulation */}
+                  <div className="text-center my-auto py-1">
+                    <p className="text-[11px] font-black uppercase text-white tracking-widest drop-shadow-md leading-tight">
+                      {book.coverTitle || book.title}
+                    </p>
+                    <p className="text-[8px] font-semibold text-violet-300 tracking-wider mt-0.5">
+                      {book.coverAuthor || book.author}
+                    </p>
+                  </div>
+
+                  {/* Bottom Left Read Time Badge */}
+                  <div className="flex items-center">
+                    <span className="inline-flex items-center gap-1 rounded-md bg-black/60 px-2 py-0.5 text-[9px] font-semibold text-slate-200 backdrop-blur-sm">
+                      <MdAccessTime className="h-3 w-3 text-slate-300" />
+                      {book.readTime || '8h read'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Book Metadata Footer */}
+              <div className="mt-4 space-y-1">
+                <h3 className="line-clamp-1 text-sm font-bold text-white group-hover:text-violet-300 transition-colors">
+                  {book.title}
+                </h3>
+                <p className="line-clamp-1 text-xs text-slate-400">
+                  {book.author}
+                </p>
+
+                {/* Rating with Pink/Rose Star */}
+                <div className="pt-2 flex items-center gap-1 text-pink-400 text-xs font-bold">
+                  <MdStar className="h-4 w-4 fill-current" />
+                  <span className="text-white text-xs">{book.rating || '4.8'}</span>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 3. PAGINATION CONTROLS (EXACT DESIGN MATCH)                              */}
+      {/* ========================================================================= */}
+      <div className="flex items-center justify-center gap-2 pt-6">
+        <button
+          type="button"
+          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+          disabled={currentPage === 1}
+          className="grid h-9 w-9 place-items-center rounded-xl border border-white/[0.08] bg-[#121624] text-slate-400 transition hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:pointer-events-none"
+        >
+          <MdChevronLeft className="h-5 w-5" />
+        </button>
+
+        {[1, 2, 3].map((page) => (
+          <button
+            key={page}
+            type="button"
+            onClick={() => setCurrentPage(page)}
+            className={`grid h-9 w-9 place-items-center rounded-xl text-xs font-bold transition-all ${
+              currentPage === page
+                ? 'bg-[#3b82f6] text-white shadow-md shadow-blue-600/30'
+                : 'border border-white/[0.08] bg-[#121624] text-slate-400 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            {page}
+          </button>
+        ))}
+
+        <span className="px-1 text-xs text-slate-500 font-bold">...</span>
+
+        <button
+          type="button"
+          onClick={() => setCurrentPage(12)}
+          className={`grid h-9 w-9 place-items-center rounded-xl text-xs font-bold transition-all ${
+            currentPage === 12
+              ? 'bg-[#3b82f6] text-white shadow-md shadow-blue-600/30'
+              : 'border border-white/[0.08] bg-[#121624] text-slate-400 hover:bg-white/10 hover:text-white'
+          }`}
+        >
+          12
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+          disabled={currentPage === totalPages}
+          className="grid h-9 w-9 place-items-center rounded-xl border border-white/[0.08] bg-[#121624] text-slate-400 transition hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:pointer-events-none"
+        >
+          <MdChevronRight className="h-5 w-5" />
+        </button>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 4. FOOTER BAR (EXACT DESIGN MATCH)                                       */}
+      {/* ========================================================================= */}
+      <footer className="mt-16 pt-8 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400 font-mono">
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-white">LuminaBooks</span>
+          <span>© 2024 LuminaBooks. Immersive Reading Experience.</span>
         </div>
-      ) : error ? (
-        <div className="mt-6 rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</div>
-      ) : filteredBooks.length === 0 ? (
-        <EmptyState
-          className="mt-6"
-          icon="🔍"
-          title="No books found"
-          description="Try adjusting your keywords or category filters."
-          actionLabel="Clear Filters"
-          onAction={() => {
-            setSearchTerm('');
-            setSelectedCategory('All');
-            setSortBy('Newest');
-          }}
-        />
-      ) : (
-        <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 sm:gap-5 mt-6">
-          {filteredBooks.map((book) => (
-            <BookCard key={book._id || `${book.title}-${book.author}`} book={book} progress={progressMap.get(book._id)} />
-          ))}
+
+        <div className="flex items-center gap-5">
+          <Link to="/privacy" className="hover:text-slate-200 transition">Privacy Policy</Link>
+          <Link to="/terms" className="hover:text-slate-200 transition">Terms of Service</Link>
+          <Link to="/help" className="hover:text-slate-200 transition">Help Center</Link>
+          <Link to="/contact" className="hover:text-slate-200 transition">Contact Us</Link>
         </div>
-      )}
-    </section>
+      </footer>
+    </div>
   )
 }

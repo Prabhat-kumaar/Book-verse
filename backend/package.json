@@ -10,10 +10,13 @@
     "generate:sitemap": "node scripts/generate-sitemap.js"
   },
   "dependencies": {
+    "adm-zip": "^0.6.0",
     "bcryptjs": "^2.4.3",
+    "cheerio": "^1.2.0",
     "cloudinary": "^2.10.0",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
+    "epub2": "^3.0.2",
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.1",
     "geoip-lite": "^2.0.2",

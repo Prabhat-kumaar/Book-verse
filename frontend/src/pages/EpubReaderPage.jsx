@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   MdBookmarkBorder,
   MdClose,
@@ -185,35 +186,62 @@ function flattenToc(items = [], depth = 0) {
 
 function buildThemeStyles(theme, fontSize = 18, isDesktop = false) {
   let bgColor = '#faf8f4'
-  let textColor = '#111827'
+  let textColor = '#1e293b'
 
   if (theme === 'dark') {
-    bgColor = '#0f0f0f'
-    textColor = '#e8e8e8'
+    bgColor = '#090c15'
+    textColor = '#cbd5e1'
   } else if (theme === 'sepia') {
     bgColor = '#f4ecd8'
-    textColor = '#5c4a1e'
+    textColor = '#3d2b1f'
   }
 
   return {
     body: {
-      margin: '0 !important',
+      margin: '0 auto !important',
       padding: `${getReaderPadding(isDesktop)}px !important`,
       color: textColor,
       background: bgColor,
-      'line-height': '1.8 !important',
+      'line-height': '1.85 !important',
       'font-size': `${fontSize}px !important`,
+      'font-family': 'Charter, Merriweather, Georgia, Palatino, serif !important',
       '-webkit-font-smoothing': 'antialiased',
       'box-sizing': 'border-box',
-      'max-width': 'none !important',
+      'max-width': '780px !important',
       width: '100% !important',
     },
     html: {
       background: `${bgColor} !important`,
     },
     p: {
-      'margin-bottom': '1.5em',
-      'line-height': '1.8',
+      'margin-bottom': '1.6em',
+      'line-height': '1.85',
+      'letter-spacing': '0.01em',
+    },
+    h1: {
+      'font-family': 'Charter, Merriweather, Georgia, serif',
+      'font-weight': '800',
+      'text-align': 'center',
+      'margin-top': '2em',
+      'margin-bottom': '0.5em',
+      color: theme === 'dark' ? '#ffffff' : '#0f172a',
+    },
+    h2: {
+      'font-family': 'Charter, Merriweather, Georgia, serif',
+      'font-weight': '700',
+      'text-align': 'center',
+      'margin-top': '1.8em',
+      'margin-bottom': '0.5em',
+      color: theme === 'dark' ? '#f8fafc' : '#1e293b',
+    },
+    blockquote: {
+      'border-left': '2px solid #ec4899',
+      'padding-left': '24px',
+      'margin': '28px 0',
+      'font-style': 'italic',
+      'background': 'rgba(236, 72, 153, 0.03)',
+      'border-radius': '0 12px 12px 0',
+      color: theme === 'dark' ? '#f1f5f9' : '#334155',
     },
     ul: {
       'max-width': 'none',
@@ -234,26 +262,28 @@ function buildThemeStyles(theme, fontSize = 18, isDesktop = false) {
     },
     'p:first-of-type::first-letter': {
       float: 'left',
-      'font-size': '3.4em',
-      'line-height': '0.9',
-      'padding-right': '0.12em',
-      'font-weight': '600',
-      'font-family': 'Iowan Old Style, Palatino, Georgia, Charter, serif',
+      'font-size': '3.2em',
+      'line-height': '0.85',
+      'padding-right': '0.15em',
+      'padding-top': '0.05em',
+      'font-weight': '800',
+      color: theme === 'dark' ? '#f472b6' : '#ec4899',
+      'font-family': 'Charter, Georgia, Palatino, serif',
     },
-    img: { 'max-width': '100%', height: 'auto' },
+    img: { 'max-width': '100%', height: 'auto', 'border-radius': '12px' },
     a: {
-      color: theme === 'dark' ? '#93c5fd' : '#1d4ed8',
+      color: theme === 'dark' ? '#c084fc' : '#8b5cf6',
       'text-decoration': 'none',
       transition: 'color 0.2s ease, opacity 0.2s ease',
       'font-weight': '500',
     },
     'a:hover': {
-      color: theme === 'dark' ? '#c084fc' : '#6366f1',
+      color: theme === 'dark' ? '#e879f9' : '#7c3aed',
       'text-decoration': 'underline',
       opacity: '0.95',
     },
     '::selection': {
-      background: 'rgba(99, 102, 241, 0.3) !important',
+      background: 'rgba(139, 92, 246, 0.35) !important',
     },
     '.hl-purple': {
       'background-color': 'rgba(168, 85, 247, 0.35) !important',
@@ -302,12 +332,13 @@ function applyReaderStyles(rendition, theme, fontSize, isDesktop) {
     '-webkit-overflow-scrolling': 'touch !important',
   })
   rendition.themes.override('body', {
-    margin: '0 !important',
+    margin: '0 auto !important',
     padding: `${getReaderPadding(isDesktop)}px !important`,
-    'max-width': 'none !important',
+    'max-width': '780px !important',
     width: '100% !important',
     'font-size': `${fontSize}px !important`,
-    'line-height': '1.8 !important',
+    'font-family': 'Charter, Merriweather, Georgia, serif !important',
+    'line-height': '1.85 !important',
     'box-sizing': 'border-box !important',
     'overflow-anchor': 'none !important',
     'scroll-behavior': 'smooth !important',
@@ -906,9 +937,19 @@ export default function EpubReaderPage({ book = null }) {
     const nextIdx = spineIndexRef.current + 1
     if (!items || nextIdx >= items.length || !renditionRef.current) return
     try {
-      await renditionRef.current.display(items[nextIdx].href)
+      const nextHref = items[nextIdx].href
+      await renditionRef.current.display(nextHref)
       updateSpineIndex(nextIdx)
+      const activeFile = getActiveHref(nextHref)
+      setActiveFilename(activeFile)
+      const match = toc.find((item) => getActiveHref(item?.href || '') === activeFile)
+      const nextLabel = match?.label || toc[nextIdx]?.label || `Chapter ${nextIdx + 1}`
+      setCurrentChapterLabel(nextLabel)
+      currentChapterRef.current = nextLabel
       forceScrollReset(renditionRef.current)
+      if (viewerRef.current) viewerRef.current.scrollTop = 0
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      showToast(`Jumped to ${nextLabel}`)
       setMenuOpen(false)
     } catch (e) {
       debugError('Next chapter error:', e)
@@ -920,9 +961,19 @@ export default function EpubReaderPage({ book = null }) {
     const prevIdx = spineIndexRef.current - 1
     if (!items || prevIdx < 0 || !renditionRef.current) return
     try {
-      await renditionRef.current.display(items[prevIdx].href)
+      const prevHref = items[prevIdx].href
+      await renditionRef.current.display(prevHref)
       updateSpineIndex(prevIdx)
+      const activeFile = getActiveHref(prevHref)
+      setActiveFilename(activeFile)
+      const match = toc.find((item) => getActiveHref(item?.href || '') === activeFile)
+      const prevLabel = match?.label || toc[prevIdx]?.label || `Chapter ${prevIdx + 1}`
+      setCurrentChapterLabel(prevLabel)
+      currentChapterRef.current = prevLabel
       forceScrollReset(renditionRef.current)
+      if (viewerRef.current) viewerRef.current.scrollTop = 0
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      showToast(`Jumped to ${prevLabel}`)
       setMenuOpen(false)
     } catch (e) {
       debugError('Prev chapter error:', e)
@@ -1307,16 +1358,16 @@ export default function EpubReaderPage({ book = null }) {
 
             const locationHref = loc?.start?.href || ''
             const activeFile = getActiveHref(locationHref)
-            setActiveFilename(activeFile)
             const match = toc.find((item) => getActiveHref(item?.href || '') === activeFile)
-            if (match) {
-              setCurrentChapterLabel(match.label || '')
-              currentChapterRef.current = match.label || ''
-            } else {
-              const spineLabel = spineItemsRef.current[spineIndexRef.current]?.idref || params.title
-              setCurrentChapterLabel(spineLabel)
-              currentChapterRef.current = spineLabel
+            let resolvedLabel = match?.label
+            if (!resolvedLabel && spineIndexRef.current >= 0 && toc[spineIndexRef.current]?.label) {
+              resolvedLabel = toc[spineIndexRef.current].label
             }
+            if (!resolvedLabel) {
+              resolvedLabel = `Chapter ${spineIndexRef.current >= 0 ? spineIndexRef.current + 1 : 1}`
+            }
+            setCurrentChapterLabel(resolvedLabel)
+            currentChapterRef.current = resolvedLabel
 
             const idx = Number.isFinite(loc?.start?.index) ? loc.start.index : findSpineIndexForHref(locationHref)
             if (idx >= 0) updateSpineIndex(idx)
@@ -1683,119 +1734,123 @@ export default function EpubReaderPage({ book = null }) {
     <section
       className={`reader-prose fixed inset-0 h-screen w-screen transition-colors duration-300
         ${theme === 'dark'
-          ? 'dark bg-[#0f0f0f] text-[#e8e8e8]'
+          ? 'dark bg-[#090c15] text-[#cbd5e1]'
           : theme === 'sepia'
-            ? 'bg-[#f4ecd8] text-[#5c4a1e]'
+            ? 'bg-[#f4ecd8] text-[#3d2b1f]'
             : 'bg-[#faf8f4] text-slate-900'
         }`}
     >
       <div ref={frameRef} className={`relative h-screen w-screen overflow-hidden ${isFullscreen ? 'fullscreen' : ''}`}>
-        {/* Top Reading Progress Bar (Medium/Substack style) */}
-        <div className="fixed left-0 right-0 top-0 z-[60] h-[3px] w-full">
-          <div
-            className="h-full bg-gradient-to-r from-purple-500 via-indigo-500 to-pink-500 transition-all duration-300"
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
-
-        <header
-          className={`glass-strong fixed inset-x-0 top-0 z-40 h-14 transition-transform duration-300
-            ${showChrome ? 'translate-y-0' : '-translate-y-full'}
-            ${theme === 'dark' ? 'border-white/10' : theme === 'sepia' ? 'border-[#5c4a1e]/15' : 'border-black/[8%]'}`}
-        >
-          <div className="flex h-full w-full items-center gap-2 px-2 md:gap-3 md:px-6">
+        {/* Top Floating Minimal Pill Toolbar */}
+        <div className="fixed top-3 inset-x-0 z-50 flex justify-center px-4 pointer-events-none">
+          <header
+            className="pointer-events-auto flex items-center gap-3 sm:gap-5 rounded-full border border-white/10 bg-[#0e121e]/90 px-4 sm:px-6 py-2 shadow-2xl backdrop-blur-2xl text-xs font-semibold text-slate-200 transition duration-300"
+          >
+            {/* Table of Contents Toggle */}
             <button
               type="button"
               onClick={() => setSidebarOpen((v) => !v)}
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full hover:bg-white/10 transition"
-              aria-label="Toggle table of contents"
+              className="text-slate-400 hover:text-white transition"
+              title="Table of Contents"
             >
-              <MdMenu className="text-xl" />
+              <MdMenu className="h-4 w-4" />
             </button>
-            <div className="min-w-0 flex-1 text-center">
-              <h1 className="truncate text-sm font-extrabold uppercase tracking-[0.03em] opacity-95 md:text-base md:tracking-[0.06em]">
-                <span className="md:hidden">{mobileHeaderTitle}</span>
-                <span className="hidden md:inline">{currentChapterLabel || params.title}</span>
-                <span className="ml-2 hidden items-center rounded-full bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 text-[10px] font-bold text-indigo-400 md:inline-flex">
-                  {progressPercent}% complete
-                </span>
-              </h1>
-              <p className="hidden truncate text-[11px] font-semibold tracking-wider opacity-50 md:block md:text-xs">
-                {params.title}
-              </p>
-            </div>
-            <div className="flex shrink-0 items-center gap-0.5">
-              <button type="button" onClick={() => setSearchOpen((v) => !v)}
-                className="grid h-8 w-8 place-items-center rounded-full hover:bg-white/10 transition md:h-9 md:w-9"
-                aria-label="Search">
-                <MdSearch className="text-lg" />
-              </button>
-              <button type="button" onClick={bookmarkCurrentLocation}
-                className="grid h-8 w-8 place-items-center rounded-full hover:bg-white/10 transition md:h-9 md:w-9"
-                aria-label="Bookmark">
-                <MdBookmarkBorder className="text-lg" />
-              </button>
-              <button type="button" onClick={() => setIsDarkMode((v) => !v)}
-                className="grid h-8 w-8 place-items-center rounded-full hover:bg-white/10 transition md:h-9 md:w-9"
-                aria-label="Toggle theme">
-                {isDarkMode ? <MdLightMode className="text-lg" /> : <MdDarkMode className="text-lg" />}
-              </button>
-              <div ref={toolbarMenuRef} className="relative">
-                <button
-                  type="button"
-                  onClick={() => setMenuOpen((value) => !value)}
-                  className="grid h-8 w-8 place-items-center rounded-full text-xl transition hover:bg-white/10 md:h-9 md:w-9"
-                  aria-label="Open reader menu"
-                  aria-expanded={menuOpen}
-                >
-                  <MdMoreVert />
-                </button>
-                {menuOpen && (
-                  <>
-                    <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setMenuOpen(false)} />
-                    <div
-                      className={`absolute right-0 top-11 z-50 w-[260px] animate-reader-fade-in rounded-lg border p-3 shadow-2xl backdrop-blur-xl
-                        ${theme === 'dark'
-                          ? 'border-white/10 bg-[#171717]/95 text-slate-100'
-                          : theme === 'sepia'
-                            ? 'border-[#5c4a1e]/15 bg-[#f1e3c2]/95 text-[#5c4a1e]'
-                            : 'border-black/10 bg-white/95 text-slate-900'
-                        }`}
-                    >
-                      <div className="flex items-center justify-between gap-2 border-b border-current/10 pb-3">
-                        <span className="text-xs font-bold uppercase opacity-55">Font size</span>
-                        <div className="flex items-center gap-2">
-                          <button type="button" onClick={decreaseFontSize} className="h-9 rounded-md px-4 text-sm font-bold hover:bg-current/10" aria-label="Decrease font size">
-                            A-
-                          </button>
-                          <button type="button" onClick={increaseFontSize} className="h-9 rounded-md px-4 text-base font-bold hover:bg-current/10" aria-label="Increase font size">
-                            A+
-                          </button>
-                        </div>
-                      </div>
 
-                      <button type="button" onClick={toggleSaveToLibrary} className="mt-1 flex h-10 w-full items-center justify-center gap-2 rounded-md text-sm font-bold hover:bg-current/10" aria-pressed={isBookSaved}>
-                        {isBookSaved ? <MdFavorite className="text-lg text-rose-500" /> : <MdFavoriteBorder className="text-lg" />}
-                        Save to Library
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-              <button type="button" onClick={toggleFullscreen}
-                className="grid h-8 w-8 place-items-center rounded-full hover:bg-white/10 transition md:h-9 md:w-9"
-                aria-label="Fullscreen">
-                {isFullscreen ? <MdFullscreenExit className="text-lg" /> : <MdFullscreen className="text-lg" />}
+            {/* Theme Preset Badge */}
+            <span className="hidden sm:inline font-bold text-white tracking-wide">
+              {theme === 'dark' ? 'Lumina Noir' : theme === 'sepia' ? 'Lumina Sepia' : 'Lumina Pure'}
+            </span>
+
+            {/* Book Title & Chapter Label */}
+            <span className="truncate max-w-[120px] sm:max-w-[200px] text-slate-300">
+              {params.title} {currentChapterLabel ? `— ${currentChapterLabel}` : ''}
+            </span>
+
+            {/* Progress Badge */}
+            <div className="rounded-full border border-purple-500/40 bg-purple-500/15 px-2.5 py-0.5 text-[10px] font-bold text-purple-300 shrink-0">
+              {Math.round(progressPercent)}% Complete
+            </div>
+
+            <span className="hidden md:inline text-slate-600">|</span>
+
+            {/* Font Size Adjuster Stepper: A- / A+ */}
+            <div className="hidden sm:flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={decreaseFontSize}
+                className="px-1.5 py-0.5 rounded hover:bg-white/10 text-slate-300 font-bold"
+                title="Decrease Font Size"
+              >
+                A-
+              </button>
+              <button
+                type="button"
+                onClick={increaseFontSize}
+                className="px-1.5 py-0.5 rounded hover:bg-white/10 text-slate-300 font-bold"
+                title="Increase Font Size"
+              >
+                A+
               </button>
             </div>
-          </div>
-          <div className={`h-px w-full ${isDarkMode ? 'bg-white/10' : 'bg-black/10'}`}>
-            <div
-              className="h-px bg-gradient-to-r from-primary via-primary/80 to-primary/40 transition-[width] duration-150"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-        </header>
+
+            <span className="hidden md:inline text-slate-600">|</span>
+
+            {/* Theme Switcher Pill (Light, Dark, Sepia) */}
+            <div className="flex items-center gap-1 rounded-full bg-black/40 p-0.5 border border-white/5">
+              <button
+                type="button"
+                onClick={() => setTheme('light')}
+                className={`p-1.5 rounded-full transition ${
+                  theme === 'light' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-white'
+                }`}
+                title="Light Mode"
+              >
+                <MdLightMode className="h-3.5 w-3.5" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTheme('dark')}
+                className={`p-1.5 rounded-full transition ${
+                  theme === 'dark' ? 'bg-[#1a2238] text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                }`}
+                title="Lumina Noir Mode"
+              >
+                <MdDarkMode className="h-3.5 w-3.5" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTheme('sepia')}
+                className={`p-1.5 rounded-full transition ${
+                  theme === 'sepia' ? 'bg-[#c7b28b] text-[#2b1810] shadow-sm' : 'text-slate-400 hover:text-white'
+                }`}
+                title="Sepia Mode"
+              >
+                <MdBook className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            {/* Search & Bookmark Actions */}
+            <button
+              type="button"
+              onClick={() => setSearchOpen((v) => !v)}
+              className="text-slate-400 hover:text-white transition"
+              title="Search"
+            >
+              <MdSearch className="h-4 w-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={bookmarkCurrentLocation}
+              className={`transition ${isBookSaved ? 'text-pink-400' : 'text-slate-400 hover:text-white'}`}
+              title="Bookmark Page"
+            >
+              <MdBookmarkBorder className="h-4 w-4" />
+            </button>
+          </header>
+        </div>
 
         {searchOpen && (
           <div className="fixed inset-x-0 top-14 z-40 animate-reader-fade-up px-4 sm:px-5">
@@ -1847,127 +1902,84 @@ export default function EpubReaderPage({ book = null }) {
           />
 
           <aside
-            className={`glass fixed left-5 top-[68px] z-30 hidden h-[calc(100vh-84px)] w-[360px]
-              overflow-hidden rounded-2xl transition-all duration-300 md:flex md:flex-col shadow-2xl
-              ${sidebarOpen ? 'translate-x-0 opacity-100' : '-translate-x-[120%] opacity-0 pointer-events-none'}`}
+            className={`fixed inset-y-0 left-0 z-50 flex h-full w-72 sm:w-80 flex-col justify-between border-r border-white/10 bg-[#0c101d] p-5 shadow-2xl backdrop-blur-2xl transition-transform duration-300 ${
+              sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+            }`}
           >
-            <div className={`border-b p-5 ${isDarkMode ? 'border-white/10' : 'border-black/[8%]'}`}>
-              <div className="mb-2 flex justify-end">
+            {/* Drawer Header */}
+            <div className="space-y-4">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-tr from-violet-600 to-pink-500 text-xs font-black text-white shadow-md">
+                    📑
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-white leading-tight">Table of Contents</h2>
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider truncate max-w-[170px] mt-0.5">
+                      {params.title} {currentChapterLabel ? `— ${currentChapterLabel}` : ''}
+                    </p>
+                  </div>
+                </div>
                 <button
                   type="button"
                   onClick={() => setSidebarOpen(false)}
-                  className="grid h-8 w-8 place-items-center rounded-full bg-white/10 text-slate-200 hover:bg-white/20"
-                  aria-label="Close table of contents"
+                  className="rounded-lg p-1 text-slate-400 hover:bg-white/10 hover:text-white transition"
+                  title="Close Drawer"
                 >
-                  <MdClose />
+                  <MdClose className="h-4 w-4" />
                 </button>
               </div>
-              <div className="flex items-center gap-3">
-                {coverUrl ? (
-                  <img loading="lazy" src={coverUrl} alt={params.title} className="h-14 w-12 rounded-xl object-cover shadow-md" />
-                ) : (
-                  <div className="grid h-14 w-12 place-items-center rounded-xl bg-primary/20 text-base font-bold shadow-md">
-                    {(params.title || 'B').slice(0, 1)}
-                  </div>
-                )}
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold leading-tight">{params.title}</p>
-                  <p className="mt-0.5 truncate text-xs opacity-55">{params.author}</p>
+
+              {/* Drawer Navigation Links */}
+              <div className="space-y-1 pt-1 text-xs font-semibold">
+                <Link
+                  to="/saved-books"
+                  className="flex items-center gap-3 rounded-xl px-3 py-2 text-slate-400 transition hover:bg-white/5 hover:text-slate-200"
+                >
+                  <MdBook className="h-4 w-4 text-slate-400" />
+                  <span>Library</span>
+                </Link>
+
+                <div className="flex items-center gap-3 rounded-xl bg-violet-600/15 border border-violet-500/20 px-3 py-2 text-white font-bold">
+                  <MdBookmarkBorder className="h-4 w-4 text-violet-400" />
+                  <span>Table of Contents</span>
                 </div>
               </div>
-            </div>
 
-            <p className={`px-4 pt-3 pb-1 text-[11px] font-semibold tracking-[0.18em] uppercase opacity-45
-              ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-              Contents
-            </p>
-
-            <div className="scrollbar-thin flex-1 space-y-0.5 overflow-y-auto px-2 pb-4">
-              {tocItems.map((item, index) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => handleChapterClick(item, index)}
-                  className={`toc-item ${isTocItemActive(item) ? 'active' : ''} w-full rounded-2xl px-4 py-3 text-left transition-all
-                    ${isTocItemActive(item)
-                      ? isDarkMode
-                        ? 'bg-primary/10 text-slate-100'
-                        : 'bg-primary/10 text-slate-900'
-                      : `${isDarkMode ? 'text-slate-400 hover:bg-white/5 hover:text-slate-100' : 'text-slate-600 hover:bg-black/[4%] hover:text-slate-900'}`
-                    }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className={`grid h-7 min-w-[1.75rem] place-items-center rounded-xl px-1 text-[12px]
-                      ${isTocItemActive(item)
-                        ? 'bg-primary/30 text-primary'
-                        : isDarkMode ? 'bg-white/10' : 'bg-black/10'
-                      }`}>
-                      {index + 1}
-                    </span>
-                    <span className="truncate text-[16px] leading-snug">{item.label}</span>
-                    {isTocItemActive(item) && (
-                      <MdBookmarkBorder className="ml-auto shrink-0 text-xs text-primary" />
-                    )}
-                  </div>
-                  <p className="mt-0.5 pl-[1.875rem] text-[13px] opacity-45">{chapterEstimatePages} pages</p>
-                </button>
-              ))}
-            </div>
-          </aside>
-
-          <aside
-            className={`glass fixed inset-x-0 bottom-0 z-40 max-h-[75vh] rounded-t-3xl px-4 pt-4 pb-8
-              transition-transform duration-300 md:hidden
-              ${sidebarOpen ? 'translate-y-0' : 'translate-y-full'}`}
-          >
-            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-current opacity-20" />
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-semibold">Contents</p>
-              <button type="button" onClick={() => setSidebarOpen(false)}
-                className="grid h-8 w-8 place-items-center rounded-full hover:bg-white/10">
-                <MdClose />
-              </button>
-            </div>
-
-            <div className="mb-3 flex items-center gap-3">
-              {coverUrl ? (
-                <img loading="lazy" src={coverUrl} alt={params.title} className="h-12 w-9 rounded-lg object-cover shadow" />
-              ) : (
-                <div className="grid h-12 w-9 place-items-center rounded-lg bg-primary/20 text-xs font-bold">
-                  {(params.title || 'B').slice(0, 1)}
-                </div>
-              )}
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">{params.title}</p>
-                <p className="truncate text-xs opacity-50">{params.author}</p>
+              {/* Chapter Items List */}
+              <div className="max-h-[calc(100vh-280px)] overflow-y-auto space-y-1 pr-1 scrollbar-thin">
+                {tocItems.map((item, index) => {
+                  const active = isTocItemActive(item)
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleChapterClick(item, index)}
+                      className={`group flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs transition ${
+                        active
+                          ? 'bg-violet-600/20 text-violet-300 font-bold border-l-2 border-violet-400'
+                          : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="font-mono text-[11px] opacity-60 shrink-0">{index + 1}</span>
+                        <span className="truncate">{item.label}</span>
+                      </div>
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
-            <div className="scrollbar-thin max-h-[50vh] overflow-y-auto">
-              {tocItems.map((item, index) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => handleChapterClick(item, index)}
-                  className={`toc-item ${isTocItemActive(item) ? 'active' : ''} mb-1 w-full rounded-xl px-3 py-2.5 text-left transition-all
-                    ${isTocItemActive(item)
-                      ? isDarkMode ? 'bg-white/10 font-semibold' : 'bg-black/[8%] font-semibold'
-                      : 'hover:bg-white/5'
-                    }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className={`grid h-5 min-w-[1.25rem] place-items-center rounded-full px-1 text-[10px]
-                      ${isTocItemActive(item) ? 'bg-primary/30 text-primary' : isDarkMode ? 'bg-white/10' : 'bg-black/10'}`}>
-                      {index + 1}
-                    </span>
-                    <span className="truncate text-[13px]">{item.label}</span>
-                    {isTocItemActive(item) && (
-                      <MdBookmarkBorder className="ml-auto shrink-0 text-xs text-primary" />
-                    )}
-                  </div>
-                  <p className="mt-0.5 pl-[1.875rem] text-[11px] opacity-40">{chapterEstimatePages} pages</p>
-                </button>
-              ))}
+            {/* Bottom Drawer: Premium Reader Badge */}
+            <div className="flex items-center gap-3 border-t border-white/[0.08] pt-4">
+              <div className="grid h-8 w-8 place-items-center rounded-full border border-violet-400/30 bg-violet-500/10 text-xs text-violet-300">
+                🛡️
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-white">Premium Reader</span>
+                <span className="text-[10px] text-slate-400">All features unlocked</span>
+              </div>
             </div>
           </aside>          <main className="h-full w-full overflow-hidden">
             <div className="flex h-full w-full flex-col pt-14 pb-6 md:pb-8">
@@ -2012,41 +2024,40 @@ export default function EpubReaderPage({ book = null }) {
               </div>
 
               {loadingState === 'ready' && (
-                <div className="flex flex-col items-center justify-center py-4 px-6 mt-2 gap-3">
-                  <div className="flex items-center gap-4">
+                <div className="fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
+                  <div className="pointer-events-auto flex items-center justify-between gap-4 sm:gap-6 rounded-full border border-white/10 bg-[#0e121e]/90 px-5 sm:px-6 py-2.5 shadow-2xl backdrop-blur-2xl text-xs font-semibold text-slate-200 max-w-xl w-full">
                     <button
                       type="button"
                       onClick={goPrevChapter}
                       disabled={spineIndex === 0}
-                      className={`rounded-full px-4 py-1.5 text-xs font-semibold border transition duration-200
-                        ${theme === 'dark'
-                          ? 'border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 disabled:opacity-25 disabled:cursor-not-allowed'
-                          : theme === 'sepia'
-                            ? 'border-[#5c4a1e]/20 bg-[#5c4a1e]/5 hover:bg-[#5c4a1e]/10 text-[#5c4a1e] disabled:opacity-25 disabled:cursor-not-allowed'
-                            : 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-25 disabled:cursor-not-allowed'
-                        }`}
+                      className="flex items-center gap-1 text-slate-300 hover:text-white transition disabled:opacity-30 disabled:cursor-not-allowed"
                     >
-                      Previous Chapter
+                      <span>←</span>
+                      <span className="hidden sm:inline">Previous Chapter</span>
                     </button>
+
+                    <div className="flex flex-col items-center">
+                      <span className="text-[10px] sm:text-[11px] font-bold tracking-wider text-slate-400 uppercase">
+                        PAGE {currentPage} OF {totalPages} • {Math.round(progressPercent)}% COMPLETED
+                      </span>
+                      <div className="mt-1 h-1 w-28 sm:w-36 rounded-full bg-slate-800 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-violet-500 to-pink-500"
+                          style={{ width: `${Math.max(5, progressPercent)}%` }}
+                        />
+                      </div>
+                    </div>
+
                     <button
                       type="button"
                       onClick={goNextChapter}
                       disabled={spineIndex >= spineItemsRef.current.length - 1}
-                      className={`rounded-full px-4 py-1.5 text-xs font-semibold border transition duration-200
-                        ${theme === 'dark'
-                          ? 'border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 disabled:opacity-25 disabled:cursor-not-allowed'
-                          : theme === 'sepia'
-                            ? 'border-[#5c4a1e]/20 bg-[#5c4a1e]/5 hover:bg-[#5c4a1e]/10 text-[#5c4a1e] disabled:opacity-25 disabled:cursor-not-allowed'
-                            : 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-25 disabled:cursor-not-allowed'
-                        }`}
+                      className="flex items-center gap-1 text-slate-300 hover:text-white transition disabled:opacity-30 disabled:cursor-not-allowed font-bold"
                     >
-                      Next Chapter
+                      <span className="hidden sm:inline">Next Chapter</span>
+                      <span>→</span>
                     </button>
                   </div>
-                  <p className={`text-center text-[11px] tracking-widest uppercase font-semibold opacity-60
-                    ${theme === 'dark' ? 'text-slate-500' : theme === 'sepia' ? 'text-[#5c4a1e]/70' : 'text-slate-500'}`}>
-                    Page {currentPage} of {totalPages} <span className="mx-2">•</span> {Math.round(progressPercent)}% complete
-                  </p>
                 </div>
               )}
             </div>

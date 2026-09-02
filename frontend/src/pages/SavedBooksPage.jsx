@@ -109,8 +109,8 @@ export default function SavedBooksPage() {
           {libraryBooks.map((book) => (
             <div
               key={book.id}
-              onClick={() => navigate(`/read/the-design-of-everyday-things`)}
-              className="group flex flex-col justify-between rounded-2xl border border-white/[0.07] bg-[#141628] p-3 transition-all duration-300 hover:-translate-y-1 hover:border-indigo-500/40 hover:bg-[#181a30] hover:shadow-2xl shadow-black/40 cursor-pointer"
+              onClick={() => navigate(`/read/${book.slug || book.id}`)}
+              className="group flex flex-col justify-between rounded-2xl border border-white/[0.07] bg-[#141628] p-3 transition-all duration-300 hover:-translate-y-1 hover:border-violet-500/40 hover:bg-[#181a30] hover:shadow-2xl shadow-black/40 cursor-pointer"
             >
               {/* Cover Card with Circular Progress Ring Floating Overlay */}
               <div>
