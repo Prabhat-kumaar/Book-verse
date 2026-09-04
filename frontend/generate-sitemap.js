@@ -5,8 +5,8 @@ import { fileURLToPath } from 'url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const TARGET_DIR = path.resolve(__dirname, 'public')
-const BOOKS_API_URL = 'https://book-verse-production.up.railway.app/api/books/all'
-const BLOGS_API_URL = 'https://book-verse-production.up.railway.app/api/blogs?limit=1000'
+const BOOKS_API_URL = 'https://book-verse-90st.onrender.com/api/books/all'
+const BLOGS_API_URL = 'https://book-verse-90st.onrender.com/api/blogs?limit=1000'
 const PRODUCTION_DOMAIN = 'https://readifyai.vercel.app'
 const MAX_URLS_PER_FILE = 45000
 const MAIN_SITEMAP = 'sitemap.xml'

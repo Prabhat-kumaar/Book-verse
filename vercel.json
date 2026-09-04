@@ -6,7 +6,7 @@
     },
     {
       "source": "/sitemap.xml",
-      "destination": "https://book-verse-production.up.railway.app/sitemap.xml"
+      "destination": "https://book-verse-90st.onrender.com/sitemap.xml"
     },
     {
       "source": "/:path((?!api/|assets/|favicon.svg|icons.svg|sitemap.xml|sitemap-.*.xml|robots.txt).*)",

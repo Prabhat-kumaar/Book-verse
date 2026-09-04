@@ -23,7 +23,7 @@ function isLocalHost(hostname = '') {
 const rawEnvOrigin = normalizeOrigin(import.meta.env.VITE_API_URL)
 const envOrigin = isTemplateOrigin(rawEnvOrigin) ? '' : rawEnvOrigin
 
-const PRODUCTION_BACKEND_FALLBACK = 'https://book-verse-production.up.railway.app'
+const PRODUCTION_BACKEND_FALLBACK = 'https://book-verse-90st.onrender.com'
 
 const browserFallbackOrigin = (() => {
   if (!isBrowser) return ''

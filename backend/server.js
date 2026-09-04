@@ -253,7 +253,7 @@ app.get('/uploads/:filename', (req, res) => {
 app.get('/sitemap.xml', async (req, res, next) => {
     try {
         const today = new Date().toISOString().split('T')[0];
-        const PRODUCTION_DOMAIN = 'https://readifyai.vercel.app';
+        const PRODUCTION_DOMAIN = (process.env.FRONTEND_URL || 'https://readifyai.vercel.app').trim().replace(/\/+$/, '');
 
         // Fetch books from database
         const books = await Book.find({}).select('slug updatedAt createdAt').lean();
