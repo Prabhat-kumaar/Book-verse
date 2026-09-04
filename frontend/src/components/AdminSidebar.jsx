@@ -6,7 +6,6 @@ const navItems = [
   { label: 'Dashboard', to: '/admin/dashboard' },
   { label: 'Add Book', to: '/admin/add-book' },
   { label: 'Manage Books', to: '/admin/manage-books' },
-  { label: 'Manage Blogs', href: '/admin/blogs', icon: '📝' },
   { label: 'Analytics', to: '/admin/analytics' },
   { label: 'Manage Users', to: '/admin/users' },
 ]

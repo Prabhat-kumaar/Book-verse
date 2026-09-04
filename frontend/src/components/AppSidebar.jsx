@@ -23,14 +23,12 @@ export default function AppSidebar({ mobileOpen = false, onCloseMobile = () => {
   const isDiscoverActive = pathname === '/books' || pathname === '/'
   const isLibraryActive = pathname === '/library' || pathname === '/saved-books'
   const isAnalyticsActive = pathname === '/analytics' || (pathname === '/profile' && location.hash === '#analytics')
-  const isCommunityActive = pathname === '/blog' || pathname.startsWith('/blog')
   const isProfileActive = pathname === '/profile' && location.hash !== '#analytics'
 
   const navItems = [
     { label: 'Discover', href: '/books', active: isDiscoverActive },
     { label: 'Library', href: '/saved-books', active: isLibraryActive },
     { label: 'Analytics', href: '/profile#analytics', active: isAnalyticsActive },
-    { label: 'Community', href: '/blog', active: isCommunityActive },
     { label: 'Profile', href: '/profile', active: isProfileActive },
   ]
 

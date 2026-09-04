@@ -26,7 +26,6 @@ const analyticsRoutes = require('./routes/analyticsRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const goalRoutes = require('./routes/goalRoutes');
 const userRoutes = require('./routes/userRoutes');
-const blogRoutes = require('./routes/blogRoutes');
 const highlightRoutes = require('./routes/highlightRoutes');
 const dictionaryRoutes = require('./routes/dictionaryRoutes');
 
@@ -258,17 +257,12 @@ app.get('/sitemap.xml', async (req, res, next) => {
         // Fetch books from database
         const books = await Book.find({}).select('slug updatedAt createdAt').lean();
 
-        // Fetch blogs (only published blogs)
-        const Blog = require('./models/Blog');
-        const blogs = await Blog.find({ status: 'published' }).select('slug publishedAt updatedAt createdAt').lean();
-
         let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
         xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
 
         // Static routes
         const staticRoutes = [
             { loc: `${PRODUCTION_DOMAIN}/`, priority: '1.0', changefreq: 'daily', lastmod: today },
-            { loc: `${PRODUCTION_DOMAIN}/blog`, priority: '0.9', changefreq: 'daily', lastmod: today },
             { loc: `${PRODUCTION_DOMAIN}/books`, priority: '0.9', changefreq: 'daily', lastmod: today },
             { loc: `${PRODUCTION_DOMAIN}/categories`, priority: '0.7', changefreq: 'weekly', lastmod: today },
             { loc: `${PRODUCTION_DOMAIN}/recommended`, priority: '0.8', changefreq: 'weekly', lastmod: today }
@@ -283,14 +277,6 @@ app.get('/sitemap.xml', async (req, res, next) => {
             if (b.slug) {
                 const lastmod = new Date(b.updatedAt || b.createdAt || Date.now()).toISOString().split('T')[0];
                 xml += `  <url>\n    <loc>${PRODUCTION_DOMAIN}/read/${b.slug}/</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.8</priority>\n  </url>\n`;
-            }
-        });
-
-        // Dynamic blog routes
-        blogs.forEach(b => {
-            if (b.slug) {
-                const lastmod = new Date(b.publishedAt || b.updatedAt || b.createdAt || Date.now()).toISOString().split('T')[0];
-                xml += `  <url>\n    <loc>${PRODUCTION_DOMAIN}/blog/${b.slug}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n  </url>\n`;
             }
         });
 
@@ -365,7 +351,6 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/goals', goalRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/blogs', blogRoutes);
 app.use('/api', savedRoutes);
 
 // ================= API 404 =================

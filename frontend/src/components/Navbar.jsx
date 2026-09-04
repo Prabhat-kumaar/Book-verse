@@ -274,9 +274,6 @@ export default function Navbar() {
                     <Link to="/profile" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
                       Settings
                     </Link>
-                    <Link to="/blog" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
-                      Blog
-                    </Link>
                     {isAdmin ? (
                       <Link to="/admin/dashboard" className="block rounded-xl px-3 py-2 text-sm text-slate-100 transition hover:bg-white/10">
                         Admin Dashboard
@@ -319,11 +316,6 @@ export default function Navbar() {
         {menuOpen ? (
           <div className="px-3 pb-3 md:hidden">
             <div className="overflow-hidden rounded-xl border border-white/15 bg-slate-950/85 p-2 backdrop-blur-xl">
-              <Link to="/blog" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10 flex items-center justify-between mb-1">
-                <span>📝 Blog</span>
-                <span className="bg-purple-650 bg-gradient-to-r from-purple-600 to-purple-700 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">New</span>
-              </Link>
-              <div className="border-b border-white/10 my-1.5" />
               {authUser ? (
                 <>
                   <Link to="/profile" onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2.5 text-sm text-slate-100 transition hover:bg-white/10">

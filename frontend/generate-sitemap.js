@@ -6,7 +6,6 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const TARGET_DIR = path.resolve(__dirname, 'public')
 const BOOKS_API_URL = 'https://book-verse-90st.onrender.com/api/books/all'
-const BLOGS_API_URL = 'https://book-verse-90st.onrender.com/api/blogs?limit=1000'
 const PRODUCTION_DOMAIN = 'https://readifyai.vercel.app'
 const MAX_URLS_PER_FILE = 45000
 const MAIN_SITEMAP = 'sitemap.xml'
@@ -115,18 +114,6 @@ const normalizeBooks = (payload) => {
   return items.filter((book) => book && book.slug)
 }
 
-const normalizeBlogs = (payload) => {
-  const items = Array.isArray(payload)
-    ? payload
-    : Array.isArray(payload?.blogs)
-      ? payload.blogs
-      : Array.isArray(payload?.data)
-        ? payload.data
-        : []
-
-  return items.filter((blog) => blog && blog.slug)
-}
-
 const buildSitemaps = (allUrls) => {
   const chunks = []
 
@@ -156,7 +143,6 @@ const main = async () => {
   const today = sanitizeDate()
   const staticUrls = [
     { loc: `${PRODUCTION_DOMAIN}/`, priority: '1.0', changefreq: 'daily', lastmod: today },
-    { loc: `${PRODUCTION_DOMAIN}/blog`, priority: '0.9', changefreq: 'daily', lastmod: today },
     { loc: `${PRODUCTION_DOMAIN}/books`, priority: '0.9', changefreq: 'daily', lastmod: today },
     { loc: `${PRODUCTION_DOMAIN}/categories`, priority: '0.7', changefreq: 'weekly', lastmod: today },
     { loc: `${PRODUCTION_DOMAIN}/recommended`, priority: '0.8', changefreq: 'weekly', lastmod: today }
@@ -179,23 +165,6 @@ const main = async () => {
     }
   }
 
-  let blogs = []
-  try {
-    console.log(`Fetching blogs from ${BLOGS_API_URL}...`)
-    const payload = await httpGet(BLOGS_API_URL)
-    blogs = normalizeBlogs(payload)
-    console.log(`Found ${blogs.length} blog URLs to index.`)
-  } catch (error) {
-    console.warn(`Blog API fetch failed: ${error.message}. Trying local fallback...`)
-    try {
-      const payload = await httpGet('http://localhost:5000/api/blogs?limit=1000')
-      blogs = normalizeBlogs(payload)
-      console.log(`Found ${blogs.length} blog URLs to index from local backend.`)
-    } catch (localError) {
-      console.warn(`Local fallback failed: ${localError.message}. Proceeding without blogs.`)
-    }
-  }
-
   const bookUrls = books.map((book) => ({
     loc: `${PRODUCTION_DOMAIN}/read/${book.slug}/`,
     lastmod: sanitizeDate(book.updatedAt || book.createdAt),
@@ -203,14 +172,7 @@ const main = async () => {
     priority: '0.8'
   }))
 
-  const blogUrls = blogs.map((blog) => ({
-    loc: `${PRODUCTION_DOMAIN}/blog/${blog.slug}`,
-    lastmod: sanitizeDate(blog.publishedAt || blog.updatedAt || blog.createdAt),
-    changefreq: 'weekly',
-    priority: '0.8'
-  }))
-
-  const allUrls = [...staticUrls, ...bookUrls, ...blogUrls]
+  const allUrls = [...staticUrls, ...bookUrls]
   console.log(`Total URLs to write to sitemap: ${allUrls.length}`)
 
   try {

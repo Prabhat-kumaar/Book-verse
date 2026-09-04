@@ -32,8 +32,8 @@ export default function NotFoundPage() {
               <Link to="/books" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs font-bold text-slate-100 transition hover:bg-white/10">
                 Browse Books
               </Link>
-              <Link to="/blog" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs font-bold text-slate-100 transition hover:bg-white/10">
-                Read Blog
+              <Link to="/categories" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs font-bold text-slate-100 transition hover:bg-white/10">
+                Categories
               </Link>
             </div>
           </div>

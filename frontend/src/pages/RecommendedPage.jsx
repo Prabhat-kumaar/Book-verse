@@ -141,25 +141,6 @@ export default function RecommendedPage() {
           ))}
         </div>
       )}
-
-      {/* Blog Promotion Banner */}
-      <div className="mt-8 rounded-2xl border border-purple-500/20 bg-slate-950/20 p-5 flex flex-col sm:flex-row items-center justify-between gap-4 text-left">
-        <div>
-          <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
-            <span>📝</span>
-            Discover Reading Tips & Guides
-          </h4>
-          <p className="text-xs text-slate-400 mt-1">
-            Check out our latest articles on classic books, study tips, and literary analysis.
-          </p>
-        </div>
-        <Link
-          to="/blog"
-          className="shrink-0 rounded-xl bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-5 py-2 text-xs font-bold transition shadow-md shadow-purple-500/10"
-        >
-          Read Blog
-        </Link>
-      </div>
     </section>
   )
 }

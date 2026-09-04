@@ -23,7 +23,6 @@ export default function Footer() {
               <a href="https://github.com/Prabhat-kumaar" target="_blank" rel="noopener noreferrer" aria-label="Readify on GitHub" className="footer-social-link hover:border-white/50 transition-colors">
                 <svg viewBox="0 0 24 24" aria-hidden="true" className="w-4.5 h-4.5"><path fill="#ffffff" d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48 0-.24-.01-.87-.01-1.71-2.78.6-3.37-1.34-3.37-1.34-.45-1.14-1.1-1.44-1.1-1.44-.9-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.82.09-.64.35-1.08.64-1.33-2.22-.25-4.55-1.11-4.55-4.95 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.57 9.57 0 0 1 12 6.8a9.6 9.6 0 0 1 2.5.34c1.9-1.3 2.74-1.02 2.74-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.6 1.03 2.68 0 3.85-2.34 4.7-4.57 4.95.36.31.68.92.68 1.86 0 1.34-.01 2.42-.01 2.75 0 .26.18.57.69.47A10 10 0 0 0 12 2Z" /></svg>
               </a>
-              <a href="/blog" className="hover:text-purple-400">Blog</a>
               <a href="https://www.instagram.com/readi.fybooks?igsh=Znl2YWdpZXEwZ2M3" target="_blank" rel="noopener noreferrer" aria-label="Readify on Instagram" className="footer-social-link hover:border-pink-500/50 transition-colors">
                 <svg viewBox="0 0 24 24" aria-hidden="true" className="w-4.5 h-4.5">
                   <defs>
@@ -53,10 +52,6 @@ export default function Footer() {
               <Link to="/categories" className="footer-link">Categories</Link>
               <Link to="/recommended" className="footer-link">Recommended</Link>
               <Link to="/books" className="footer-link">Explore Books</Link>
-              <Link to="/blog" className="footer-link flex items-center gap-1.5 hover:text-purple-400">
-                <span>Blog</span>
-                <span className="bg-purple-600 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">New</span>
-              </Link>
             </nav>
           </div>
 

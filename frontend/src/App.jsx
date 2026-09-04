@@ -49,12 +49,6 @@ const AdminUsersPage = lazyWithRetry(() => import('./pages/AdminUsersPage'))
 const LoginPage = lazyWithRetry(() => import('./pages/LoginPage'))
 const SignUpPage = lazyWithRetry(() => import('./pages/SignUpPage'))
 const BooksPage = lazyWithRetry(() => import('./pages/BooksPage'))
-const BlogPage = lazyWithRetry(() => import('./pages/BlogPage'))
-const BlogDetailPage = lazyWithRetry(() => import('./pages/BlogDetailPage'))
-const AdminBlogPage = lazyWithRetry(() => import('./pages/admin/AdminBlogPage'))
-const AdminBlogCreateEditPage = lazyWithRetry(() => import('./pages/admin/AdminBlogCreateEditPage'))
-const AdminBlogAutoGeneratePage = lazyWithRetry(() => import('./pages/admin/AdminBlogAutoGeneratePage'))
-const AdminBlogAnalyticsPage = lazyWithRetry(() => import('./pages/admin/AdminBlogAnalyticsPage'))
 const CategoriesPage = lazyWithRetry(() => import('./pages/CategoriesPage'))
 const RecommendedPage = lazyWithRetry(() => import('./pages/RecommendedPage'))
 const SavedBooksPage = lazyWithRetry(() => import('./pages/SavedBooksPage'))
@@ -313,8 +307,6 @@ function App() {
             <Route path="/read/:bookSlug" element={<MainLayout hideChrome fullBleed><BookReadPage /></MainLayout>} />
             <Route path="/reader" element={<MainLayout hideChrome fullBleed><BookReadPage /></MainLayout>} />
             <Route path="/books" element={<MainLayout><BooksPage /></MainLayout>} />
-            <Route path="/blog" element={<BlogPage />} />
-            <Route path="/blog/:slug" element={<BlogDetailPage />} />
             <Route path="/book/:id" element={<MainLayout><BookDetailPage /></MainLayout>} />
             <Route path="/categories" element={<MainLayout><CategoriesPage /></MainLayout>} />
             <Route path="/recommended" element={<MainLayout><RecommendedPage /></MainLayout>} />
@@ -325,11 +317,6 @@ function App() {
               <Route path="dashboard" element={<AdminDashboardPage />} />
               <Route path="add-book" element={<AdminAddBookPage />} />
               <Route path="manage-books" element={<AdminManageBooksPage />} />
-              <Route path="blogs" element={<AdminBlogPage />} />
-              <Route path="blogs/create" element={<AdminBlogCreateEditPage />} />
-              <Route path="blogs/:id/edit" element={<AdminBlogCreateEditPage />} />
-              <Route path="blog/auto-generate" element={<AdminBlogAutoGeneratePage />} />
-              <Route path="blogs/analytics" element={<AdminBlogAnalyticsPage />} />
               <Route path="analytics" element={<AdminAnalyticsPage />} />
               <Route path="users" element={<AdminUsersPage />} />
               <Route index element={<Navigate to="/admin/dashboard" replace />} />
