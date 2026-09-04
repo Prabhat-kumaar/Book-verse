@@ -5,7 +5,7 @@ import safeStorage from './safeStorage'
 const isDev = import.meta.env.DEV
 isDev && console.log('[apiClient] API URL:', API_URL)
 
-const REQUEST_TIMEOUT_MS = 120000
+const REQUEST_TIMEOUT_MS = 15000
 const SLOW_THRESHOLD_MS = 3000
 const activeRequests = new Map()
 

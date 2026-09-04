@@ -79,8 +79,19 @@ export default function ReaderPage({ book: initialBook = null }) {
 
     let isMounted = true
     let pollTimer = null
+    let pollAttempts = 0
+    const MAX_POLL_ATTEMPTS = 18 // ~45s maximum wait
 
     const checkStatus = async () => {
+      if (!isMounted) return
+      pollAttempts++
+
+      if (pollAttempts > MAX_POLL_ATTEMPTS) {
+        setParseStatus('failed')
+        setParseError('Book preparation is taking longer than expected. Please retry.')
+        return
+      }
+
       try {
         const response = await apiClient.get(`/api/books/slug/${encodeURIComponent(identifier)}/parse-status`)
         if (!isMounted) return
@@ -92,10 +103,8 @@ export default function ReaderPage({ book: initialBook = null }) {
         setParseError(error)
 
         if (status === 'completed') {
-          // Fetch chapters list
           fetchChaptersList()
         } else if (status === 'pending' || status === 'processing') {
-          // Poll again in 2.5s
           pollTimer = setTimeout(checkStatus, 2500)
         }
       } catch (err) {
