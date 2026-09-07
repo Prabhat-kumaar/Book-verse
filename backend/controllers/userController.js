@@ -5,7 +5,7 @@ const getAllUsersAdmin = async (_req, res, next) => {
     try {
         const [users, progressStats] = await Promise.all([
             User.find()
-                .select('username email role createdAt isBanned avatar')
+                .select('username email role createdAt isBanned avatar streak analytics readingGoal')
                 .sort({ createdAt: -1 })
                 .lean(),
             Progress.aggregate([
@@ -35,8 +35,11 @@ const getAllUsersAdmin = async (_req, res, next) => {
                 createdAt: user.createdAt,
                 isBanned: Boolean(user.isBanned),
                 avatar: user.avatar || '',
+                streak: user.streak || { currentStreak: 0, longestStreak: 0, totalReadingDays: 0 },
+                analytics: user.analytics || { totalPagesRead: 0, totalReadingSeconds: 0, totalSessions: 0 },
+                readingGoal: user.readingGoal || 12,
                 booksStarted: stats.booksStarted || 0,
-                booksCompleted: stats.booksCompleted || 0,
+                booksCompleted: stats.booksCompleted || (user.analytics?.booksCompleted || 0),
             };
         });
 
