@@ -577,40 +577,51 @@ export default function AdminAddBookPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-x-clip bg-[#050914] text-slate-100">
-      <div className="pointer-events-none absolute -left-24 top-16 h-72 w-72 rounded-full bg-blue-500/20 blur-[120px]" />
-      <div className="pointer-events-none absolute right-0 top-40 h-80 w-80 rounded-full bg-violet-500/20 blur-[130px]" />
+    <div className="relative min-h-screen overflow-x-clip bg-[#060811] text-slate-100 font-sans selection:bg-purple-500/30 selection:text-purple-200">
+      <div className="pointer-events-none absolute -left-40 top-10 h-[500px] w-[500px] rounded-full bg-gradient-to-tr from-purple-600/15 to-indigo-600/10 blur-[140px]" />
+      <div className="pointer-events-none absolute right-0 top-32 h-[450px] w-[450px] rounded-full bg-gradient-to-br from-cyan-600/10 to-teal-600/10 blur-[140px]" />
 
       {toast ? (
-        <div className="fixed right-4 top-4 z-[80] rounded-xl border border-emerald-300/40 bg-emerald-500/20 px-4 py-3 text-sm font-semibold text-emerald-100 shadow-[0_12px_30px_rgba(16,185,129,0.25)] backdrop-blur-xl">
+        <div className="fixed right-6 top-6 z-[100] rounded-2xl border border-emerald-500/30 bg-emerald-950/90 px-5 py-3.5 text-sm font-semibold text-emerald-200 shadow-2xl backdrop-blur-2xl">
           {toast}
         </div>
       ) : null}
 
-      <div className="relative mx-auto grid min-h-screen w-full max-w-[1440px] grid-cols-1 gap-4 p-4 lg:grid-cols-[280px_1fr] lg:gap-6 lg:p-6">
+      <div className="relative mx-auto grid min-h-screen w-full max-w-[1600px] grid-cols-1 gap-4 p-3 sm:p-5 lg:grid-cols-[280px_1fr] lg:gap-6 lg:p-6">
         <AdminSidebar />
 
-        <main className="rounded-3xl border border-white/15 bg-gradient-to-b from-white/[0.08] to-white/[0.03] p-5 backdrop-blur-2xl lg:p-8">
-          <div className="mb-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-100/80">Admin Tools</p>
-            <h2 className="mt-1 text-3xl font-black text-white sm:text-4xl">Add New Book</h2>
-            <p className="mt-2 text-sm text-slate-300">Publish new reading content with complete metadata and premium catalog quality.</p>
+        <main className="flex flex-col gap-6 overflow-hidden rounded-3xl border border-white/[0.08] bg-[#0c101c]/85 p-4 shadow-2xl backdrop-blur-3xl sm:p-6 lg:p-8">
+          <div className="flex flex-col justify-between gap-4 border-b border-white/[0.08] pb-6 sm:flex-row sm:items-center">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-0.5 text-[10px] font-bold tracking-[0.2em] text-purple-300 uppercase">
+                  CLUSTER CONTROL / STORAGE & HEALTH / v4.19-re3
+                </span>
+                <span className="flex h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981]" />
+              </div>
+              <h1 className="mt-2 text-2xl font-black tracking-tight text-white sm:text-3xl lg:text-4xl">
+                Manual Ingestion & Batch Storage
+              </h1>
+              <p className="mt-1 text-xs text-slate-400 sm:text-sm">
+                Publish single volumes, batch import EPUB/PDF collections, and process structured CSV catalog archives.
+              </p>
+            </div>
           </div>
 
-          <div className="mb-5 inline-flex rounded-xl border border-white/15 bg-white/[0.04] p-1">
+          <div className="inline-flex rounded-xl border border-white/10 bg-white/[0.03] p-1 w-fit">
             {[
-              ['single', 'Single Book'],
-              ['bulk', 'Bulk Upload'],
-              ['csv', 'CSV Import'],
+              ['single', 'Single Ingestion'],
+              ['bulk', 'Multi-Slot Batch'],
+              ['csv', 'CSV Catalog Import'],
             ].map(([tab, label]) => (
               <button
                 key={tab}
                 type="button"
                 onClick={() => setActiveTab(tab)}
-                className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                className={`rounded-lg px-4 py-2 text-xs font-bold transition duration-150 ${
                   activeTab === tab
-                    ? 'bg-gradient-to-r from-blue-500/40 to-violet-500/40 text-white shadow-[0_8px_24px_rgba(87,104,255,0.18)]'
-                    : 'text-slate-300 hover:text-white'
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-[0_0_12px_rgba(147,51,234,0.4)]'
+                    : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
                 {label}
