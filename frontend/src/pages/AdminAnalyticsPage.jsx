@@ -1,24 +1,15 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  MdInsights,
   MdRefresh,
   MdFileDownload,
   MdAutoAwesome,
   MdVisibility,
   MdPeopleAlt,
-  MdTimer,
-  MdBookmarkAdded,
   MdTrendingUp,
   MdDevices,
   MdPublic,
   MdAccessTime,
-  MdLibraryBooks,
-  MdMenuBook,
-  MdPersonAdd,
-  MdCheckCircle,
-  MdArrowUpward,
-  MdArrowDownward,
   MdInfoOutline,
 } from 'react-icons/md'
 import AdminSidebar from '../components/AdminSidebar'
@@ -26,6 +17,57 @@ import apiClient from '../lib/apiClient'
 import SEO from '../components/SEO'
 
 const isDev = import.meta.env.DEV
+
+// Flag emoji helper for ISO-2 country codes
+const getCountryFlag = (code) => {
+  if (!code || code === 'Unknown') return '🌐'
+  if (code.length !== 2) return '🌐'
+  const offset = 127397
+  return Array.from(code.toUpperCase())
+    .map((c) => String.fromCodePoint(c.charCodeAt(0) + offset))
+    .join('')
+}
+
+// Circular SVG Progress Ring Gauge
+function CircularGauge({ percentage = 0, label = '', color = '#818cf8', subtext = '' }) {
+  const radius = 34
+  const strokeWidth = 5
+  const normalizedRadius = radius - strokeWidth / 2
+  const circumference = normalizedRadius * 2 * Math.PI
+  const clamped = Math.min(100, Math.max(0, percentage))
+  const strokeDashoffset = circumference - (clamped / 100) * circumference
+
+  return (
+    <div className="flex flex-col items-center">
+      <div className="relative flex h-[72px] w-[72px] items-center justify-center">
+        <svg height={radius * 2} width={radius * 2} className="-rotate-90">
+          <circle
+            stroke="rgba(255, 255, 255, 0.08)"
+            fill="transparent"
+            strokeWidth={strokeWidth}
+            r={normalizedRadius}
+            cx={radius}
+            cy={radius}
+          />
+          <circle
+            stroke={color}
+            fill="transparent"
+            strokeWidth={strokeWidth}
+            strokeDasharray={`${circumference} ${circumference}`}
+            style={{ strokeDashoffset, transition: 'stroke-dashoffset 0.8s ease' }}
+            strokeLinecap="round"
+            r={normalizedRadius}
+            cx={radius}
+            cy={radius}
+          />
+        </svg>
+        <span className="absolute text-sm font-black text-white">{percentage}%</span>
+      </div>
+      <span className="mt-2 text-xs font-semibold text-slate-300">{label}</span>
+      {subtext && <span className="text-[10px] text-slate-500">{subtext}</span>}
+    </div>
+  )
+}
 
 export default function AdminAnalyticsPage() {
   const [detailsData, setDetailsData] = useState(null)
@@ -127,9 +169,9 @@ export default function AdminAnalyticsPage() {
     const raw = detailsData?.advanced?.deviceBreakdown || { Desktop: 0, Mobile: 0, Tablet: 0 }
     const total = (raw.Desktop || 0) + (raw.Mobile || 0) + (raw.Tablet || 0) || 1
     return [
-      { name: 'Desktop', value: raw.Desktop || 0, color: '#818cf8', pct: Math.round(((raw.Desktop || 0) / total) * 100) },
-      { name: 'Mobile', value: raw.Mobile || 0, color: '#22d3ee', pct: Math.round(((raw.Mobile || 0) / total) * 100) },
-      { name: 'Tablet', value: raw.Tablet || 0, color: '#c084fc', pct: Math.round(((raw.Tablet || 0) / total) * 100) },
+      { name: 'Desktop', value: raw.Desktop || 0, color: '#a855f7', pct: Math.round(((raw.Desktop || 0) / total) * 100) },
+      { name: 'Mobile', value: raw.Mobile || 0, color: '#06b6d4', pct: Math.round(((raw.Mobile || 0) / total) * 100) },
+      { name: 'Tablet', value: raw.Tablet || 0, color: '#818cf8', pct: Math.round(((raw.Tablet || 0) / total) * 100) },
     ]
   }, [detailsData])
 
@@ -189,7 +231,7 @@ export default function AdminAnalyticsPage() {
 
   return (
     <div className="relative min-h-screen overflow-x-clip bg-[#060811] text-slate-100 font-sans selection:bg-purple-500/30 selection:text-purple-200">
-      <SEO title="Analytics & Insights | Admin Suite" />
+      <SEO title="System Analytics | Admin Suite" />
 
       {/* Atmospheric Glow Highlights */}
       <div className="pointer-events-none absolute -left-40 top-10 h-[500px] w-[500px] rounded-full bg-gradient-to-tr from-purple-600/15 to-indigo-600/10 blur-[140px]" />
@@ -220,17 +262,14 @@ export default function AdminAnalyticsPage() {
           {/* Header Area */}
           <div className="flex flex-col justify-between gap-4 border-b border-white/[0.08] pb-6 sm:flex-row sm:items-center">
             <div>
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-0.5 text-[10px] font-bold tracking-[0.2em] text-purple-300 uppercase">
-                  CLUSTER CONTROL / ANALYTICS & INSIGHTS / v4.19-re3
-                </span>
-                <span className="flex h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981]" />
-              </div>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-0.5 text-[10px] font-bold tracking-[0.2em] text-purple-300 uppercase">
+                INSIGHTS & METRICS
+              </span>
               <h1 className="mt-2 text-2xl font-black tracking-tight text-white sm:text-3xl lg:text-4xl">
-                Cluster Intelligence & Telemetry
+                System Analytics
               </h1>
               <p className="mt-1 text-xs text-slate-400 sm:text-sm">
-                Real-time traffic profiling, reading retention velocity, geographic distribution, and AI recommendations.
+                Track platform performance, user completions, and page traffic.
               </p>
             </div>
 
@@ -246,28 +285,26 @@ export default function AdminAnalyticsPage() {
                 <span>Sync Metrics</span>
               </button>
 
-              <div className="flex items-center rounded-xl border border-white/10 bg-white/[0.03] p-1">
-                <button
-                  type="button"
-                  onClick={handleExportCSV}
-                  disabled={exporting}
-                  className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
-                  title="Export to CSV"
-                >
-                  <MdFileDownload className="text-sm text-purple-400" />
-                  <span>{exporting ? 'Exporting...' : 'CSV'}</span>
-                </button>
-                <div className="h-4 w-px bg-white/10" />
-                <button
-                  type="button"
-                  onClick={handleExportJSON}
-                  className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white"
-                  title="Export Telemetry to JSON"
-                >
-                  <MdFileDownload className="text-sm text-cyan-400" />
-                  <span>JSON</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleExportCSV}
+                disabled={exporting}
+                className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] px-4 py-2.5 text-xs font-bold text-white transition duration-200 hover:border-purple-400/50 hover:bg-white/10 disabled:opacity-50"
+                title="Export analytics to CSV"
+              >
+                <MdFileDownload className="text-base text-purple-400" />
+                <span>{exporting ? 'Exporting...' : 'Export CSV'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExportJSON}
+                className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white"
+                title="Export Telemetry to JSON"
+              >
+                <MdFileDownload className="text-sm text-cyan-400" />
+                <span>JSON</span>
+              </button>
             </div>
           </div>
 
@@ -279,113 +316,117 @@ export default function AdminAnalyticsPage() {
             </div>
           )}
 
-          {/* 4 Executive Realtime KPI Strip */}
-          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
-            {/* Card 1: Today's Traffic Pulse */}
+          {/* 1. TOP 2 HIGHLIGHT KPI CARDS (Matching Google Stitch screen) */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {/* Highlight Card 1: Today's Visits */}
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 }}
-              className="relative overflow-hidden rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-950/30 via-[#0e1424] to-[#0a0d18] p-4 shadow-lg backdrop-blur-xl"
+              className="flex items-center gap-4 rounded-2xl border border-rose-500/20 bg-gradient-to-r from-rose-950/25 via-[#0e1424] to-[#0a0d18] p-5 shadow-lg backdrop-blur-xl"
             >
-              <div className="flex items-center justify-between text-slate-400">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-purple-300/90">Today's Pulse</span>
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-500/15 text-purple-300">
-                  <MdVisibility className="text-lg" />
-                </div>
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-rose-500/30 bg-rose-500/15 text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.2)]">
+                <MdVisibility className="text-2xl" />
               </div>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-3xl font-black text-white">
+              <div className="min-w-0">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Today's Visits
+                </span>
+                <p className="text-3xl font-black text-white">
                   {loading ? '—' : Number(detailsData?.todayVisits ?? 0).toLocaleString()}
-                </span>
-                <span className="text-xs font-medium text-emerald-400 flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
-                  Live Views
-                </span>
-              </div>
-              <div className="mt-3 flex items-center justify-between text-xs text-slate-400 border-t border-white/[0.06] pt-2">
-                <span>Unique IPs Today:</span>
-                <span className="text-purple-300 font-bold">{detailsData?.todayUniqueVisitors ?? 0}</span>
+                </p>
+                <p className="text-xs text-slate-400">Pageviews today</p>
               </div>
             </motion.div>
 
-            {/* Card 2: Catalog Reads & Velocity */}
+            {/* Highlight Card 2: Today's Unique Visitors */}
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="relative overflow-hidden rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-cyan-950/30 via-[#0e1424] to-[#0a0d18] p-4 shadow-lg backdrop-blur-xl"
+              className="flex items-center gap-4 rounded-2xl border border-purple-500/20 bg-gradient-to-r from-purple-950/25 via-[#0e1424] to-[#0a0d18] p-5 shadow-lg backdrop-blur-xl"
             >
-              <div className="flex items-center justify-between text-slate-400">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-cyan-300/90">Monthly Reads</span>
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-cyan-500/15 text-cyan-300">
-                  <MdMenuBook className="text-lg" />
-                </div>
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-purple-500/30 bg-purple-500/15 text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.2)]">
+                <MdPeopleAlt className="text-2xl" />
               </div>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-3xl font-black text-white">
-                  {loading ? '—' : detailsData?.overview?.monthlyReads?.value ?? '0'}
+              <div className="min-w-0">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Today's Unique Visitors
                 </span>
-                <span className="text-xs font-medium text-cyan-300">Pages Read</span>
-              </div>
-              <div className="mt-3 flex items-center justify-between text-xs text-slate-400 border-t border-white/[0.06] pt-2">
-                <span>Velocity delta:</span>
-                <span className="text-cyan-300 font-bold">{detailsData?.overview?.monthlyReads?.hint ?? 'Stable'}</span>
-              </div>
-            </motion.div>
-
-            {/* Card 3: Reader Retention & Sessions */}
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-              className="relative overflow-hidden rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-950/30 via-[#0e1424] to-[#0a0d18] p-4 shadow-lg backdrop-blur-xl"
-            >
-              <div className="flex items-center justify-between text-slate-400">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-300/90">Retention & Immersion</span>
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300">
-                  <MdTimer className="text-lg" />
-                </div>
-              </div>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-3xl font-black text-white">
-                  {loading ? '—' : detailsData?.overview?.avgSession?.value ?? '0m'}
-                </span>
-                <span className="text-xs font-medium text-emerald-400">Avg Session</span>
-              </div>
-              <div className="mt-3 flex items-center justify-between text-xs text-slate-400 border-t border-white/[0.06] pt-2">
-                <span>Returning rate:</span>
-                <span className="text-emerald-300 font-bold">{detailsData?.overview?.returningReaders?.value ?? '0%'}</span>
-              </div>
-            </motion.div>
-
-            {/* Card 4: Active Readers & Completion */}
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-950/30 via-[#0e1424] to-[#0a0d18] p-4 shadow-lg backdrop-blur-xl"
-            >
-              <div className="flex items-center justify-between text-slate-400">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-300/90">Completion Rate</span>
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/15 text-amber-300">
-                  <MdBookmarkAdded className="text-lg" />
-                </div>
-              </div>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-3xl font-black text-white">
-                  {loading ? '—' : detailsData?.overview?.completionRate?.value ?? '0%'}
-                </span>
-                <span className="text-xs font-medium text-amber-400">Finished Books</span>
-              </div>
-              <div className="mt-3 flex items-center justify-between text-xs text-slate-400 border-t border-white/[0.06] pt-2">
-                <span>Active 24h Readers:</span>
-                <span className="text-amber-300 font-bold">{adminOverview?.activeReadersTodayCount ?? 0}</span>
+                <p className="text-3xl font-black text-white">
+                  {loading ? '—' : Number(detailsData?.todayUniqueVisitors ?? 0).toLocaleString()}
+                </p>
+                <p className="text-xs text-slate-400">Distinct IPs today</p>
               </div>
             </motion.div>
           </div>
 
-          {/* PRIMARY TRAFFIC OBSERVATORY CHART (High-Performance Native SVG) */}
+          {/* 2. 6 SECONDARY METRIC CARDS (Exact Stitch Grid) */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {/* Metric 1: Total Visits */}
+            <div className="flex flex-col justify-between rounded-2xl border border-white/[0.06] bg-[#0a0e1a]/80 p-4 transition hover:border-white/15">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Visits</span>
+              <p className="mt-1 text-2xl font-black text-white">
+                {loading ? '—' : Number(detailsData?.websiteVisits ?? 0).toLocaleString()}
+              </p>
+              <span className="mt-1 text-[11px] text-slate-400">Cumulative pageviews</span>
+            </div>
+
+            {/* Metric 2: Unique Visitors */}
+            <div className="flex flex-col justify-between rounded-2xl border border-white/[0.06] bg-[#0a0e1a]/80 p-4 transition hover:border-white/15">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Unique Visitors</span>
+              <p className="mt-1 text-2xl font-black text-white">
+                {loading ? '—' : Number(detailsData?.uniqueVisitors ?? 0).toLocaleString()}
+              </p>
+              <span className="mt-1 text-[11px] text-slate-400">Distinct IP entries</span>
+            </div>
+
+            {/* Metric 3: Monthly Reads */}
+            <div className="flex flex-col justify-between rounded-2xl border border-white/[0.06] bg-[#0a0e1a]/80 p-4 transition hover:border-white/15">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Monthly Reads</span>
+              <p className="mt-1 text-2xl font-black text-white">
+                {loading ? '—' : detailsData?.overview?.monthlyReads?.value ?? '0'}
+              </p>
+              <span className="mt-1 text-[11px] text-cyan-300 font-medium truncate">
+                {detailsData?.overview?.monthlyReads?.hint ?? 'Stable vs last month'}
+              </span>
+            </div>
+
+            {/* Metric 4: Completion Rate */}
+            <div className="flex flex-col justify-between rounded-2xl border border-white/[0.06] bg-[#0a0e1a]/80 p-4 transition hover:border-white/15">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Completion Rate</span>
+              <p className="mt-1 text-2xl font-black text-white">
+                {loading ? '—' : detailsData?.overview?.completionRate?.value ?? '0%'}
+              </p>
+              <span className="mt-1 text-[11px] text-slate-400 truncate">
+                {detailsData?.overview?.completionRate?.hint ?? 'No reading sessions'}
+              </span>
+            </div>
+
+            {/* Metric 5: Avg Session */}
+            <div className="flex flex-col justify-between rounded-2xl border border-white/[0.06] bg-[#0a0e1a]/80 p-4 transition hover:border-white/15">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Avg Session</span>
+              <p className="mt-1 text-2xl font-black text-white">
+                {loading ? '—' : detailsData?.overview?.avgSession?.value ?? '0m'}
+              </p>
+              <span className="mt-1 text-[11px] text-slate-400 truncate">
+                {detailsData?.overview?.avgSession?.hint ?? 'No sessions recorded'}
+              </span>
+            </div>
+
+            {/* Metric 6: Returning Readers */}
+            <div className="flex flex-col justify-between rounded-2xl border border-white/[0.06] bg-[#0a0e1a]/80 p-4 transition hover:border-white/15">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Returning Readers</span>
+              <p className="mt-1 text-2xl font-black text-white">
+                {loading ? '—' : detailsData?.overview?.returningReaders?.value ?? '0%'}
+              </p>
+              <span className="mt-1 text-[11px] text-slate-400 truncate">
+                {detailsData?.overview?.returningReaders?.hint ?? 'No active readers'}
+              </span>
+            </div>
+          </div>
+
+          {/* 3. PRIMARY TRAFFIC OBSERVATORY CHART (Website Traffic Profile) */}
           <motion.section
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -393,22 +434,17 @@ export default function AdminAnalyticsPage() {
           >
             <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
               <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-black tracking-tight text-white sm:text-xl">
-                    Website Traffic Observatory
-                  </h3>
-                  <span className="rounded-md border border-purple-500/30 bg-purple-500/15 px-2 py-0.5 text-[10px] font-bold text-purple-300">
-                    Dual Series AST
-                  </span>
-                </div>
-                <div className="mt-1 flex flex-wrap items-center gap-4 text-xs">
+                <h3 className="text-lg font-black tracking-tight text-white sm:text-xl">
+                  Website Traffic Profile
+                </h3>
+                <div className="mt-1.5 flex flex-wrap items-center gap-4 text-xs">
                   <span className="flex items-center gap-1.5 font-semibold text-purple-300">
                     <span className="h-2.5 w-2.5 rounded-full bg-purple-500 shadow-[0_0_8px_#a855f7]" />
-                    Total Pageviews ({detailsData?.websiteVisits ?? 0})
+                    Total Visits
                   </span>
                   <span className="flex items-center gap-1.5 font-semibold text-cyan-300">
                     <span className="h-2.5 w-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]" />
-                    Unique Visitors ({detailsData?.uniqueVisitors ?? 0})
+                    Unique Visitors
                   </span>
                 </div>
               </div>
@@ -592,7 +628,7 @@ export default function AdminAnalyticsPage() {
                     })}
                   </svg>
 
-                  {/* Absolute HTML Glass Tooltip */}
+                  {/* Floating HTML Glass Tooltip */}
                   {hoveredPoint && (
                     <div
                       className="absolute z-50 rounded-2xl border border-white/15 bg-[#090d18]/95 p-3.5 shadow-2xl backdrop-blur-2xl pointer-events-none transition-all duration-150 min-w-[180px]"
@@ -637,27 +673,25 @@ export default function AdminAnalyticsPage() {
             </div>
           </motion.section>
 
-          {/* 2-COLUMN INTELLIGENCE GRID 1: GEOGRAPHIC & DEVICES */}
+          {/* 4. 2X2 TELEMETRY GRID (Matching Google Stitch Layout) */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {/* Geographic Distribution */}
+            {/* Box 1: Geographic Distribution */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               className="rounded-2xl border border-white/[0.08] bg-[#0a0e1a]/90 p-5 shadow-xl backdrop-blur-xl"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-base font-black text-white flex items-center gap-2">
-                    <MdPublic className="text-purple-400 text-lg" />
-                    Geographic Reader Distribution
-                  </h3>
-                  <p className="text-xs text-slate-400">Top visitor origins resolved by GeoIP telemetry</p>
-                </div>
+              <div>
+                <h3 className="text-base font-black text-white flex items-center gap-2">
+                  <MdPublic className="text-purple-400 text-lg" />
+                  Geographic Distribution
+                </h3>
+                <p className="text-xs text-slate-400">Top 5 visitor locations resolved by offline country logs</p>
               </div>
 
               <div className="mt-5 space-y-3.5">
                 {loading ? (
-                  [...Array(4)].map((_, i) => (
+                  [...Array(5)].map((_, i) => (
                     <div key={i} className="animate-pulse space-y-1.5">
                       <div className="h-4 w-28 rounded bg-white/10" />
                       <div className="h-2 rounded bg-white/5" />
@@ -673,8 +707,8 @@ export default function AdminAnalyticsPage() {
                         <div key={g.country || idx} className="space-y-1.5">
                           <div className="flex items-center justify-between text-xs">
                             <span className="font-bold text-slate-200 flex items-center gap-2">
-                              <span className="text-purple-400 font-mono">#{idx + 1}</span>
-                              <span>🌐 {g.country}</span>
+                              <span className="text-sm">{getCountryFlag(g.country)}</span>
+                              <span className="font-mono text-purple-300">{g.country}</span>
                             </span>
                             <span className="font-extrabold text-white">{g.count.toLocaleString()} views</span>
                           </div>
@@ -696,7 +730,7 @@ export default function AdminAnalyticsPage() {
               </div>
             </motion.div>
 
-            {/* Devices & Ecosystem */}
+            {/* Box 2: Devices & Engagement (with Circular Gauge Rings) */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -705,29 +739,26 @@ export default function AdminAnalyticsPage() {
               <div>
                 <h3 className="text-base font-black text-white flex items-center gap-2">
                   <MdDevices className="text-cyan-400 text-lg" />
-                  Device Fleet & Bounce Dynamics
+                  Devices & Engagement
                 </h3>
-                <p className="text-xs text-slate-400">Platform breakdown and session interaction metrics</p>
+                <p className="text-xs text-slate-400">Distribution of access platforms and session metrics</p>
 
-                {/* Device distribution bars */}
-                <div className="mt-5 grid grid-cols-3 gap-3 text-center">
+                {/* 3 Circular SVG Gauges */}
+                <div className="mt-6 grid grid-cols-3 gap-2 text-center">
                   {deviceStats.map((d) => (
-                    <div
+                    <CircularGauge
                       key={d.name}
-                      className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-3 transition hover:border-white/15"
-                    >
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{d.name}</span>
-                      <p className="mt-1 text-2xl font-black" style={{ color: d.color }}>
-                        {loading ? '—' : `${d.pct}%`}
-                      </p>
-                      <span className="text-[10px] text-slate-500">{d.value} hits</span>
-                    </div>
+                      percentage={loading ? 0 : d.pct}
+                      label={d.name}
+                      color={d.color}
+                      subtext={`${d.value} hits`}
+                    />
                   ))}
                 </div>
               </div>
 
               {/* Sub metrics: Bounce Rate & New vs Returning */}
-              <div className="mt-5 grid grid-cols-2 gap-3 border-t border-white/[0.06] pt-4">
+              <div className="mt-6 grid grid-cols-2 gap-3 border-t border-white/[0.06] pt-4">
                 <div className="rounded-xl border border-white/[0.05] bg-white/[0.02] p-3 text-center">
                   <p className="text-2xl font-black text-rose-400">
                     {loading ? '—' : `${detailsData?.advanced?.bounceRate ?? adminOverview?.bounceRate ?? 0}%`}
@@ -756,15 +787,12 @@ export default function AdminAnalyticsPage() {
                       })()
                     )}
                   </div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">New / Returning</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">New vs Returning</p>
                 </div>
               </div>
             </motion.div>
-          </div>
 
-          {/* 2-COLUMN INTELLIGENCE GRID 2: TOP ROUTES & 24H HEATMAP */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {/* Top Visited Routes */}
+            {/* Box 3: Most Visited Pages */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -772,22 +800,22 @@ export default function AdminAnalyticsPage() {
             >
               <h3 className="text-base font-black text-white flex items-center gap-2">
                 <MdTrendingUp className="text-emerald-400 text-lg" />
-                Most Traversed App Routes
+                Most Visited Pages
               </h3>
-              <p className="text-xs text-slate-400">Top 5 frontend routes accessed across the ecosystem</p>
+              <p className="text-xs text-slate-400">Top 5 routes and views tracked across the frontend app</p>
 
               <div className="mt-4 overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="border-b border-white/[0.08] text-[10px] font-bold uppercase tracking-wider text-slate-400">
                       <th className="pb-2.5">Rank</th>
-                      <th className="pb-2.5">App Path</th>
-                      <th className="pb-2.5 text-right">Pageviews</th>
+                      <th className="pb-2.5">Path</th>
+                      <th className="pb-2.5 text-right">Views</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/[0.04]">
                     {loading ? (
-                      [...Array(4)].map((_, i) => (
+                      [...Array(5)].map((_, i) => (
                         <tr key={i} className="animate-pulse">
                           <td className="py-2.5"><div className="h-4 w-6 rounded bg-white/10" /></td>
                           <td className="py-2.5"><div className="h-4 w-32 rounded bg-white/10" /></td>
@@ -818,7 +846,7 @@ export default function AdminAnalyticsPage() {
               </div>
             </motion.div>
 
-            {/* 24-Hour Diurnal Activity Histogram */}
+            {/* Box 4: Active Hours Breakdown (24h Histogram) */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -826,9 +854,9 @@ export default function AdminAnalyticsPage() {
             >
               <h3 className="text-base font-black text-white flex items-center gap-2">
                 <MdAccessTime className="text-amber-400 text-lg" />
-                Diurnal Peak Activity (24 Hours)
+                Active Hours Breakdown
               </h3>
-              <p className="text-xs text-slate-400">Traffic volume distributed across hours of the day (00:00 - 23:00)</p>
+              <p className="text-xs text-slate-400">Visits count grouped by the hour of day (0 to 23)</p>
 
               <div className="mt-4 w-full overflow-hidden">
                 {loading ? (
@@ -889,7 +917,7 @@ export default function AdminAnalyticsPage() {
             </motion.div>
           </div>
 
-          {/* AI CATALOG RECOMMENDATIONS & CLUSTER AUDIT */}
+          {/* 5. AI CATALOG RECOMMENDATIONS & LEADERBOARD */}
           {adminOverview && (
             <motion.section
               initial={{ opacity: 0, y: 10 }}
