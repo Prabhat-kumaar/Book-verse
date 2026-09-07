@@ -1,20 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  BarChart,
-  Bar,
-  Cell,
-  PieChart,
-  Pie,
-} from 'recharts'
-import {
   MdInsights,
   MdRefresh,
   MdFileDownload,
@@ -38,32 +24,8 @@ import {
 import AdminSidebar from '../components/AdminSidebar'
 import apiClient from '../lib/apiClient'
 import SEO from '../components/SEO'
-import { getBookThumbnailUrl } from '../lib/mediaUrls'
 
 const isDev = import.meta.env.DEV
-
-// Custom Recharts Dark Tooltip
-function CustomChartTooltip({ active, payload, label }) {
-  if (active && payload && payload.length) {
-    return (
-      <div className="rounded-2xl border border-white/15 bg-[#090d18]/95 p-3.5 shadow-2xl backdrop-blur-2xl text-xs">
-        <p className="font-bold text-slate-300 border-b border-white/10 pb-1.5 mb-2">{label}</p>
-        <div className="space-y-1.5 font-semibold">
-          {payload.map((entry, index) => (
-            <div key={`item-${index}`} className="flex items-center justify-between gap-4">
-              <span className="flex items-center gap-1.5" style={{ color: entry.color }}>
-                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
-                <span>{entry.name}:</span>
-              </span>
-              <span className="font-black text-white">{Number(entry.value).toLocaleString()}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
-  return null
-}
 
 export default function AdminAnalyticsPage() {
   const [detailsData, setDetailsData] = useState(null)
@@ -72,6 +34,7 @@ export default function AdminAnalyticsPage() {
   const [error, setError] = useState('')
   const [exporting, setExporting] = useState(false)
   const [timeFrame, setTimeFrame] = useState('day') // 'day' | 'month' | 'year'
+  const [hoveredPoint, setHoveredPoint] = useState(null)
   const [toastMessage, setToastMessage] = useState('')
 
   const showToast = (msg) => {
@@ -96,11 +59,11 @@ export default function AdminAnalyticsPage() {
       }
 
       if (!detailsRes?.data?.success && !overviewRes?.data?.success) {
-        setError('Failed to fetch analytics data from telemetry cluster.')
+        setError('Unable to reach telemetry service. Showing cached metrics.')
       }
     } catch (err) {
       if (isDev) console.error('Error fetching analytics details:', err)
-      setError(err.response?.data?.message || 'Error communicating with analytics telemetry service.')
+      setError('Telemetry service temporarily unavailable.')
     } finally {
       setLoading(false)
     }
@@ -111,7 +74,8 @@ export default function AdminAnalyticsPage() {
   }, [])
 
   const chartData = useMemo(() => {
-    return detailsData?.charts?.[timeFrame] || []
+    const raw = detailsData?.charts?.[timeFrame]
+    return Array.isArray(raw) ? raw : []
   }, [detailsData, timeFrame])
 
   const handleExportCSV = async () => {
@@ -158,10 +122,10 @@ export default function AdminAnalyticsPage() {
     showToast('Analytics JSON telemetry exported.')
   }
 
-  // Device Breakdown calculations for Pie Chart
-  const devicePieData = useMemo(() => {
+  // Device Breakdown calculations
+  const deviceStats = useMemo(() => {
     const raw = detailsData?.advanced?.deviceBreakdown || { Desktop: 0, Mobile: 0, Tablet: 0 }
-    const total = Object.values(raw).reduce((a, b) => a + b, 0) || 1
+    const total = (raw.Desktop || 0) + (raw.Mobile || 0) + (raw.Tablet || 0) || 1
     return [
       { name: 'Desktop', value: raw.Desktop || 0, color: '#818cf8', pct: Math.round(((raw.Desktop || 0) / total) * 100) },
       { name: 'Mobile', value: raw.Mobile || 0, color: '#22d3ee', pct: Math.round(((raw.Mobile || 0) / total) * 100) },
@@ -169,18 +133,59 @@ export default function AdminAnalyticsPage() {
     ]
   }, [detailsData])
 
-  // 24h Peak hours data
-  const peakHoursData = useMemo(() => {
-    const raw = detailsData?.advanced?.peakHours || []
-    return Array.from({ length: 24 }, (_, i) => {
-      const match = raw.find((h) => h.hour === i)
-      return {
-        hour: `${i}:00`,
-        hourNum: i,
-        visits: match ? match.count : 0,
-      }
-    })
-  }, [detailsData])
+  // Custom SVG Traffic Chart Math
+  const maxVisits = chartData.length > 0 ? Math.max(...chartData.map((d) => Math.max(d?.visits || 0, d?.unique || 0)), 10) : 100
+  const yMax = maxVisits * 1.15
+
+  const svgWidth = 1000
+  const svgHeight = 320
+  const paddingLeft = 55
+  const paddingRight = 20
+  const paddingTop = 30
+  const paddingBottom = 40
+
+  const chartWidth = svgWidth - paddingLeft - paddingRight
+  const chartHeight = svgHeight - paddingTop - paddingBottom
+
+  const pointsVisits = chartData.map((d, i) => {
+    const denom = Math.max(1, chartData.length - 1)
+    const x = paddingLeft + (i / denom) * chartWidth
+    const y = paddingTop + chartHeight - ((d?.visits || 0) / yMax) * chartHeight
+    return { x, y, label: d?.label || '', visits: d?.visits || 0, unique: d?.unique || 0 }
+  })
+
+  const pointsUnique = chartData.map((d, i) => {
+    const denom = Math.max(1, chartData.length - 1)
+    const x = paddingLeft + (i / denom) * chartWidth
+    const y = paddingTop + chartHeight - ((d?.unique || 0) / yMax) * chartHeight
+    return { x, y, label: d?.label || '', visits: d?.visits || 0, unique: d?.unique || 0 }
+  })
+
+  const linePathVisits = pointsVisits.length > 0
+    ? pointsVisits.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
+    : ''
+
+  const areaPathVisits = pointsVisits.length > 0
+    ? `${linePathVisits} L ${pointsVisits[pointsVisits.length - 1].x.toFixed(1)} ${paddingTop + chartHeight} L ${pointsVisits[0].x.toFixed(1)} ${paddingTop + chartHeight} Z`
+    : ''
+
+  const linePathUnique = pointsUnique.length > 0
+    ? pointsUnique.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
+    : ''
+
+  const areaPathUnique = pointsUnique.length > 0
+    ? `${linePathUnique} L ${pointsUnique[pointsUnique.length - 1].x.toFixed(1)} ${paddingTop + chartHeight} L ${pointsUnique[0].x.toFixed(1)} ${paddingTop + chartHeight} Z`
+    : ''
+
+  const gridTicks = [0, 0.25, 0.5, 0.75, 1]
+  const gridLines = gridTicks.map((t) => {
+    const y = paddingTop + chartHeight - t * chartHeight
+    const value = Math.round(t * maxVisits)
+    return { y, value }
+  })
+
+  const labelInterval = Math.max(1, Math.floor(chartData.length / 8))
+  const xLabels = pointsVisits.filter((_, i) => i % labelInterval === 0 || i === pointsVisits.length - 1)
 
   return (
     <div className="relative min-h-screen overflow-x-clip bg-[#060811] text-slate-100 font-sans selection:bg-purple-500/30 selection:text-purple-200">
@@ -198,7 +203,7 @@ export default function AdminAnalyticsPage() {
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -15, scale: 0.95 }}
-            className="fixed right-6 top-6 z-[100] flex items-center gap-3 rounded-2xl border border-white/15 bg-[#0f172a]/95 px-5 py-3.5 text-sm font-medium text-white shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-2xl"
+            className="fixed right-6 top-6 z-[120] flex items-center gap-3 rounded-2xl border border-white/15 bg-[#0f172a]/95 px-5 py-3.5 text-sm font-medium text-white shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-2xl"
           >
             <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-purple-500/20 text-purple-300">
               <MdAutoAwesome className="text-base" />
@@ -269,7 +274,7 @@ export default function AdminAnalyticsPage() {
           {/* Error Banner */}
           {error && (
             <div className="flex items-center gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">
-              <MdInfoOutline className="text-xl text-rose-400" />
+              <MdInfoOutline className="text-xl text-rose-400 shrink-0" />
               <span>{error}</span>
             </div>
           )}
@@ -380,7 +385,7 @@ export default function AdminAnalyticsPage() {
             </motion.div>
           </div>
 
-          {/* PRIMARY TRAFFIC OBSERVATORY CHART (Recharts) */}
+          {/* PRIMARY TRAFFIC OBSERVATORY CHART (High-Performance Native SVG) */}
           <motion.section
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -418,7 +423,10 @@ export default function AdminAnalyticsPage() {
                   <button
                     key={tf.key}
                     type="button"
-                    onClick={() => setTimeFrame(tf.key)}
+                    onClick={() => {
+                      setTimeFrame(tf.key)
+                      setHoveredPoint(null)
+                    }}
                     className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition duration-150 ${
                       timeFrame === tf.key
                         ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-[0_0_12px_rgba(147,51,234,0.4)]'
@@ -431,63 +439,198 @@ export default function AdminAnalyticsPage() {
               </div>
             </div>
 
-            {/* Recharts Area Container */}
-            <div className="h-[340px] w-full">
+            {/* SVG Area Container */}
+            <div className="relative w-full overflow-hidden">
               {loading ? (
-                <div className="flex h-full w-full items-center justify-center">
+                <div className="flex h-[320px] w-full items-center justify-center">
                   <div className="h-10 w-10 animate-spin rounded-full border-4 border-purple-500 border-t-transparent" />
                 </div>
               ) : chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                <div className="relative">
+                  <svg
+                    viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+                    className="w-full h-auto overflow-visible select-none"
+                  >
                     <defs>
-                      <linearGradient id="purpleVisits" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#a855f7" stopOpacity={0.35} />
-                        <stop offset="95%" stopColor="#a855f7" stopOpacity={0.0} />
+                      <linearGradient id="purpleVisitsGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#a855f7" stopOpacity={0.35} />
+                        <stop offset="100%" stopColor="#a855f7" stopOpacity={0.0} />
                       </linearGradient>
-                      <linearGradient id="cyanUnique" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.35} />
-                        <stop offset="95%" stopColor="#06b6d4" stopOpacity={0.0} />
+                      <linearGradient id="cyanUniqueGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.35} />
+                        <stop offset="100%" stopColor="#06b6d4" stopOpacity={0.0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-                    <XAxis
-                      dataKey="label"
-                      stroke="#64748b"
-                      fontSize={11}
-                      tickLine={false}
-                      axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
-                    />
-                    <YAxis
-                      stroke="#64748b"
-                      fontSize={11}
-                      tickLine={false}
-                      axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
-                      tickFormatter={(val) => (val >= 1000 ? `${(val / 1000).toFixed(1)}k` : val)}
-                    />
-                    <Tooltip content={<CustomChartTooltip />} />
-                    <Area
-                      type="monotone"
-                      dataKey="visits"
-                      name="Total Pageviews"
-                      stroke="#a855f7"
-                      strokeWidth={2.5}
-                      fillOpacity={1}
-                      fill="url(#purpleVisits)"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="unique"
-                      name="Unique Visitors"
-                      stroke="#06b6d4"
-                      strokeWidth={2.5}
-                      fillOpacity={1}
-                      fill="url(#cyanUnique)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+
+                    {/* Horizontal Gridlines */}
+                    {gridLines.map((gl, i) => (
+                      <g key={i}>
+                        <line
+                          x1={paddingLeft}
+                          y1={gl.y}
+                          x2={svgWidth - paddingRight}
+                          y2={gl.y}
+                          stroke="rgba(255,255,255,0.06)"
+                          strokeDasharray="4 4"
+                        />
+                        <text
+                          x={paddingLeft - 10}
+                          y={gl.y + 4}
+                          fill="#64748b"
+                          fontSize={10}
+                          textAnchor="end"
+                          className="font-medium"
+                        >
+                          {gl.value >= 1000 ? `${(gl.value / 1000).toFixed(1)}k` : gl.value}
+                        </text>
+                      </g>
+                    ))}
+
+                    {/* Gradient Area Fills */}
+                    {areaPathVisits && (
+                      <path d={areaPathVisits} fill="url(#purpleVisitsGrad)" />
+                    )}
+                    {areaPathUnique && (
+                      <path d={areaPathUnique} fill="url(#cyanUniqueGrad)" />
+                    )}
+
+                    {/* Line Paths */}
+                    {linePathVisits && (
+                      <path
+                        d={linePathVisits}
+                        fill="none"
+                        stroke="#a855f7"
+                        strokeWidth={2.5}
+                        strokeLinecap="round"
+                      />
+                    )}
+                    {linePathUnique && (
+                      <path
+                        d={linePathUnique}
+                        fill="none"
+                        stroke="#06b6d4"
+                        strokeWidth={2.5}
+                        strokeLinecap="round"
+                      />
+                    )}
+
+                    {/* X-Axis labels */}
+                    {xLabels.map((p, i) => (
+                      <text
+                        key={i}
+                        x={p.x}
+                        y={svgHeight - 12}
+                        fill="#64748b"
+                        fontSize={10}
+                        textAnchor="middle"
+                        className="font-medium"
+                      >
+                        {p.label}
+                      </text>
+                    ))}
+
+                    {/* Hover Interactive Zones */}
+                    {pointsVisits.map((p, i) => {
+                      const uPoint = pointsUnique[i] || p
+                      return (
+                        <g key={i}>
+                          {hoveredPoint?.index === i && (
+                            <line
+                              x1={p.x}
+                              y1={paddingTop}
+                              x2={p.x}
+                              y2={paddingTop + chartHeight}
+                              stroke="rgba(255,255,255,0.2)"
+                              strokeWidth={1.5}
+                              strokeDasharray="3 3"
+                              className="pointer-events-none"
+                            />
+                          )}
+                          <rect
+                            x={p.x - chartWidth / (chartData.length * 2)}
+                            y={paddingTop}
+                            width={chartWidth / (chartData.length || 1)}
+                            height={chartHeight}
+                            fill="transparent"
+                            className="cursor-pointer"
+                            onMouseEnter={() =>
+                              setHoveredPoint({
+                                x: p.x,
+                                y: (p.y + uPoint.y) / 2,
+                                label: p.label,
+                                visits: p.visits,
+                                unique: uPoint.unique,
+                                index: i,
+                              })
+                            }
+                            onMouseLeave={() => setHoveredPoint(null)}
+                          />
+                          {hoveredPoint?.index === i && (
+                            <>
+                              <circle
+                                cx={p.x}
+                                cy={p.y}
+                                r={5}
+                                fill="#a855f7"
+                                stroke="#fff"
+                                strokeWidth={2}
+                                className="pointer-events-none"
+                              />
+                              <circle
+                                cx={uPoint.x}
+                                cy={uPoint.y}
+                                r={5}
+                                fill="#06b6d4"
+                                stroke="#fff"
+                                strokeWidth={2}
+                                className="pointer-events-none"
+                              />
+                            </>
+                          )}
+                        </g>
+                      )
+                    })}
+                  </svg>
+
+                  {/* Absolute HTML Glass Tooltip */}
+                  {hoveredPoint && (
+                    <div
+                      className="absolute z-50 rounded-2xl border border-white/15 bg-[#090d18]/95 p-3.5 shadow-2xl backdrop-blur-2xl pointer-events-none transition-all duration-150 min-w-[180px]"
+                      style={{
+                        left: `${(hoveredPoint.x / svgWidth) * 100}%`,
+                        top: `${(hoveredPoint.y / svgHeight) * 100 - 15}%`,
+                        transform:
+                          hoveredPoint.x / svgWidth > 0.8
+                            ? 'translate(-100%, -120%)'
+                            : hoveredPoint.x / svgWidth < 0.2
+                            ? 'translate(0%, -120%)'
+                            : 'translate(-50%, -120%)',
+                      }}
+                    >
+                      <p className="text-[11px] font-bold text-slate-300 border-b border-white/10 pb-1 mb-1.5">
+                        {hoveredPoint.label}
+                      </p>
+                      <div className="space-y-1 text-xs font-semibold">
+                        <div className="flex items-center justify-between gap-4 text-purple-300">
+                          <span className="flex items-center gap-1.5">
+                            <span className="h-2 w-2 rounded-full bg-purple-500" />
+                            Total Visits:
+                          </span>
+                          <span className="font-black text-white">{hoveredPoint.visits.toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-4 text-cyan-300">
+                          <span className="flex items-center gap-1.5">
+                            <span className="h-2 w-2 rounded-full bg-cyan-400" />
+                            Unique Visitors:
+                          </span>
+                          <span className="font-black text-white">{hoveredPoint.unique.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-slate-500 text-sm">
+                <div className="flex h-[320px] w-full items-center justify-center text-slate-500 text-sm">
                   No traffic information recorded for this period yet.
                 </div>
               )}
@@ -566,9 +709,9 @@ export default function AdminAnalyticsPage() {
                 </h3>
                 <p className="text-xs text-slate-400">Platform breakdown and session interaction metrics</p>
 
-                {/* Device distribution bars / radial */}
+                {/* Device distribution bars */}
                 <div className="mt-5 grid grid-cols-3 gap-3 text-center">
-                  {devicePieData.map((d) => (
+                  {deviceStats.map((d) => (
                     <div
                       key={d.name}
                       className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-3 transition hover:border-white/15"
@@ -687,40 +830,60 @@ export default function AdminAnalyticsPage() {
               </h3>
               <p className="text-xs text-slate-400">Traffic volume distributed across hours of the day (00:00 - 23:00)</p>
 
-              <div className="mt-4 h-[200px] w-full">
+              <div className="mt-4 w-full overflow-hidden">
                 {loading ? (
-                  <div className="flex h-full w-full items-center justify-center">
+                  <div className="flex h-[180px] w-full items-center justify-center">
                     <div className="h-8 w-8 animate-spin rounded-full border-4 border-amber-500 border-t-transparent" />
                   </div>
                 ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={peakHoursData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                      <XAxis
-                        dataKey="hourNum"
-                        stroke="#64748b"
-                        fontSize={10}
-                        tickLine={false}
-                        tickFormatter={(h) => (h % 3 === 0 ? `${h}h` : '')}
-                      />
-                      <YAxis stroke="#64748b" fontSize={10} tickLine={false} />
-                      <Tooltip content={<CustomChartTooltip />} />
-                      <Bar dataKey="visits" name="Visits" fill="#38bdf8" radius={[4, 4, 0, 0]}>
-                        {peakHoursData.map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={entry.visits > 0 ? 'url(#barGradient)' : 'rgba(255,255,255,0.05)'}
-                          />
-                        ))}
-                      </Bar>
-                      <defs>
-                        <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#a855f7" />
-                          <stop offset="100%" stopColor="#06b6d4" />
-                        </linearGradient>
-                      </defs>
-                    </BarChart>
-                  </ResponsiveContainer>
+                  (() => {
+                    const peakHours = detailsData?.advanced?.peakHours || Array.from({ length: 24 }, (_, h) => ({ hour: h, count: 0 }))
+                    const maxHourCount = Math.max(...peakHours.map((p) => p.count), 5)
+                    return (
+                      <svg viewBox="0 0 800 200" className="w-full h-auto overflow-visible select-none">
+                        <defs>
+                          <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#a855f7" />
+                            <stop offset="100%" stopColor="#06b6d4" />
+                          </linearGradient>
+                        </defs>
+                        {peakHours.map((ph, idx) => {
+                          const barWidth = 20
+                          const gap = 11
+                          const x = 30 + idx * (barWidth + gap)
+                          const barHeight = (ph.count / maxHourCount) * 140
+                          const y = 170 - barHeight
+                          return (
+                            <g key={idx} className="group cursor-pointer">
+                              <rect x={x - 2} y={10} width={barWidth + 4} height={160} fill="transparent" />
+                              <rect
+                                x={x}
+                                y={y}
+                                width={barWidth}
+                                height={barHeight}
+                                rx="3"
+                                fill="url(#barGradient)"
+                                className="transition-all duration-300 hover:opacity-80"
+                              />
+                              {idx % 4 === 0 && (
+                                <text
+                                  x={x + barWidth / 2}
+                                  y="192"
+                                  fill="#64748b"
+                                  fontSize="10"
+                                  textAnchor="middle"
+                                  className="font-semibold"
+                                >
+                                  {ph.hour}h
+                                </text>
+                              )}
+                              <title>{`${ph.hour}:00 - ${ph.count} visits`}</title>
+                            </g>
+                          )
+                        })}
+                      </svg>
+                    )
+                  })()
                 )}
               </div>
             </motion.div>
