@@ -7,7 +7,9 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "reset:admin": "node scripts/resetAdminPassword.js",
-    "generate:sitemap": "node scripts/generate-sitemap.js"
+    "generate:sitemap": "node scripts/generate-sitemap.js",
+    "catalog:seed": "node scripts/ingestTop1000.js",
+    "catalog:seed:top": "node scripts/seedTopCatalog.js"
   },
   "dependencies": {
     "adm-zip": "^0.6.0",
