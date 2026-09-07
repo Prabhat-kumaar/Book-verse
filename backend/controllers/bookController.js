@@ -230,13 +230,23 @@ const addBook = async (req, res, next) => {
             try {
                 const parsed = JSON.parse(req.body.tags);
                 if (Array.isArray(parsed)) {
-                    tags = parsed;
+                    tags = parsed.map((t) => String(t).trim()).filter(Boolean);
                 } else if (typeof req.body.tags === 'string') {
-                    tags = req.body.tags.split(',').map((t) => t.trim()).filter(Boolean);
+                    const rawTags = req.body.tags.trim();
+                    tags = rawTags.includes(',')
+                        ? rawTags.split(',').map((t) => t.trim()).filter(Boolean)
+                        : rawTags.includes(';')
+                            ? rawTags.split(';').map((t) => t.trim()).filter(Boolean)
+                            : rawTags.split(/\s+/).map((t) => t.trim()).filter(Boolean);
                 }
             } catch {
                 if (typeof req.body.tags === 'string') {
-                    tags = req.body.tags.split(',').map((t) => t.trim()).filter(Boolean);
+                    const rawTags = req.body.tags.trim();
+                    tags = rawTags.includes(',')
+                        ? rawTags.split(',').map((t) => t.trim()).filter(Boolean)
+                        : rawTags.includes(';')
+                            ? rawTags.split(';').map((t) => t.trim()).filter(Boolean)
+                            : rawTags.split(/\s+/).map((t) => t.trim()).filter(Boolean);
                 }
             }
         }

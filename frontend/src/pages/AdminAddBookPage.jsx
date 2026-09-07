@@ -307,29 +307,35 @@ export default function AdminAddBookPage() {
 
   const buildBookFormData = (book) => {
     const formData = new FormData()
-    formData.append('title', book.title.trim())
-    formData.append('author', book.author.trim())
-    formData.append('category', book.category.trim())
-    formData.append('description', book.description.trim())
-    formData.append(
-      'tags',
-      JSON.stringify(
-        book.tags
-          .split(',')
-          .map((tag) => tag.trim())
-          .filter(Boolean),
-      ),
-    )
-    formData.append('language', book.language.trim())
-    formData.append('difficulty', book.difficulty.trim())
+    formData.append('title', (book.title || '').trim())
+    formData.append('author', (book.author || '').trim())
+    formData.append('category', (book.category || 'General').trim())
+    formData.append('description', (book.description || '').trim())
 
-    if (book.thumbnailUrl?.trim()) {
+    const rawTags = (book.tags || '').trim()
+    const splitTags = rawTags.includes(',')
+      ? rawTags.split(',').map((t) => t.trim()).filter(Boolean)
+      : rawTags.includes(';')
+        ? rawTags.split(';').map((t) => t.trim()).filter(Boolean)
+        : rawTags.split(/\s+/).map((t) => t.trim()).filter(Boolean)
+    formData.append('tags', JSON.stringify(splitTags))
+
+    formData.append('language', (book.language || 'English').trim())
+    formData.append('difficulty', (book.difficulty || 'Beginner').trim())
+
+    // Thumbnail: Prioritize according to mediaMode
+    if (mediaMode.thumbnail === 'file' && book.thumbnailFile) {
+      formData.append('thumbnail', book.thumbnailFile)
+    } else if (book.thumbnailUrl?.trim()) {
       formData.append('thumbnail', book.thumbnailUrl.trim())
     } else if (book.thumbnailFile) {
       formData.append('thumbnail', book.thumbnailFile)
     }
 
-    if (book.fileUrl?.trim()) {
+    // Book File: Prioritize according to mediaMode
+    if (mediaMode.file === 'file' && book.bookFile) {
+      formData.append('file', book.bookFile)
+    } else if (book.fileUrl?.trim()) {
       formData.append('fileUrl', book.fileUrl.trim())
     } else if (book.bookFile) {
       formData.append('file', book.bookFile)

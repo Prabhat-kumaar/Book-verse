@@ -25,12 +25,9 @@ const fileFilter = (_req, file, cb) => {
 
     if (file.fieldname === 'file' || file.fieldname === 'pdf') {
         if (!ALLOWED_BOOK_EXTS.has(ext)) {
-            return cb(new Error('Only .pdf and .epub file extensions are permitted'));
-        }
-
-        const validMimes = ['application/pdf', 'application/epub+zip', 'application/octet-stream', 'application/x-zip-compressed'];
-        if (file.mimetype && !validMimes.includes(file.mimetype.toLowerCase())) {
-            return cb(new Error('Invalid MIME type for book file'));
+            const err = new Error(`Only .pdf and .epub file extensions are permitted (received: ${ext || 'unknown'})`);
+            err.statusCode = 400;
+            return cb(err);
         }
 
         return cb(null, true);
@@ -38,17 +35,17 @@ const fileFilter = (_req, file, cb) => {
 
     if (file.fieldname === 'thumbnail') {
         if (!ALLOWED_IMAGE_EXTS.has(ext)) {
-            return cb(new Error('Only .jpg, .jpeg, .png, .webp, and .avif image files are allowed for thumbnail'));
-        }
-
-        if (file.mimetype && !file.mimetype.toLowerCase().startsWith('image/')) {
-            return cb(new Error('Invalid image MIME type for thumbnail'));
+            const err = new Error(`Only .jpg, .jpeg, .png, .webp, and .avif image files are allowed for cover (received: ${ext || 'unknown'})`);
+            err.statusCode = 400;
+            return cb(err);
         }
 
         return cb(null, true);
     }
 
-    return cb(new Error('Unexpected upload field'));
+    const err = new Error(`Unexpected upload field: ${file.fieldname}`);
+    err.statusCode = 400;
+    return cb(err);
 };
 
 const upload = multer({
@@ -61,3 +58,4 @@ const upload = multer({
 });
 
 module.exports = upload;
+
