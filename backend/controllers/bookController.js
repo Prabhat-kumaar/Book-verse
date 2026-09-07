@@ -727,6 +727,191 @@ const getChapterByNumber = async (req, res, next) => {
     }
 };
 
+const detectCategory = (title = '', subjects = []) => {
+    const text = (title + ' ' + (Array.isArray(subjects) ? subjects.join(' ') : '')).toLowerCase();
+    if (/code|programming|developer|software|algorithm|javascript|python|computer science|web dev|react|backend|frontend/i.test(text)) return 'Programming';
+    if (/artificial intelligence|\bai\b|machine learning|deep learning|neural network|llm|nlp|data science/i.test(text)) return 'AI';
+    if (/business|finance|economics|investing|startup|wealth|money|marketing|sales|entrepreneur/i.test(text)) return 'Business';
+    if (/productivity|habit|habits|deep work|focus|time management|discipline|atomic|personal growth|self-help|mindset|psychology|success|motivation|leadership/i.test(text)) return 'Self-Help';
+    if (/sci-fi|science fiction|space|cyberpunk|dystopia|future|fantasy|robot|alien/i.test(text)) return 'Science Fiction';
+    if (/philosophy|stoic|stoicism|ethics|logic|meditation|ancient wisdom/i.test(text)) return 'Philosophy';
+    if (/history|biography|memoir|civilization|world war|historical/i.test(text)) return 'History';
+    if (/design|typography|ux|ui|graphic design|architecture|art/i.test(text)) return 'Design';
+    return 'Fiction';
+};
+
+const lookupBookMetadata = async (req, res, next) => {
+    try {
+        const rawQuery = (req.query.query || req.query.q || req.query.isbn || req.query.title || '').trim();
+        if (!rawQuery) {
+            return res.status(400).json({ success: false, message: 'Search query or ISBN is required' });
+        }
+
+        const cleanIsbn = rawQuery.replace(/[^0-9X]/gi, '');
+        const isIsbn = (cleanIsbn.length === 10 || cleanIsbn.length === 13);
+        let bookData = null;
+
+        // 1. Try OpenLibrary by ISBN
+        if (isIsbn) {
+            try {
+                const olRes = await fetch(`https://openlibrary.org/isbn/${cleanIsbn}.json`, {
+                    headers: { 'User-Agent': 'ReadifyApp/1.0 (contact@readify.app)' },
+                    signal: AbortSignal.timeout(6000)
+                });
+                if (olRes.ok) {
+                    const olJson = await olRes.json();
+                    let authorName = 'Unknown Author';
+                    if (olJson.authors?.[0]?.key) {
+                        try {
+                            const authorRes = await fetch(`https://openlibrary.org${olJson.authors[0].key}.json`, {
+                                headers: { 'User-Agent': 'ReadifyApp/1.0' },
+                                signal: AbortSignal.timeout(3000)
+                            });
+                            if (authorRes.ok) {
+                                const aJson = await authorRes.json();
+                                authorName = aJson.name || authorName;
+                            }
+                        } catch (e) {}
+                    }
+
+                    let description = '';
+                    let subjects = [];
+                    if (olJson.works?.[0]?.key) {
+                        try {
+                            const wRes = await fetch(`https://openlibrary.org${olJson.works[0].key}.json`, {
+                                headers: { 'User-Agent': 'ReadifyApp/1.0' },
+                                signal: AbortSignal.timeout(3000)
+                            });
+                            if (wRes.ok) {
+                                const wJson = await wRes.json();
+                                description = typeof wJson.description === 'string' ? wJson.description : wJson.description?.value || '';
+                                subjects = Array.isArray(wJson.subjects) ? wJson.subjects : [];
+                            }
+                        } catch (e) {}
+                    }
+
+                    const coverUrl = olJson.covers?.[0]
+                        ? `https://covers.openlibrary.org/b/id/${olJson.covers[0]}-L.jpg`
+                        : `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-L.jpg`;
+
+                    const title = olJson.title + (olJson.subtitle ? `: ${olJson.subtitle}` : '');
+                    const category = detectCategory(title, subjects);
+
+                    bookData = {
+                        title,
+                        author: authorName,
+                        category,
+                        difficulty: 'Beginner',
+                        language: 'English',
+                        thumbnailUrl: coverUrl,
+                        description: description || `Published by ${olJson.publishers?.[0] || 'Unknown'}.`,
+                        tags: (subjects.slice(0, 4).join(', ') || category.toLowerCase()),
+                        isbn: cleanIsbn,
+                        publishDate: olJson.publish_date || '',
+                        publisher: olJson.publishers?.[0] || ''
+                    };
+                }
+            } catch (olErr) {
+                devError('OpenLibrary ISBN error:', olErr.message);
+            }
+        }
+
+        // 2. Try OpenLibrary Search
+        if (!bookData) {
+            try {
+                const searchRes = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(rawQuery)}&limit=5`, {
+                    headers: { 'User-Agent': 'ReadifyApp/1.0 (contact@readify.app)' },
+                    signal: AbortSignal.timeout(7000)
+                });
+                if (searchRes.ok) {
+                    const sJson = await searchRes.json();
+                    const doc = sJson.docs?.[0];
+                    if (doc) {
+                        const title = doc.title || rawQuery;
+                        const author = doc.author_name?.join(', ') || 'Unknown Author';
+                        const coverUrl = doc.cover_i
+                            ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`
+                            : doc.isbn?.[0]
+                            ? `https://covers.openlibrary.org/b/isbn/${doc.isbn[0]}-L.jpg`
+                            : '';
+                        const subjects = Array.isArray(doc.subject) ? doc.subject : [];
+                        const category = detectCategory(title, subjects);
+
+                        bookData = {
+                            title,
+                            author,
+                            category,
+                            difficulty: 'Beginner',
+                            language: doc.language?.[0] === 'eng' ? 'English' : 'English',
+                            thumbnailUrl: coverUrl,
+                            description: `Written by ${author}. First published in ${doc.first_publish_year || 'recent years'}.`,
+                            tags: (subjects.slice(0, 4).join(', ') || category.toLowerCase()),
+                            isbn: doc.isbn?.[0] || '',
+                            publishDate: String(doc.first_publish_year || '')
+                        };
+                    }
+                }
+            } catch (sErr) {
+                devError('OpenLibrary search error:', sErr.message);
+            }
+        }
+
+        // 3. Fallback to Google Books
+        if (!bookData || !bookData.thumbnailUrl) {
+            try {
+                const gRes = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(rawQuery)}&maxResults=1`, {
+                    signal: AbortSignal.timeout(4000)
+                });
+                if (gRes.ok) {
+                    const gJson = await gRes.json();
+                    const item = gJson.items?.[0]?.volumeInfo;
+                    if (item) {
+                        const title = item.title + (item.subtitle ? `: ${item.subtitle}` : '');
+                        const author = item.authors?.join(', ') || 'Unknown Author';
+                        const rawThumb = item.imageLinks?.extraLarge || item.imageLinks?.large || item.imageLinks?.medium || item.imageLinks?.thumbnail || item.imageLinks?.smallThumbnail || '';
+                        const thumb = rawThumb.replace(/^http:\/\//i, 'https://');
+                        const desc = (item.description || '').replace(/<[^>]*>/g, '').trim();
+                        const categories = item.categories || [];
+                        const category = detectCategory(title, categories);
+
+                        if (!bookData) {
+                            bookData = {
+                                title,
+                                author,
+                                category,
+                                difficulty: 'Beginner',
+                                language: item.language === 'en' ? 'English' : item.language || 'English',
+                                thumbnailUrl: thumb,
+                                description: desc || `Published by ${item.publisher || 'Unknown'}.`,
+                                tags: (categories.join(', ') || category.toLowerCase()),
+                                isbn: item.industryIdentifiers?.[0]?.identifier || '',
+                                publisher: item.publisher || '',
+                                publishDate: item.publishedDate || ''
+                            };
+                        } else if (thumb && !bookData.thumbnailUrl) {
+                            bookData.thumbnailUrl = thumb;
+                        }
+                    }
+                }
+            } catch (gErr) {}
+        }
+
+        if (!bookData) {
+            return res.status(404).json({
+                success: false,
+                message: `No book metadata found for "${rawQuery}". You can fill in details manually.`
+            });
+        }
+
+        res.json({
+            success: true,
+            data: bookData
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     addBook,
     getAllBooks,
@@ -740,4 +925,5 @@ module.exports = {
     reparseBook,
     getChapters,
     getChapterByNumber,
+    lookupBookMetadata,
 };

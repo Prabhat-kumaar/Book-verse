@@ -13,6 +13,7 @@ const {
     reparseBook,
     getChapters,
     getChapterByNumber,
+    lookupBookMetadata,
 } = require('../controllers/bookController');
 const { protect, admin } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
@@ -31,6 +32,7 @@ router.post(
     addBook
 );
 router.get('/', getAllBooks);
+router.get('/lookup', protect, admin, lookupBookMetadata);
 router.get('/recommendations', getRecommendations);
 router.get('/category/:category', getBooksByCategory);
 
