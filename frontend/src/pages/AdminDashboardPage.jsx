@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from 'react'
+import React, { useEffect, useMemo, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   MdAutoAwesome,
@@ -21,6 +21,7 @@ import {
   MdCheck,
   MdArrowBack,
   MdArrowForward,
+  MdSensors,
 } from 'react-icons/md'
 import AdminSidebar from '../components/AdminSidebar'
 import apiClient from '../lib/apiClient'
@@ -29,37 +30,42 @@ import { useNavigate } from 'react-router-dom'
 import SEO from '../components/SEO'
 
 // SVG Mini Sparkline Chart
-function Sparkline({ data = [20, 35, 28, 45, 40, 60, 55, 75, 70, 95], color = '#a855f7' }) {
-  const min = Math.min(...data)
-  const max = Math.max(...data)
+function Sparkline({ data = [20, 35, 28, 45, 40, 60, 55, 75, 70, 95], color = '#a855f7', id = 'spark' }) {
+  const safeData = Array.isArray(data) && data.length > 0 ? data : [20, 35, 28, 45, 40, 60, 55, 75, 70, 95]
+  const min = Math.min(...safeData)
+  const max = Math.max(...safeData)
   const range = max - min || 1
   const height = 30
   const width = 110
 
-  const points = data
+  const points = safeData
     .map((val, idx) => {
-      const x = (idx / (data.length - 1)) * width
+      const denom = Math.max(1, safeData.length - 1)
+      const x = (idx / denom) * width
       const y = height - ((val - min) / range) * (height - 6) - 3
-      return `${x.toFixed(1)},${y.toFixed(1)}`
+      return `${Number(x).toFixed(1)},${Number(y).toFixed(1)}`
     })
     .join(' ')
+
+  const cleanColor = typeof color === 'string' ? color : '#a855f7'
+  const gradId = `spark-grad-${id}-${cleanColor.replace(/[^a-zA-Z0-9]/g, '')}`
 
   return (
     <div className="relative h-8 w-28 shrink-0">
       <svg className="h-full w-full overflow-visible" viewBox={`0 0 ${width} ${height}`}>
         <defs>
-          <linearGradient id={`grad-${color.replace('#', '')}`} x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor={color} stopOpacity={0.35} />
-            <stop offset="100%" stopColor={color} stopOpacity={0.0} />
+          <linearGradient id={gradId} x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor={cleanColor} stopOpacity={0.35} />
+            <stop offset="100%" stopColor={cleanColor} stopOpacity={0.0} />
           </linearGradient>
         </defs>
         <polygon
           points={`0,${height} ${points} ${width},${height}`}
-          fill={`url(#grad-${color.replace('#', '')})`}
+          fill={`url(#${gradId})`}
         />
         <polyline
           fill="none"
-          stroke={color}
+          stroke={cleanColor}
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -72,9 +78,10 @@ function Sparkline({ data = [20, 35, 28, 45, 40, 60, 55, 75, 70, 95], color = '#
 
 // Circular Storage Progress Ring
 function StorageRing({ percentage = 76 }) {
+  const safePct = Math.min(100, Math.max(0, Number(percentage) || 76))
   const radius = 22
   const circumference = 2 * Math.PI * radius
-  const strokeDashoffset = circumference - (percentage / 100) * circumference
+  const strokeDashoffset = circumference - (safePct / 100) * circumference
 
   return (
     <div className="relative flex h-14 w-14 items-center justify-center shrink-0">
@@ -100,7 +107,7 @@ function StorageRing({ percentage = 76 }) {
           className="transition-all duration-1000 ease-out"
         />
       </svg>
-      <span className="absolute text-[11px] font-black tracking-tight text-white">{percentage}%</span>
+      <span className="absolute text-[11px] font-black tracking-tight text-white">{safePct}%</span>
     </div>
   )
 }
@@ -178,9 +185,9 @@ export default function AdminDashboardPage() {
   const adminUser = useMemo(() => {
     try {
       const raw = localStorage.getItem('authUser')
-      return raw ? JSON.parse(raw) : { username: 'Alex Vance', role: 'admin' }
+      return raw ? JSON.parse(raw) : { username: 'Administrator', role: 'admin' }
     } catch {
-      return { username: 'Alex Vance', role: 'admin' }
+      return { username: 'Administrator', role: 'admin' }
     }
   }, [])
 
@@ -203,8 +210,8 @@ export default function AdminDashboardPage() {
 
   // Fetch Live Books & Analytics
   const fetchData = async () => {
-    setLoading(true)
     try {
+      setLoading(true)
       const [analyticsRes, booksRes] = await Promise.all([
         apiClient.get('/api/analytics/admin').catch(() => null),
         apiClient.get('/api/books?limit=100').catch(() => null),
@@ -214,9 +221,9 @@ export default function AdminDashboardPage() {
         setStats(analyticsRes.data)
       }
 
-      if (booksRes?.data?.books || Array.isArray(booksRes?.data)) {
-        const list = booksRes.data.books || booksRes.data
-        setBooks(list)
+      const rawBooks = booksRes?.data?.books || booksRes?.data?.data || (Array.isArray(booksRes?.data) ? booksRes.data : [])
+      if (Array.isArray(rawBooks)) {
+        setBooks(rawBooks)
       }
     } catch (err) {
       console.error('Data fetch error:', err)
@@ -232,27 +239,31 @@ export default function AdminDashboardPage() {
   // Categories extracted from live books
   const categories = useMemo(() => {
     const set = new Set(['All'])
-    books.forEach((b) => {
-      if (b.category) set.add(b.category)
-    })
+    if (Array.isArray(books)) {
+      books.forEach((b) => {
+        if (b?.category) set.add(b.category)
+      })
+    }
     return Array.from(set)
   }, [books])
 
   // Filtered Books List
   const filteredBooks = useMemo(() => {
-    return books.filter((book) => {
+    const list = Array.isArray(books) ? books : []
+    return list.filter((book) => {
+      if (!book) return false
       const matchSearch =
         searchQuery.trim() === '' ||
-        book.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        book.author?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        book.category?.toLowerCase().includes(searchQuery.toLowerCase())
+        (book.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (book.author || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (book.category || '').toLowerCase().includes(searchQuery.toLowerCase())
 
       const matchCat = categoryFilter === 'All' || book.category === categoryFilter
 
       const matchFmt =
         formatFilter === 'All' ||
-        (formatFilter === 'EPUB' && (book.fileType === 'epub' || book.fileUrl?.endsWith('.epub'))) ||
-        (formatFilter === 'PDF' && (book.fileType === 'pdf' || book.fileUrl?.endsWith('.pdf') || book.pdf))
+        (formatFilter === 'EPUB' && (book.fileType === 'epub' || (book.fileUrl || '').endsWith('.epub'))) ||
+        (formatFilter === 'PDF' && (book.fileType === 'pdf' || (book.fileUrl || '').endsWith('.pdf') || Boolean(book.pdf)))
 
       return matchSearch && matchCat && matchFmt
     })
@@ -360,6 +371,7 @@ export default function AdminDashboardPage() {
 
   // Open Quick Edit Drawer
   const handleOpenDrawer = (book) => {
+    if (!book) return
     setEditingBook(book)
     setDrawerForm({
       title: book.title || '',
@@ -453,17 +465,39 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#060811] text-slate-100 selection:bg-purple-600/40 selection:text-white">
+    <div className="relative min-h-screen overflow-x-clip bg-[#060811] text-slate-100 font-sans selection:bg-purple-500/30 selection:text-purple-200">
       <SEO title="Smart Ingestion & Catalog Command | Readify PRO" />
 
-      <div className="mx-auto flex max-w-[1720px] gap-6 p-4 sm:p-6 lg:p-8">
+      {/* Atmospheric Glow Highlights */}
+      <div className="pointer-events-none absolute -left-40 top-10 h-[500px] w-[500px] rounded-full bg-gradient-to-tr from-purple-600/15 to-indigo-600/10 blur-[140px]" />
+      <div className="pointer-events-none absolute right-0 top-32 h-[450px] w-[450px] rounded-full bg-gradient-to-br from-emerald-600/10 to-teal-600/10 blur-[140px]" />
+      <div className="pointer-events-none absolute left-1/3 bottom-10 h-[350px] w-[350px] rounded-full bg-blue-600/10 blur-[130px]" />
+
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -15, scale: 0.95 }}
+            className="fixed right-6 top-6 z-[120] flex items-center gap-3 rounded-2xl border border-white/15 bg-[#0f172a]/95 px-5 py-3.5 text-sm font-medium text-white shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-2xl"
+          >
+            <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-purple-500/20 text-purple-300">
+              <MdAutoAwesome className="text-base" />
+            </div>
+            <span>{toastMessage}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="relative mx-auto grid min-h-screen w-full max-w-[1600px] grid-cols-1 gap-4 p-3 sm:p-5 lg:grid-cols-[280px_1fr] lg:gap-6 lg:p-6">
         {/* Left Sleek Navigation Sidebar */}
         <AdminSidebar />
 
         {/* Main Command Center Studio */}
-        <main className="flex-1 min-w-0 space-y-6">
+        <main className="flex flex-col gap-6 overflow-hidden rounded-3xl border border-white/[0.08] bg-[#0c101c]/85 p-4 shadow-2xl backdrop-blur-3xl sm:p-6 lg:p-8">
           {/* Top Global Command Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-3xl border border-white/[0.08] bg-[#090d18]/90 p-3.5 px-5 shadow-2xl backdrop-blur-2xl">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-2xl border border-white/[0.08] bg-[#090d18]/90 p-3.5 px-5 shadow-xl backdrop-blur-2xl">
             {/* Quick Search */}
             <div className="relative flex-1 max-w-md">
               <MdSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-slate-400" />
@@ -472,8 +506,8 @@ export default function AdminDashboardPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search commands, catalogs, endpoints..."
-                className="w-full rounded-2xl border border-white/10 bg-black/40 pl-10 pr-12 py-2 text-xs text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition"
+                placeholder="Search commands, catalogs, endpoints... (Press ⌘K)"
+                className="w-full rounded-xl border border-white/10 bg-black/40 pl-10 pr-12 py-2 text-xs text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-0.5 rounded-md border border-white/10 bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-mono font-bold text-slate-400">
                 ⌘K
@@ -481,22 +515,12 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Right Status Controls */}
-            <div className="flex items-center gap-4 shrink-0">
+            <div className="flex items-center gap-3 shrink-0">
               {/* Region Status */}
               <div className="flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-950/30 px-3 py-1 text-[11px] font-medium text-emerald-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
                 <span>us-east-1a • Sync Live</span>
               </div>
-
-              {/* Notification Bell */}
-              <button
-                type="button"
-                className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/10 transition"
-                title="System Notifications"
-              >
-                <MdNotifications className="h-4.5 w-4.5" />
-                <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-purple-500" />
-              </button>
 
               {/* Admin Profile Chip */}
               <div className="flex items-center gap-2.5 rounded-2xl border border-white/10 bg-black/40 py-1 px-2.5">
@@ -504,7 +528,7 @@ export default function AdminDashboardPage() {
                   {adminUser?.username?.charAt(0)?.toUpperCase() || 'A'}
                 </div>
                 <div className="hidden sm:block text-left">
-                  <p className="text-xs font-bold leading-none text-white">{adminUser?.username || 'Alex Vance'}</p>
+                  <p className="text-xs font-bold leading-none text-white">{adminUser?.username || 'Administrator'}</p>
                   <p className="text-[10px] font-medium text-slate-400 leading-tight">Lead Architect</p>
                 </div>
               </div>
@@ -512,24 +536,24 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* Breadcrumb & Header Title with Actions */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-white/[0.08] pb-5">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                CLUSTER CONTROL &nbsp;/&nbsp; <span className="text-purple-400">Ingestion Engine</span> &nbsp;/&nbsp; v4.19-re3
-              </p>
-              <div className="mt-1 flex items-center gap-3">
-                <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-                  Smart Ingestion &amp; Catalog Command
-                </h1>
-                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-950/40 px-2.5 py-0.5 text-[10px] font-bold text-emerald-400">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  Production • US-East Cluster
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-0.5 text-[10px] font-bold tracking-[0.2em] text-purple-300 uppercase">
+                  CLUSTER CONTROL / SMART INGESTION / v4.19-re3
                 </span>
+                <span className="flex h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981]" />
               </div>
+              <h1 className="mt-2 text-2xl sm:text-3xl font-black tracking-tight text-white">
+                Smart Ingestion &amp; Catalog Command
+              </h1>
+              <p className="mt-1 text-xs text-slate-400 sm:text-sm">
+                Optical AST ingestion pipeline, AI auto-extraction, and real-time catalog synchronization.
+              </p>
             </div>
 
             {/* Time Filter Tabs & Import Button */}
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center rounded-2xl border border-white/10 bg-black/40 p-1 text-xs font-semibold text-slate-400">
                 {['Today', '7D', '30D', 'Quarter'].map((tab) => (
                   <button
@@ -550,11 +574,10 @@ export default function AdminDashboardPage() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-violet-600 px-4 py-2.5 text-xs font-black text-white shadow-lg shadow-purple-900/40 hover:from-purple-500 hover:to-indigo-500 transition active:scale-[0.98]"
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-violet-600 px-4 py-2 text-xs font-black text-white shadow-lg shadow-purple-900/40 hover:from-purple-500 hover:to-indigo-500 transition active:scale-[0.98]"
               >
                 <MdAutoAwesome className="h-4 w-4" />
-                <span>Import New Batch</span>
-                <span className="rounded bg-white/20 px-1 py-0.2 text-[9px] font-mono">⌘I</span>
+                <span>Import File</span>
               </button>
             </div>
           </div>
@@ -562,80 +585,79 @@ export default function AdminDashboardPage() {
           {/* 4 Top Overview Metric Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Card 1: Total Active Readers */}
-            <div className="rounded-3xl border border-white/[0.08] bg-[#090d18]/90 p-5 shadow-xl backdrop-blur-2xl flex flex-col justify-between">
+            <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-950/30 via-[#0e1424] to-[#0a0d18] p-4 shadow-lg backdrop-blur-xl flex flex-col justify-between">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Active Readers</p>
                   <h3 className="mt-1 text-2xl sm:text-3xl font-black text-white tracking-tight">142,890</h3>
                 </div>
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
                   <MdTrendingUp className="h-5 w-5" />
                 </div>
               </div>
-              <div className="mt-4 pt-3 border-t border-white/[0.04] flex items-center justify-between">
+              <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between">
                 <p className="text-xs font-bold text-emerald-400">↑ +14.2% <span className="text-[10px] font-normal text-slate-500">vs last week</span></p>
-                <Sparkline data={[20, 32, 28, 45, 52, 68, 85, 92, 110]} color="#10b981" />
+                <Sparkline data={[20, 32, 28, 45, 52, 68, 85, 92, 110]} color="#10b981" id="readers" />
               </div>
             </div>
 
-            {/* Card 2: Active EPUB Catalog */}
-            <div className="rounded-3xl border border-white/[0.08] bg-[#090d18]/90 p-5 shadow-xl backdrop-blur-2xl flex flex-col justify-between">
+            {/* Card 2: Active Catalog */}
+            <div className="rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-950/30 via-[#0e1424] to-[#0a0d18] p-4 shadow-lg backdrop-blur-xl flex flex-col justify-between">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Active EPUB Catalog</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Active Catalog Titles</p>
                   <h3 className="mt-1 text-2xl sm:text-3xl font-black text-white tracking-tight">
-                    {books.length > 0 ? books.length : '8,420'}
+                    {books.length > 0 ? books.length : '12'}
                   </h3>
                 </div>
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-400">
                   <MdLibraryBooks className="h-5 w-5" />
                 </div>
               </div>
-              <div className="mt-4 pt-3 border-t border-white/[0.04] flex items-center justify-between">
-                <p className="text-xs font-bold text-purple-300">99.4% <span className="text-[10px] font-normal text-slate-500">AST parsed valid</span></p>
-                <Sparkline data={[40, 48, 55, 60, 75, 80, 88, 96, 105]} color="#a855f7" />
+              <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between">
+                <p className="text-xs font-bold text-purple-300">99.4% <span className="text-[10px] font-normal text-slate-500">AST parsed</span></p>
+                <Sparkline data={[40, 48, 55, 60, 75, 80, 88, 96, 105]} color="#a855f7" id="catalog" />
               </div>
             </div>
 
-            {/* Card 3: Cloudinary Edge Storage */}
-            <div className="rounded-3xl border border-white/[0.08] bg-[#090d18]/90 p-5 shadow-xl backdrop-blur-2xl flex flex-col justify-between">
+            {/* Card 3: Storage Allocation */}
+            <div className="rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-cyan-950/30 via-[#0e1424] to-[#0a0d18] p-4 shadow-lg backdrop-blur-xl flex flex-col justify-between">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Cloudinary Edge Storage</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Cloud Storage</p>
                   <h3 className="mt-1 text-2xl sm:text-3xl font-black text-white tracking-tight">
                     3.8 <span className="text-sm font-normal text-slate-400">/ 5.0 TB</span>
                   </h3>
                   <div className="mt-2 flex items-center gap-2 text-[10px] text-slate-400 font-medium">
                     <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-purple-400" /> Media 2.4TB</span>
-                    <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Text 1.4TB</span>
                   </div>
                 </div>
                 <StorageRing percentage={76} />
               </div>
-              <div className="mt-3 pt-2 border-t border-white/[0.04] flex items-center justify-between text-[11px]">
-                <span className="text-slate-400">Allocation Health</span>
+              <div className="mt-3 pt-2 border-t border-white/[0.06] flex items-center justify-between text-[11px]">
+                <span className="text-slate-400">Cluster Health</span>
                 <span className="text-emerald-400 font-bold">Optimal</span>
               </div>
             </div>
 
-            {/* Card 4: Live Synchronized Readers */}
-            <div className="rounded-3xl border border-white/[0.08] bg-[#090d18]/90 p-5 shadow-xl backdrop-blur-2xl flex flex-col justify-between">
+            {/* Card 4: Synchronized Sessions */}
+            <div className="rounded-2xl border border-indigo-500/20 bg-gradient-to-br from-indigo-950/30 via-[#0e1424] to-[#0a0d18] p-4 shadow-lg backdrop-blur-xl flex flex-col justify-between">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Live Synchronized Readers</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Live Synchronized Sessions</p>
                   <h3 className="mt-1 text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2">
                     <span>1,284</span>
                     <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                   </h3>
                 </div>
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400">
                   <MdAutoAwesome className="h-5 w-5" />
                 </div>
               </div>
-              <div className="mt-4 pt-3 border-t border-white/[0.04] flex items-center justify-between">
-                <p className="text-xs font-bold text-emerald-400">⚡ 42 new <span className="text-[10px] font-normal text-slate-500">sessions in last 5m</span></p>
+              <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between">
+                <p className="text-xs font-bold text-emerald-400">⚡ 42 new <span className="text-[10px] font-normal text-slate-500">sessions in 5m</span></p>
                 <span className="rounded-md border border-indigo-500/30 bg-indigo-950/40 px-2 py-0.5 text-[10px] font-bold text-indigo-300">
-                  WebSocket
+                  Live
                 </span>
               </div>
             </div>
@@ -644,12 +666,12 @@ export default function AdminDashboardPage() {
           {/* Central Split Section: Optical AST Pipeline & AI Auto-Extracted Metadata */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Left Column: Optical AST Pipeline Dropzone (5 cols) */}
-            <div className="lg:col-span-5 rounded-3xl border border-white/[0.08] bg-[#090d18]/90 p-6 shadow-2xl backdrop-blur-2xl flex flex-col justify-between">
+            <div className="lg:col-span-5 rounded-2xl border border-white/[0.08] bg-[#090d18]/90 p-5 shadow-xl backdrop-blur-xl flex flex-col justify-between">
               <div>
-                <div className="flex items-center justify-between pb-4 border-b border-white/[0.06]">
+                <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
                   <div className="flex items-center gap-2">
                     <MdAutoAwesome className="h-4.5 w-4.5 text-purple-400" />
-                    <h2 className="text-sm font-extrabold uppercase tracking-wider text-white">Optical AST Pipeline</h2>
+                    <h2 className="text-xs font-extrabold uppercase tracking-wider text-white">Optical AST Pipeline</h2>
                   </div>
                   <span className="rounded-md border border-white/10 bg-black/40 px-2 py-0.5 text-[10px] font-mono text-slate-400">
                     Worker Pool #09
@@ -671,7 +693,7 @@ export default function AdminDashboardPage() {
                     }
                   }}
                   onClick={() => fileInputRef.current?.click()}
-                  className={`mt-6 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center cursor-pointer transition-all duration-300 ${
+                  className={`mt-4 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center cursor-pointer transition-all duration-300 ${
                     isDragging
                       ? 'border-purple-400 bg-purple-950/30 scale-[1.01]'
                       : 'border-white/15 bg-black/30 hover:border-purple-500/40 hover:bg-white/[0.02]'
@@ -687,30 +709,29 @@ export default function AdminDashboardPage() {
                     className="hidden"
                   />
 
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-purple-600/30 to-indigo-600/20 border border-purple-500/30 text-purple-300 shadow-inner">
-                    <MdCloudUpload className="h-7 w-7" />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-purple-600/30 to-indigo-600/20 border border-purple-500/30 text-purple-300 shadow-inner">
+                    <MdCloudUpload className="h-6 w-6" />
                   </div>
 
-                  <h3 className="mt-4 text-sm font-bold text-white">Drop EPUB, PDF, or MOBI here</h3>
-                  <p className="mt-1 text-xs text-slate-400 max-w-[260px]">
-                    Or <span className="text-purple-400 underline font-semibold">browse local system</span> for multi-chapter digital manuscripts
+                  <h3 className="mt-3 text-xs font-bold text-white">Drop EPUB or PDF here</h3>
+                  <p className="mt-1 text-[11px] text-slate-400 max-w-[240px]">
+                    Or <span className="text-purple-400 underline font-semibold">browse local filesystem</span>
                   </p>
 
-                  <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-                    <span className="rounded-md border border-white/10 bg-black/50 px-2 py-1 text-[10px] font-bold text-slate-400">EPUB 3.3</span>
-                    <span className="rounded-md border border-white/10 bg-black/50 px-2 py-1 text-[10px] font-bold text-slate-400">PDF/A-1b</span>
-                    <span className="rounded-md border border-white/10 bg-black/50 px-2 py-1 text-[10px] font-bold text-slate-400">MOBI v8</span>
-                    <span className="rounded-md border border-purple-500/30 bg-purple-950/40 px-2 py-1 text-[10px] font-bold text-purple-300">Max 500MB</span>
+                  <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5">
+                    <span className="rounded-md border border-white/10 bg-black/50 px-2 py-0.5 text-[9px] font-bold text-slate-400">EPUB 3.3</span>
+                    <span className="rounded-md border border-white/10 bg-black/50 px-2 py-0.5 text-[9px] font-bold text-slate-400">PDF/A-1b</span>
+                    <span className="rounded-md border border-purple-500/30 bg-purple-950/40 px-2 py-0.5 text-[9px] font-bold text-purple-300">Max 500MB</span>
                   </div>
                 </div>
               </div>
 
               {/* Ingestion Progress / Completed Card */}
-              <div className="mt-6 rounded-2xl border border-white/[0.08] bg-black/50 p-4 space-y-2">
+              <div className="mt-4 rounded-xl border border-white/[0.08] bg-black/50 p-3.5 space-y-2">
                 <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2 font-mono text-slate-200">
+                  <div className="flex items-center gap-2 font-mono text-slate-200 truncate max-w-[200px]">
                     <MdCheckCircle className="h-4 w-4 text-emerald-400 shrink-0" />
-                    <span className="truncate max-w-[200px]">
+                    <span className="truncate">
                       {droppedFile ? droppedFile.name : 'neuromancer_definitive_edition.epub'}
                     </span>
                   </div>
@@ -725,24 +746,24 @@ export default function AdminDashboardPage() {
                   />
                 </div>
                 <p className="text-[10px] text-slate-500 font-mono">
-                  {isIngesting ? 'Extracting AST nodes & CSS rules...' : 'AST tree tokenization & CSS sanitization 0.84s'}
+                  {isIngesting ? 'Extracting AST nodes & CSS rules...' : 'AST tokenization & manifest validation complete'}
                 </p>
               </div>
             </div>
 
             {/* Right Column: AI Auto-Extracted Metadata (7 cols) */}
-            <div className="lg:col-span-7 rounded-3xl border border-white/[0.08] bg-[#090d18]/90 p-6 shadow-2xl backdrop-blur-2xl flex flex-col justify-between">
+            <div className="lg:col-span-7 rounded-2xl border border-white/[0.08] bg-[#090d18]/90 p-5 shadow-xl backdrop-blur-xl flex flex-col justify-between">
               <div>
                 {/* Header with Mode Switcher */}
-                <div className="flex items-center justify-between pb-4 border-b border-white/[0.06]">
+                <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
                   <div className="flex items-center gap-2">
                     <MdAutoAwesome className="h-4.5 w-4.5 text-emerald-400" />
-                    <h2 className="text-sm font-extrabold uppercase tracking-wider text-white">
+                    <h2 className="text-xs font-extrabold uppercase tracking-wider text-white">
                       AI Auto-Extracted Metadata
                     </h2>
                   </div>
 
-                  <div className="flex items-center rounded-xl border border-white/10 bg-black/50 p-1 text-[11px] font-bold">
+                  <div className="flex items-center rounded-xl border border-white/10 bg-black/50 p-0.5 text-[10px] font-bold">
                     <button
                       type="button"
                       onClick={() => setIngestMode('auto')}
@@ -750,7 +771,7 @@ export default function AdminDashboardPage() {
                         ingestMode === 'auto' ? 'bg-purple-600/30 text-white border border-purple-500/40 shadow' : 'text-slate-400 hover:text-white'
                       }`}
                     >
-                      Smart Auto Mode
+                      Smart Auto
                     </button>
                     <button
                       type="button"
@@ -766,122 +787,113 @@ export default function AdminDashboardPage() {
 
                 {/* Mode 1: Smart Auto Preview Card */}
                 {ingestMode === 'auto' ? (
-                  <div className="mt-5 grid grid-cols-1 sm:grid-cols-12 gap-5 items-start">
-                    {/* Cover Thumbnail with 3D shadow & format badge */}
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-12 gap-4 items-start">
+                    {/* Cover Thumbnail */}
                     <div className="sm:col-span-4 relative group">
-                      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-2xl border border-white/15 bg-slate-900 shadow-2xl shadow-purple-950/60">
+                      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl border border-white/15 bg-slate-900 shadow-xl shadow-purple-950/60">
                         <img
                           src={extractedMeta.coverUrl}
                           alt={extractedMeta.title}
                           className="h-full w-full object-cover group-hover:scale-105 transition duration-500"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                        <span className="absolute bottom-2.5 left-2.5 rounded bg-purple-600/80 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white border border-purple-400/40 backdrop-blur-md">
+                        <span className="absolute bottom-2 left-2 rounded bg-purple-600/80 px-1.5 py-0.2 text-[8px] font-bold uppercase tracking-wider text-white border border-purple-400/40 backdrop-blur-md">
                           {extractedMeta.formatBadge}
                         </span>
                       </div>
                     </div>
 
                     {/* Metadata Content */}
-                    <div className="sm:col-span-8 space-y-4">
+                    <div className="sm:col-span-8 space-y-3">
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <h3 className="text-lg sm:text-xl font-black text-white tracking-tight leading-snug">
+                          <h3 className="text-base sm:text-lg font-black text-white tracking-tight leading-snug">
                             {extractedMeta.title}
                           </h3>
-                          <p className="mt-1 text-xs text-slate-400 font-medium">
+                          <p className="mt-0.5 text-xs text-slate-400 font-medium">
                             {extractedMeta.author}
                           </p>
                         </div>
-                        <span className="shrink-0 inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-950/40 px-2.5 py-1 text-[10px] font-bold text-emerald-400">
+                        <span className="shrink-0 inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-950/40 px-2 py-0.5 text-[9px] font-bold text-emerald-400">
                           <MdCheckCircle className="h-3 w-3" /> {extractedMeta.confidence} Conf.
                         </span>
                       </div>
 
                       {/* 4 Mini Spec Boxes */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-left">
-                        <div className="rounded-xl border border-white/[0.06] bg-black/40 p-2.5">
-                          <p className="text-[9px] font-bold uppercase text-slate-500">Language</p>
-                          <p className="mt-0.5 text-xs font-bold text-slate-200">{extractedMeta.language}</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-left">
+                        <div className="rounded-lg border border-white/[0.06] bg-black/40 p-2">
+                          <p className="text-[8px] font-bold uppercase text-slate-500">Language</p>
+                          <p className="mt-0.5 text-xs font-bold text-slate-200 truncate">{extractedMeta.language}</p>
                         </div>
-                        <div className="rounded-xl border border-white/[0.06] bg-black/40 p-2.5">
-                          <p className="text-[9px] font-bold uppercase text-slate-500">Chapters</p>
-                          <p className="mt-0.5 text-xs font-bold text-purple-300">{extractedMeta.chaptersCount} Detected</p>
+                        <div className="rounded-lg border border-white/[0.06] bg-black/40 p-2">
+                          <p className="text-[8px] font-bold uppercase text-slate-500">Chapters</p>
+                          <p className="mt-0.5 text-xs font-bold text-purple-300">{extractedMeta.chaptersCount}</p>
                         </div>
-                        <div className="rounded-xl border border-white/[0.06] bg-black/40 p-2.5">
-                          <p className="text-[9px] font-bold uppercase text-slate-500">Word Count</p>
+                        <div className="rounded-lg border border-white/[0.06] bg-black/40 p-2">
+                          <p className="text-[8px] font-bold uppercase text-slate-500">Word Count</p>
                           <p className="mt-0.5 text-xs font-bold text-slate-200">{extractedMeta.wordCount}</p>
                         </div>
-                        <div className="rounded-xl border border-white/[0.06] bg-black/40 p-2.5">
-                          <p className="text-[9px] font-bold uppercase text-slate-500">Audio Sync</p>
-                          <p className="mt-0.5 text-xs font-bold text-emerald-400">{extractedMeta.audioSync}</p>
+                        <div className="rounded-lg border border-white/[0.06] bg-black/40 p-2">
+                          <p className="text-[8px] font-bold uppercase text-slate-500">Audio Sync</p>
+                          <p className="mt-0.5 text-xs font-bold text-emerald-400 truncate">{extractedMeta.audioSync}</p>
                         </div>
                       </div>
 
                       {/* Taxonomies & Category Pills */}
                       <div>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                          Classification &amp; Inferred Taxonomies
-                        </p>
-                        <div className="mt-2 flex flex-wrap gap-1.5">
+                        <div className="flex flex-wrap gap-1">
                           {extractedMeta.taxonomies.map((tag, idx) => (
                             <span
                               key={idx}
-                              className="rounded-lg border border-purple-500/20 bg-purple-950/20 px-2 py-1 text-[10px] font-bold text-purple-300"
+                              className="rounded-md border border-purple-500/20 bg-purple-950/20 px-2 py-0.5 text-[9px] font-bold text-purple-300"
                             >
                               {tag}
                             </span>
                           ))}
                         </div>
                       </div>
-
-                      {/* Cloudinary CDN Asset mapping note */}
-                      <p className="text-[10px] text-slate-500 flex items-center gap-1.5 font-mono">
-                        <MdCheck className="h-3.5 w-3.5 text-purple-400" />
-                        Cloudinary CDN assets mapped to UUID: {extractedMeta.uuid}
-                      </p>
                     </div>
                   </div>
                 ) : (
                   /* Mode 2: Manual Override Form */
-                  <div className="mt-5 space-y-3.5">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="mt-4 space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       <div>
-                        <label className="text-[10px] font-bold uppercase text-slate-400">Book Title</label>
+                        <label className="text-[9px] font-bold uppercase text-slate-400">Book Title</label>
                         <input
                           type="text"
                           value={manualForm.title}
                           onChange={(e) => setManualForm({ ...manualForm, title: e.target.value })}
-                          className="mt-1 w-full rounded-xl border border-white/10 bg-black/40 p-2.5 text-xs text-white focus:border-purple-500 focus:outline-none"
+                          className="mt-1 w-full rounded-xl border border-white/10 bg-black/40 p-2 text-xs text-white focus:border-purple-500 focus:outline-none"
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] font-bold uppercase text-slate-400">Author</label>
+                        <label className="text-[9px] font-bold uppercase text-slate-400">Author</label>
                         <input
                           type="text"
                           value={manualForm.author}
                           onChange={(e) => setManualForm({ ...manualForm, author: e.target.value })}
-                          className="mt-1 w-full rounded-xl border border-white/10 bg-black/40 p-2.5 text-xs text-white focus:border-purple-500 focus:outline-none"
+                          className="mt-1 w-full rounded-xl border border-white/10 bg-black/40 p-2 text-xs text-white focus:border-purple-500 focus:outline-none"
                         />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                       <div>
-                        <label className="text-[10px] font-bold uppercase text-slate-400">Category</label>
+                        <label className="text-[9px] font-bold uppercase text-slate-400">Category</label>
                         <input
                           type="text"
                           value={manualForm.category}
                           onChange={(e) => setManualForm({ ...manualForm, category: e.target.value })}
-                          className="mt-1 w-full rounded-xl border border-white/10 bg-black/40 p-2.5 text-xs text-white focus:border-purple-500 focus:outline-none"
+                          className="mt-1 w-full rounded-xl border border-white/10 bg-black/40 p-2 text-xs text-white focus:border-purple-500 focus:outline-none"
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] font-bold uppercase text-slate-400">Reading Level</label>
+                        <label className="text-[9px] font-bold uppercase text-slate-400">Difficulty</label>
                         <select
                           value={manualForm.difficulty}
                           onChange={(e) => setManualForm({ ...manualForm, difficulty: e.target.value })}
-                          className="mt-1 w-full rounded-xl border border-white/10 bg-[#0c1222] p-2.5 text-xs text-white focus:border-purple-500 focus:outline-none"
+                          className="mt-1 w-full rounded-xl border border-white/10 bg-[#0c1222] p-2 text-xs text-white focus:border-purple-500 focus:outline-none"
                         >
                           <option value="Beginner">Beginner</option>
                           <option value="Intermediate">Intermediate</option>
@@ -889,38 +901,28 @@ export default function AdminDashboardPage() {
                         </select>
                       </div>
                       <div>
-                        <label className="text-[10px] font-bold uppercase text-slate-400">Language</label>
+                        <label className="text-[9px] font-bold uppercase text-slate-400">Language</label>
                         <input
                           type="text"
                           value={manualForm.language}
                           onChange={(e) => setManualForm({ ...manualForm, language: e.target.value })}
-                          className="mt-1 w-full rounded-xl border border-white/10 bg-black/40 p-2.5 text-xs text-white focus:border-purple-500 focus:outline-none"
+                          className="mt-1 w-full rounded-xl border border-white/10 bg-black/40 p-2 text-xs text-white focus:border-purple-500 focus:outline-none"
                         />
                       </div>
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] font-bold uppercase text-slate-400">Cover Image URL</label>
-                      <input
-                        type="text"
-                        value={manualForm.coverUrl}
-                        onChange={(e) => setManualForm({ ...manualForm, coverUrl: e.target.value })}
-                        className="mt-1 w-full rounded-xl border border-white/10 bg-black/40 p-2.5 text-xs text-white focus:border-purple-500 focus:outline-none font-mono"
-                      />
                     </div>
                   </div>
                 )}
               </div>
 
               {/* Action Buttons Toolbar */}
-              <div className="mt-6 pt-4 border-t border-white/[0.06] flex items-center justify-end gap-3">
+              <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-end gap-2.5">
                 <button
                   type="button"
                   onClick={() => {
                     setDroppedFile(null)
-                    showToast('Reset auto-ingestion preview')
+                    showToast('Reset preview')
                   }}
-                  className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/[0.04] transition"
+                  className="rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/[0.04] transition"
                 >
                   Discard
                 </button>
@@ -928,7 +930,7 @@ export default function AdminDashboardPage() {
                 <button
                   type="button"
                   onClick={() => setIngestMode(ingestMode === 'auto' ? 'manual' : 'auto')}
-                  className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-white/10 transition"
+                  className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-white/10 transition"
                 >
                   {ingestMode === 'auto' ? 'Edit Metadata' : 'Switch to Auto'}
                 </button>
@@ -937,28 +939,28 @@ export default function AdminDashboardPage() {
                   type="button"
                   onClick={handlePublishBook}
                   disabled={isIngesting}
-                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-violet-600 px-5 py-2 text-xs font-black text-white shadow-lg shadow-purple-900/40 hover:from-purple-500 hover:to-indigo-500 transition active:scale-[0.98] disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-violet-600 px-4 py-2 text-xs font-black text-white shadow-lg shadow-purple-900/40 hover:from-purple-500 hover:to-indigo-500 transition active:scale-[0.98] disabled:opacity-50"
                 >
                   <MdAutoAwesome className="h-4 w-4" />
-                  <span>{isIngesting ? 'Publishing...' : '1-Click Publish to Library'}</span>
+                  <span>{isIngesting ? 'Publishing...' : '1-Click Publish to Catalog'}</span>
                 </button>
               </div>
             </div>
           </div>
 
           {/* Bottom Section: Catalog Studio & Ingestion Queue */}
-          <div className="rounded-3xl border border-white/[0.08] bg-[#090d18]/90 p-6 shadow-2xl backdrop-blur-2xl space-y-5">
+          <div className="rounded-2xl border border-white/[0.08] bg-[#090d18]/90 p-5 shadow-xl backdrop-blur-xl space-y-4">
             {/* Filter Bar */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2.5">
                 {/* Search Bar */}
-                <div className="relative min-w-[260px]">
+                <div className="relative min-w-[240px]">
                   <MdSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder={`Filter ${books.length} books... ⌘K`}
+                    placeholder={`Filter ${books.length} books... (⌘K)`}
                     className="w-full rounded-xl border border-white/10 bg-black/40 pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none"
                   />
                 </div>
@@ -983,7 +985,7 @@ export default function AdminDashboardPage() {
                       key={fmt}
                       type="button"
                       onClick={() => setFormatFilter(fmt)}
-                      className={`rounded-lg px-3 py-1.5 transition ${
+                      className={`rounded-lg px-2.5 py-1 transition ${
                         formatFilter === fmt ? 'bg-purple-600/30 text-white border border-purple-500/40 shadow-sm' : 'hover:text-white'
                       }`}
                     >
@@ -995,47 +997,29 @@ export default function AdminDashboardPage() {
 
               {/* Batch Selection Action Bar */}
               {selectedBookIds.size > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="flex items-center gap-2 rounded-2xl border border-purple-500/30 bg-purple-950/40 px-3 py-1.5 text-xs"
-                >
+                <div className="flex items-center gap-2 rounded-xl border border-purple-500/30 bg-purple-950/40 px-3 py-1 text-xs">
                   <span className="font-bold text-purple-300">{selectedBookIds.size} items selected</span>
                   <div className="h-4 w-px bg-white/10 mx-1" />
                   <button
                     type="button"
-                    onClick={() => showToast('🏷️ Applied batch category tag')}
-                    className="rounded-lg bg-white/10 px-2.5 py-1 text-[11px] font-bold text-slate-200 hover:bg-white/20 transition"
-                  >
-                    Batch Tag
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => showToast('🔄 Batch reparse initiated')}
-                    className="rounded-lg bg-white/10 px-2.5 py-1 text-[11px] font-bold text-slate-200 hover:bg-white/20 transition"
-                  >
-                    Reparse AI
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => {
                       setSelectedBookIds(new Set())
-                      showToast('Archived selected items')
+                      showToast('Selection cleared')
                     }}
-                    className="rounded-lg bg-rose-500/20 px-2.5 py-1 text-[11px] font-bold text-rose-300 hover:bg-rose-500/30 transition"
+                    className="rounded-lg bg-white/10 px-2 py-0.5 text-[10px] font-bold text-slate-200 hover:bg-white/20 transition"
                   >
-                    Archive
+                    Clear
                   </button>
-                </motion.div>
+                </div>
               )}
             </div>
 
             {/* Central Catalog Table */}
-            <div className="overflow-x-auto rounded-2xl border border-white/[0.06]">
-              <table className="w-full text-left text-xs text-slate-300">
+            <div className="overflow-x-auto rounded-xl border border-white/[0.06]">
+              <table className="w-full min-w-[850px] text-left text-xs text-slate-300">
                 <thead className="border-b border-white/[0.08] bg-black/40 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   <tr>
-                    <th className="py-3.5 px-4 w-10">
+                    <th className="py-3 px-3.5 w-10">
                       <input
                         type="checkbox"
                         checked={selectedBookIds.size === filteredBooks.length && filteredBooks.length > 0}
@@ -1043,32 +1027,30 @@ export default function AdminDashboardPage() {
                         className="rounded border-white/20 bg-black/40 text-purple-600 focus:ring-0 cursor-pointer"
                       />
                     </th>
-                    <th className="py-3.5 px-4">Manuscript / Title</th>
-                    <th className="py-3.5 px-4">Format</th>
-                    <th className="py-3.5 px-4">File Size</th>
-                    <th className="py-3.5 px-4">Total Reads</th>
-                    <th className="py-3.5 px-4">Pipeline Status</th>
-                    <th className="py-3.5 px-4">Ingested</th>
-                    <th className="py-3.5 px-4 text-right">Actions</th>
+                    <th className="py-3 px-3.5">Manuscript / Title</th>
+                    <th className="py-3 px-3.5">Format</th>
+                    <th className="py-3 px-3.5">Category</th>
+                    <th className="py-3 px-3.5">Pipeline Status</th>
+                    <th className="py-3 px-3.5 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.04]">
                   {loading ? (
                     <tr>
-                      <td colSpan="8" className="py-12 text-center text-slate-500 font-mono">
+                      <td colSpan="6" className="py-10 text-center text-slate-500 font-mono">
                         <MdHourglassTop className="inline-block h-5 w-5 animate-spin mr-2 text-purple-400" />
                         Fetching cluster catalog data...
                       </td>
                     </tr>
                   ) : filteredBooks.length === 0 ? (
                     <tr>
-                      <td colSpan="8" className="py-12 text-center text-slate-500">
+                      <td colSpan="6" className="py-10 text-center text-slate-500">
                         No manuscripts match current filters.
                       </td>
                     </tr>
                   ) : (
                     filteredBooks.slice(0, 15).map((book, idx) => {
-                      const isEpub = book.fileType === 'epub' || book.fileUrl?.endsWith('.epub')
+                      const isEpub = book.fileType === 'epub' || (book.fileUrl || '').endsWith('.epub')
                       const isReady = book.parseStatus !== 'failed'
                       const isSelected = selectedBookIds.has(book._id)
 
@@ -1080,7 +1062,7 @@ export default function AdminDashboardPage() {
                           }`}
                         >
                           {/* Checkbox */}
-                          <td className="py-3.5 px-4">
+                          <td className="py-3 px-3.5">
                             <input
                               type="checkbox"
                               checked={isSelected}
@@ -1090,26 +1072,26 @@ export default function AdminDashboardPage() {
                           </td>
 
                           {/* Manuscript / Title */}
-                          <td className="py-3.5 px-4">
+                          <td className="py-3 px-3.5">
                             <div className="flex items-center gap-3">
                               <img
                                 src={getBookThumbnailUrl(book)}
-                                alt={book.title}
-                                className="h-10 w-7 rounded object-cover border border-white/10 shadow shrink-0"
+                                alt={book.title || 'Book'}
+                                className="h-9 w-6.5 rounded object-cover border border-white/10 shadow shrink-0"
                               />
                               <div className="min-w-0">
                                 <p className="font-bold text-white group-hover:text-purple-300 transition truncate max-w-[240px]">
-                                  {book.title}
+                                  {book.title || 'Untitled'}
                                 </p>
                                 <p className="text-[11px] text-slate-400 truncate max-w-[240px]">
-                                  {book.author} &bull; <span className="text-slate-500">{book.category || 'General'}</span>
+                                  {book.author || 'Unknown'}
                                 </p>
                               </div>
                             </div>
                           </td>
 
                           {/* Format Badge */}
-                          <td className="py-3.5 px-4">
+                          <td className="py-3 px-3.5">
                             <span
                               className={`rounded px-2 py-0.5 text-[9px] font-extrabold uppercase border ${
                                 isEpub
@@ -1117,69 +1099,42 @@ export default function AdminDashboardPage() {
                                   : 'border-cyan-500/30 bg-cyan-950/40 text-cyan-300'
                               }`}
                             >
-                              {isEpub ? 'EPUB 3.3' : 'PDF/A-1b'}
+                              {isEpub ? 'EPUB 3.3' : 'PDF'}
                             </span>
                           </td>
 
-                          {/* File Size */}
-                          <td className="py-3.5 px-4 font-mono text-slate-300">
-                            {isEpub ? '4.2 MB' : '28.4 MB'}
-                          </td>
-
-                          {/* Total Reads */}
-                          <td className="py-3.5 px-4">
-                            <div>
-                              <p className="font-bold text-white">{(idx * 1420 + 3420).toLocaleString()}</p>
-                              <p className="text-[10px] text-emerald-400 font-medium">+8.4% today</p>
-                            </div>
+                          {/* Category */}
+                          <td className="py-3 px-3.5 font-semibold text-slate-300">
+                            {book.category || 'General'}
                           </td>
 
                           {/* Pipeline Status */}
-                          <td className="py-3.5 px-4">
-                            {book.parseStatus === 'processing' ? (
-                              <div className="space-y-1">
-                                <span className="text-purple-300 font-bold text-[10px]">Parsing (84%)</span>
-                                <div className="h-1.5 w-20 rounded-full bg-white/10 overflow-hidden">
-                                  <div className="h-full w-[84%] bg-gradient-to-r from-purple-500 to-indigo-500 animate-pulse" />
-                                </div>
-                              </div>
-                            ) : isReady ? (
-                              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-950/40 px-2.5 py-0.5 text-[10px] font-bold text-emerald-400">
-                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                                Ready
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-950/40 px-2.5 py-0.5 text-[10px] font-bold text-rose-400">
-                                <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
-                                Failed DRM Check
-                              </span>
-                            )}
-                          </td>
-
-                          {/* Ingested */}
-                          <td className="py-3.5 px-4 text-slate-400 font-mono text-[11px]">
-                            {idx === 0 ? '2m ago' : idx === 1 ? '14m ago' : `${idx + 1}h ago`}
+                          <td className="py-3 px-3.5">
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-950/40 px-2.5 py-0.5 text-[10px] font-bold text-emerald-400">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                              Ready
+                            </span>
                           </td>
 
                           {/* Actions */}
-                          <td className="py-3.5 px-4 text-right">
-                            <div className="flex items-center justify-end gap-1">
+                          <td className="py-3 px-3.5 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
                               <button
                                 type="button"
                                 onClick={() => navigate(book.slug ? `/read/${book.slug}` : `/read/${book._id}`)}
-                                className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/10 hover:text-white transition"
-                                title="Read / Preview Manuscript"
+                                className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/10 hover:text-white transition"
+                                title="Read / Preview"
                               >
-                                <MdVisibility className="h-4 w-4" />
+                                <MdVisibility className="h-3.5 w-3.5" />
                               </button>
 
                               <button
                                 type="button"
                                 onClick={() => handleOpenDrawer(book)}
-                                className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-300 hover:bg-purple-600/30 hover:text-purple-300 transition"
-                                title="Quick Edit Metadata Drawer"
+                                className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-slate-300 hover:bg-purple-600/30 hover:text-purple-300 transition"
+                                title="Edit Metadata"
                               >
-                                <MdTune className="h-4 w-4" />
+                                <MdTune className="h-3.5 w-3.5" />
                               </button>
 
                               <button
@@ -1188,10 +1143,10 @@ export default function AdminDashboardPage() {
                                   setBookToDelete(book)
                                   setDeleteModalOpen(true)
                                 }}
-                                className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-400 hover:bg-rose-500/20 hover:text-rose-300 transition"
-                                title="Delete Manuscript"
+                                className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-slate-400 hover:bg-rose-500/20 hover:text-rose-300 transition"
+                                title="Delete"
                               >
-                                <MdDelete className="h-4 w-4" />
+                                <MdDelete className="h-3.5 w-3.5" />
                               </button>
                             </div>
                           </td>
@@ -1203,67 +1158,33 @@ export default function AdminDashboardPage() {
               </table>
             </div>
 
-            {/* Table Footer: Export & Pagination */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-3 text-xs text-slate-400">
-              <div className="flex items-center gap-3">
-                <span>Showing 1 - {Math.min(15, filteredBooks.length)} of {books.length} titles</span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(filteredBooks, null, 2))
-                      const link = document.createElement('a')
-                      link.setAttribute('href', dataStr)
-                      link.setAttribute('download', `catalog_${Date.now()}.json`)
-                      document.body.appendChild(link)
-                      link.click()
-                      document.body.removeChild(link)
-                      showToast('📦 Exported catalog as JSON')
-                    }}
-                    className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-black/40 px-2.5 py-1 text-[11px] font-bold text-slate-300 hover:bg-white/10 transition"
-                  >
-                    <MdFileDownload className="h-3.5 w-3.5" /> JSON
-                  </button>
+            {/* Table Footer: Export */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 text-xs text-slate-400">
+              <span>Showing {Math.min(15, filteredBooks.length)} of {books.length} catalog items</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(filteredBooks, null, 2))
+                    const link = document.createElement('a')
+                    link.setAttribute('href', dataStr)
+                    link.setAttribute('download', `catalog_${Date.now()}.json`)
+                    document.body.appendChild(link)
+                    link.click()
+                    document.body.removeChild(link)
+                    showToast('📦 Exported catalog as JSON')
+                  }}
+                  className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-black/40 px-2.5 py-1 text-[11px] font-bold text-slate-300 hover:bg-white/10 transition"
+                >
+                  <MdFileDownload className="h-3.5 w-3.5" /> JSON
+                </button>
 
-                  <button
-                    type="button"
-                    onClick={handleExportCSV}
-                    className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-black/40 px-2.5 py-1 text-[11px] font-bold text-slate-300 hover:bg-white/10 transition"
-                  >
-                    <MdFileDownload className="h-3.5 w-3.5" /> CSV
-                  </button>
-                </div>
-              </div>
-
-              {/* Pagination Stepper */}
-              <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-black/40 text-slate-400 hover:text-white"
+                  onClick={handleExportCSV}
+                  className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-black/40 px-2.5 py-1 text-[11px] font-bold text-slate-300 hover:bg-white/10 transition"
                 >
-                  <MdArrowBack className="h-4 w-4" />
-                </button>
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-600 text-xs font-bold text-white shadow">
-                  1
-                </span>
-                <button
-                  type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-black/40 text-slate-400 hover:text-white"
-                >
-                  2
-                </button>
-                <button
-                  type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-black/40 text-slate-400 hover:text-white"
-                >
-                  3
-                </button>
-                <span className="px-1 text-slate-500">...</span>
-                <button
-                  type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-black/40 text-slate-400 hover:text-white"
-                >
-                  <MdArrowForward className="h-4 w-4" />
+                  <MdFileDownload className="h-3.5 w-3.5" /> CSV
                 </button>
               </div>
             </div>
@@ -1274,7 +1195,7 @@ export default function AdminDashboardPage() {
       {/* Slide-Over Quick Edit Metadata Drawer */}
       <AnimatePresence>
         {drawerOpen && editingBook && (
-          <div className="fixed inset-0 z-[100] flex justify-end">
+          <div className="fixed inset-0 z-[110] flex justify-end">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1397,7 +1318,7 @@ export default function AdminDashboardPage() {
       {/* Delete Confirmation Modal */}
       <AnimatePresence>
         {deleteModalOpen && bookToDelete && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1440,13 +1361,6 @@ export default function AdminDashboardPage() {
           </div>
         )}
       </AnimatePresence>
-
-      {/* Floating Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-8 right-8 z-[120] rounded-2xl bg-[#131b2e] border border-purple-500/40 px-5 py-3 text-xs font-bold text-white shadow-2xl backdrop-blur-xl animate-bounce">
-          {toastMessage}
-        </div>
-      )}
     </div>
   )
 }
