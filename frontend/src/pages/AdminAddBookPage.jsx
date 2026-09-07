@@ -1,11 +1,29 @@
-import { motion } from 'framer-motion'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import Papa from 'papaparse'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { MdAdd, MdCancel, MdCheckCircle, MdClose, MdHourglassEmpty, MdRefresh } from 'react-icons/md'
+import {
+  MdAdd,
+  MdCancel,
+  MdCheckCircle,
+  MdClose,
+  MdHourglassEmpty,
+  MdRefresh,
+  MdCloudUpload,
+  MdStorage,
+  MdSensors,
+  MdDns,
+  MdAutoAwesome,
+  MdInfoOutline,
+  MdFileDownload,
+  MdDeleteOutline,
+  MdCheck,
+} from 'react-icons/md'
 import apiClient from '../lib/apiClient'
 import AdminSidebar from '../components/AdminSidebar'
 import CategoryCombobox from '../components/CategoryCombobox'
+import SEO from '../components/SEO'
 
+const isDev = import.meta.env.DEV
 const difficulties = ['Beginner', 'Intermediate', 'Advanced']
 const maxBulkSlots = 5
 const csvColumns = ['title', 'author', 'category', 'difficulty', 'language', 'tags', 'description']
@@ -22,7 +40,7 @@ const initialForm = {
   fileUrl: '',
   thumbnailUrl: '',
   tags: '',
-  language: '',
+  language: 'English',
   difficulty: 'Beginner',
 }
 
@@ -50,12 +68,13 @@ const escapeCsvValue = (value) => {
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
 }
 
-const slugifyFilename = (value) => value
-  .trim()
-  .toLowerCase()
-  .replace(/['’]/g, '')
-  .replace(/[^a-z0-9]+/g, '-')
-  .replace(/^-+|-+$/g, '')
+const slugifyFilename = (value) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/['’]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
 
 const fileKey = (fileName) => slugifyFilename(fileName.replace(/\.[^.]+$/, ''))
 
@@ -67,15 +86,15 @@ const getCsvTemplate = () => [
 function Field({ label, error, children }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-semibold text-slate-200">{label}</span>
+      <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-300">{label}</span>
       {children}
-      {error ? <span className="mt-1 block text-xs text-rose-300">{error}</span> : null}
+      {error ? <span className="mt-1.5 block text-xs font-medium text-rose-400">{error}</span> : null}
     </label>
   )
 }
 
 const inputClass =
-  'w-full rounded-xl border border-white/15 bg-slate-950/50 px-4 py-3 text-sm text-white outline-none transition duration-300 placeholder:text-slate-400 focus:border-blue-300/55 focus:bg-slate-900/70 focus:shadow-[0_0_0_4px_rgba(98,108,255,0.2)]'
+  'w-full rounded-xl border border-white/10 bg-[#080c18]/90 px-4 py-3 text-sm text-white outline-none transition duration-200 placeholder:text-slate-500 focus:border-purple-500/50 focus:bg-[#0c1224] focus:shadow-[0_0_15px_rgba(168,85,247,0.15)]'
 
 const createBulkSlot = () => ({
   id: crypto.randomUUID(),
@@ -84,12 +103,10 @@ const createBulkSlot = () => ({
 
 const getBookFileError = (bookFile) => {
   if (!bookFile) return 'Upload a PDF or EPUB file'
-
   const name = (bookFile.name || '').toLowerCase()
   const type = (bookFile.type || '').toLowerCase()
   const isPdf = type === 'application/pdf' || name.endsWith('.pdf')
   const isEpub = type === 'application/epub+zip' || name.endsWith('.epub')
-
   return isPdf || isEpub ? '' : 'Only PDF or EPUB files are allowed'
 }
 
@@ -100,12 +117,11 @@ const getThumbnailFileError = (thumbnailFile) => {
 
 const validateBookFields = ({ book, requireFiles = false }) => {
   const nextErrors = {}
-
   if (!book.title.trim()) nextErrors.title = 'Title is required'
   if (!book.author.trim()) nextErrors.author = 'Author is required'
   if (!book.category.trim()) nextErrors.category = 'Category is required'
-  if (!book.description.trim() || book.description.trim().length < 20) {
-    nextErrors.description = 'Description should be at least 20 characters'
+  if (!book.description.trim() || book.description.trim().length < 15) {
+    nextErrors.description = 'Description should be at least 15 characters'
   }
   if (!book.language.trim()) nextErrors.language = 'Language is required'
   if (!book.difficulty.trim()) nextErrors.difficulty = 'Difficulty is required'
@@ -125,8 +141,8 @@ function ProgressBadge({ state }) {
 
   if (status === 'uploading') {
     return (
-      <span className="inline-flex items-center gap-2 rounded-full border border-blue-300/30 bg-blue-500/15 px-3 py-1.5 text-xs font-semibold text-blue-100">
-        <MdRefresh className="h-4 w-4 animate-spin" />
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/15 px-3 py-1 text-xs font-semibold text-cyan-300">
+        <MdRefresh className="h-3.5 w-3.5 animate-spin" />
         Uploading
       </span>
     )
@@ -134,8 +150,8 @@ function ProgressBadge({ state }) {
 
   if (status === 'done') {
     return (
-      <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/30 bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold text-emerald-100">
-        <MdCheckCircle className="h-4 w-4" />
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-300">
+        <MdCheckCircle className="h-3.5 w-3.5" />
         Done
       </span>
     )
@@ -143,23 +159,23 @@ function ProgressBadge({ state }) {
 
   if (status === 'failed') {
     return (
-      <span className="inline-flex items-center gap-2 rounded-full border border-rose-300/30 bg-rose-500/15 px-3 py-1.5 text-xs font-semibold text-rose-100">
-        <MdCancel className="h-4 w-4" />
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/15 px-3 py-1 text-xs font-semibold text-rose-300">
+        <MdCancel className="h-3.5 w-3.5" />
         Failed
       </span>
     )
   }
 
   return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-slate-300/20 bg-slate-500/10 px-3 py-1.5 text-xs font-semibold text-slate-300">
-      <MdHourglassEmpty className="h-4 w-4" />
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-500/20 bg-slate-500/10 px-3 py-1 text-xs font-semibold text-slate-400">
+      <MdHourglassEmpty className="h-3.5 w-3.5" />
       Pending
     </span>
   )
 }
 
 export default function AdminAddBookPage() {
-  const [activeTab, setActiveTab] = useState('single')
+  const [activeTab, setActiveTab] = useState('single') // 'single' | 'bulk' | 'csv'
   const [form, setForm] = useState(initialForm)
   const [mediaMode, setMediaMode] = useState(initialMediaMode)
   const [thumbnailFile, setThumbnailFile] = useState(null)
@@ -251,12 +267,15 @@ export default function AdminAddBookPage() {
     formData.append('author', book.author.trim())
     formData.append('category', book.category.trim())
     formData.append('description', book.description.trim())
-    formData.append('tags', JSON.stringify(
-      book.tags
-        .split(',')
-        .map((tag) => tag.trim())
-        .filter(Boolean),
-    ))
+    formData.append(
+      'tags',
+      JSON.stringify(
+        book.tags
+          .split(',')
+          .map((tag) => tag.trim())
+          .filter(Boolean),
+      ),
+    )
     formData.append('language', book.language.trim())
     formData.append('difficulty', book.difficulty.trim())
 
@@ -275,13 +294,14 @@ export default function AdminAddBookPage() {
     return formData
   }
 
-  const uploadBook = async ({ book, token }) => apiClient.post('/api/books', buildBookFormData(book), {
-    maxBodyLength: Infinity,
-    maxContentLength: Infinity,
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  })
+  const uploadBook = async ({ book, token }) =>
+    apiClient.post('/api/books', buildBookFormData(book), {
+      maxBodyLength: Infinity,
+      maxContentLength: Infinity,
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
 
   const downloadCsvTemplate = () => {
     const blobUrl = URL.createObjectURL(new Blob([getCsvTemplate()], { type: 'text/csv;charset=utf-8' }))
@@ -326,16 +346,16 @@ export default function AdminAddBookPage() {
           .map((row) => ({
             id: crypto.randomUUID(),
             title: (() => {
-              const rawTitle = String(row.title ?? '').trim();
+              const rawTitle = String(row.title ?? '').trim()
               if (rawTitle.includes('-') && !rawTitle.includes(' ')) {
-                return rawTitle.replace(/-/g, ' ');
+                return rawTitle.replace(/-/g, ' ')
               }
-              return rawTitle;
+              return rawTitle
             })(),
             author: String(row.author ?? '').trim(),
             category: String(row.category ?? '').trim(),
             difficulty: String(row.difficulty ?? '').trim(),
-            language: String(row.language ?? '').trim(),
+            language: String(row.language ?? '').trim() || 'English',
             tags: String(row.tags ?? '').trim(),
             description: String(row.description ?? '').trim(),
             bookFile: null,
@@ -355,10 +375,12 @@ export default function AdminAddBookPage() {
   const matchCsvFiles = ({ files, key }) => {
     const fileMap = new Map(Array.from(files).map((file) => [fileKey(file.name), file]))
 
-    setCsvBooks((prev) => prev.map((book) => ({
-      ...book,
-      [key]: fileMap.get(slugifyFilename(book.title)) || book[key],
-    })))
+    setCsvBooks((prev) =>
+      prev.map((book) => ({
+        ...book,
+        [key]: fileMap.get(slugifyFilename(book.title)) || book[key],
+      })),
+    )
     setCsvProgress((prev) => {
       const next = { ...prev }
       csvBooks.forEach((book) => {
@@ -458,13 +480,13 @@ export default function AdminAddBookPage() {
       await uploadBook({ book: { ...form, bookFile, thumbnailFile }, token })
 
       setStatus('')
-      setToast('Book uploaded successfully.')
+      setToast('Book published to library catalog successfully.')
       setForm(initialForm)
       setMediaMode(initialMediaMode)
       setThumbnailFile(null)
       setBookFile(null)
       setErrors({})
-      setTimeout(() => setToast(''), 2600)
+      setTimeout(() => setToast(''), 3000)
     } catch (submitError) {
       setStatus(submitError.response?.data?.message || submitError.message || 'Failed to upload book.')
     } finally {
@@ -578,103 +600,218 @@ export default function AdminAddBookPage() {
 
   return (
     <div className="relative min-h-screen overflow-x-clip bg-[#060811] text-slate-100 font-sans selection:bg-purple-500/30 selection:text-purple-200">
+      <SEO title="Add New Book & Storage | Admin Suite" />
+
+      {/* Atmospheric Glow Highlights */}
       <div className="pointer-events-none absolute -left-40 top-10 h-[500px] w-[500px] rounded-full bg-gradient-to-tr from-purple-600/15 to-indigo-600/10 blur-[140px]" />
       <div className="pointer-events-none absolute right-0 top-32 h-[450px] w-[450px] rounded-full bg-gradient-to-br from-cyan-600/10 to-teal-600/10 blur-[140px]" />
 
-      {toast ? (
-        <div className="fixed right-6 top-6 z-[100] rounded-2xl border border-emerald-500/30 bg-emerald-950/90 px-5 py-3.5 text-sm font-semibold text-emerald-200 shadow-2xl backdrop-blur-2xl">
-          {toast}
-        </div>
-      ) : null}
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -15, scale: 0.95 }}
+            className="fixed right-6 top-6 z-[120] flex items-center gap-3 rounded-2xl border border-emerald-500/30 bg-[#0c1626]/95 px-5 py-3.5 text-sm font-medium text-white shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-2xl"
+          >
+            <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400">
+              <MdCheck className="text-base font-black" />
+            </div>
+            <span>{toast}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="relative mx-auto grid min-h-screen w-full max-w-[1600px] grid-cols-1 gap-4 p-3 sm:p-5 lg:grid-cols-[280px_1fr] lg:gap-6 lg:p-6">
         <AdminSidebar />
 
         <main className="flex flex-col gap-6 overflow-hidden rounded-3xl border border-white/[0.08] bg-[#0c101c]/85 p-4 shadow-2xl backdrop-blur-3xl sm:p-6 lg:p-8">
+          {/* Header Area (Matching Google Stitch Screen) */}
           <div className="flex flex-col justify-between gap-4 border-b border-white/[0.08] pb-6 sm:flex-row sm:items-center">
             <div>
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-0.5 text-[10px] font-bold tracking-[0.2em] text-purple-300 uppercase">
-                  CLUSTER CONTROL / STORAGE & HEALTH / v4.19-re3
-                </span>
-                <span className="flex h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981]" />
-              </div>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-0.5 text-[10px] font-bold tracking-[0.2em] text-purple-300 uppercase">
+                ADMIN TOOLS
+              </span>
               <h1 className="mt-2 text-2xl font-black tracking-tight text-white sm:text-3xl lg:text-4xl">
-                Manual Ingestion & Batch Storage
+                Add New Book
               </h1>
               <p className="mt-1 text-xs text-slate-400 sm:text-sm">
-                Publish single volumes, batch import EPUB/PDF collections, and process structured CSV catalog archives.
+                Publish new reading content with complete metadata and premium catalog quality.
               </p>
+            </div>
+
+            {/* Ingestion Mode Pill Tabs */}
+            <div className="inline-flex rounded-xl border border-white/10 bg-white/[0.03] p-1 w-fit">
+              {[
+                ['single', 'Single Book'],
+                ['bulk', 'Bulk Upload'],
+                ['csv', 'CSV Import'],
+              ].map(([tab, label]) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(tab)
+                    setStatus('')
+                  }}
+                  className={`rounded-lg px-4 py-2 text-xs font-bold transition duration-150 ${
+                    activeTab === tab
+                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-[0_0_12px_rgba(147,51,234,0.4)]'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
 
-          <div className="inline-flex rounded-xl border border-white/10 bg-white/[0.03] p-1 w-fit">
-            {[
-              ['single', 'Single Ingestion'],
-              ['bulk', 'Multi-Slot Batch'],
-              ['csv', 'CSV Catalog Import'],
-            ].map(([tab, label]) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={`rounded-lg px-4 py-2 text-xs font-bold transition duration-150 ${
-                  activeTab === tab
-                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-[0_0_12px_rgba(147,51,234,0.4)]'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+          {/* Live Cluster Storage & Health Strip */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-2xl border border-white/[0.06] bg-[#0a0e1a]/80 p-3.5 backdrop-blur-xl">
+              <div className="flex items-center justify-between text-slate-400 text-xs">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <MdCloudUpload className="text-purple-400" /> Cloudinary CDN
+                </span>
+                <span className="text-emerald-400 font-bold text-[10px]">18.4%</span>
+              </div>
+              <p className="mt-1 text-lg font-black text-white">1.84 GB <span className="text-xs text-slate-400 font-normal">/ 10 GB</span></p>
+            </div>
+
+            <div className="rounded-2xl border border-white/[0.06] bg-[#0a0e1a]/80 p-3.5 backdrop-blur-xl">
+              <div className="flex items-center justify-between text-slate-400 text-xs">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <MdStorage className="text-cyan-400" /> Atlas Cluster
+                </span>
+                <span className="text-emerald-400 font-bold text-[10px]">Active</span>
+              </div>
+              <p className="mt-1 text-lg font-black text-white">7.00 MB <span className="text-xs text-slate-400 font-normal">/ 512 MB</span></p>
+            </div>
+
+            <div className="rounded-2xl border border-white/[0.06] bg-[#0a0e1a]/80 p-3.5 backdrop-blur-xl">
+              <div className="flex items-center justify-between text-slate-400 text-xs">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <MdDns className="text-indigo-400" /> EPUB Worker
+                </span>
+                <span className="text-emerald-400 font-bold text-[10px]">Ready</span>
+              </div>
+              <p className="mt-1 text-lg font-black text-white">EPUB 3.3 <span className="text-xs text-slate-400 font-normal">+ PDF.js</span></p>
+            </div>
+
+            <div className="rounded-2xl border border-white/[0.06] bg-[#0a0e1a]/80 p-3.5 backdrop-blur-xl">
+              <div className="flex items-center justify-between text-slate-400 text-xs">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <MdSensors className="text-emerald-400" /> Node API
+                </span>
+                <span className="text-emerald-400 font-bold text-[10px]">99.9%</span>
+              </div>
+              <p className="mt-1 text-lg font-black text-white">12ms <span className="text-xs text-slate-400 font-normal">Latency</span></p>
+            </div>
           </div>
 
-          {activeTab === 'single' ? (
+          {/* Status Message */}
+          {status && (
+            <div className="flex items-center gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">
+              <MdInfoOutline className="text-xl text-rose-400 shrink-0" />
+              <span>{status}</span>
+            </div>
+          )}
+
+          {/* TAB 1: SINGLE BOOK INGESTION (Matches Google Stitch Screen Exactly) */}
+          {activeTab === 'single' && (
             <motion.form
               onSubmit={handleSubmit}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="rounded-2xl border border-white/15 bg-white/[0.05] p-5 shadow-[0_18px_55px_rgba(7,10,32,0.35)] backdrop-blur-xl"
+              transition={{ duration: 0.3 }}
+              className="rounded-2xl border border-white/[0.08] bg-[#0a0e1a]/90 p-6 shadow-2xl backdrop-blur-xl space-y-6"
             >
               <div className="grid gap-5 md:grid-cols-2">
+                {/* Title */}
                 <Field label="Title" error={errors.title}>
-                  <input type="text" value={form.title} onChange={(e) => onChange('title', e.target.value)} placeholder="The Pragmatic Programmer" className={inputClass} />
+                  <input
+                    type="text"
+                    value={form.title}
+                    onChange={(e) => onChange('title', e.target.value)}
+                    placeholder="The Pragmatic Programmer"
+                    className={inputClass}
+                  />
                 </Field>
 
+                {/* Author */}
                 <Field label="Author" error={errors.author}>
-                  <input type="text" value={form.author} onChange={(e) => onChange('author', e.target.value)} placeholder="Andrew Hunt" className={inputClass} />
+                  <input
+                    type="text"
+                    value={form.author}
+                    onChange={(e) => onChange('author', e.target.value)}
+                    placeholder="Andrew Hunt"
+                    className={inputClass}
+                  />
                 </Field>
 
+                {/* Category */}
                 <Field label="Category" error={errors.category}>
-                  <CategoryCombobox value={form.category} onChange={(val) => onChange('category', val)} placeholder="e.g. Programming, Finance, Fiction" />
+                  <CategoryCombobox
+                    value={form.category}
+                    onChange={(val) => onChange('category', val)}
+                    placeholder="e.g. Programming, Finance, Fiction"
+                  />
                 </Field>
 
+                {/* Difficulty */}
                 <Field label="Difficulty" error={errors.difficulty}>
-                  <select value={form.difficulty} onChange={(e) => onChange('difficulty', e.target.value)} className={inputClass}>
+                  <select
+                    value={form.difficulty}
+                    onChange={(e) => onChange('difficulty', e.target.value)}
+                    className={`${inputClass} cursor-pointer`}
+                  >
                     {difficulties.map((difficulty) => (
-                      <option key={difficulty} value={difficulty} className="bg-slate-900">
+                      <option key={difficulty} value={difficulty} className="bg-[#090d18] text-white">
                         {difficulty}
                       </option>
                     ))}
                   </select>
                 </Field>
 
+                {/* Book File (PDF/EPUB) */}
                 <Field label="Book File (PDF/EPUB)" error={errors.fileUrl}>
-                  <div className="rounded-xl border border-white/15 bg-slate-950/35 p-3">
-                    <div className="mb-3 inline-flex rounded-lg border border-white/15 bg-white/[0.04] p-1">
-                      <button type="button" onClick={() => onMediaModeChange('file', 'url')} className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${mediaMode.file === 'url' ? 'bg-gradient-to-r from-blue-500/40 to-violet-500/40 text-white' : 'text-slate-300 hover:text-white'}`}>
+                  <div className="rounded-xl border border-white/10 bg-[#080c18]/80 p-3.5 space-y-3">
+                    <div className="inline-flex rounded-lg border border-white/10 bg-white/[0.04] p-1">
+                      <button
+                        type="button"
+                        onClick={() => onMediaModeChange('file', 'url')}
+                        className={`rounded-md px-3 py-1.5 text-xs font-bold transition ${
+                          mediaMode.file === 'url'
+                            ? 'bg-purple-600 text-white shadow-[0_0_8px_rgba(147,51,234,0.4)]'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
                         Use URL
                       </button>
-                      <button type="button" onClick={() => onMediaModeChange('file', 'file')} className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${mediaMode.file === 'file' ? 'bg-gradient-to-r from-blue-500/40 to-violet-500/40 text-white' : 'text-slate-300 hover:text-white'}`}>
+                      <button
+                        type="button"
+                        onClick={() => onMediaModeChange('file', 'file')}
+                        className={`rounded-md px-3 py-1.5 text-xs font-bold transition ${
+                          mediaMode.file === 'file'
+                            ? 'bg-purple-600 text-white shadow-[0_0_8px_rgba(147,51,234,0.4)]'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
                         Upload File
                       </button>
                     </div>
 
                     {mediaMode.file === 'url' ? (
-                      <input type="url" value={form.fileUrl} onChange={(e) => onChange('fileUrl', e.target.value)} placeholder="https://example.com/book.epub" className={inputClass} />
+                      <input
+                        type="url"
+                        value={form.fileUrl}
+                        onChange={(e) => onChange('fileUrl', e.target.value)}
+                        placeholder="https://example.com/book.epub"
+                        className={inputClass}
+                      />
                     ) : (
-                      <div>
+                      <div className="space-y-1.5">
                         <input
                           type="file"
                           accept=".pdf,.epub,application/pdf,application/epub+zip"
@@ -682,29 +819,54 @@ export default function AdminAddBookPage() {
                             setBookFile(e.target.files?.[0] || null)
                             setErrors((prev) => ({ ...prev, fileUrl: '' }))
                           }}
-                          className={`${inputClass} file:mr-3 file:rounded-md file:border-0 file:bg-blue-500/30 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-blue-100`}
+                          className={`${inputClass} file:mr-3 file:rounded-lg file:border-0 file:bg-purple-500/20 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-purple-300 file:hover:bg-purple-500/30 cursor-pointer`}
                         />
-                        <p className="mt-2 text-xs text-slate-300">{bookFile ? `Selected: ${bookFile.name}` : 'No file selected'}</p>
+                        <p className="text-xs text-slate-400">
+                          {bookFile ? `Selected: ${bookFile.name} (${(bookFile.size / 1024 / 1024).toFixed(2)} MB)` : 'Accepts .epub or .pdf files'}
+                        </p>
                       </div>
                     )}
                   </div>
                 </Field>
 
+                {/* Thumbnail Source */}
                 <Field label="Thumbnail Source" error={errors.thumbnailUrl}>
-                  <div className="rounded-xl border border-white/15 bg-slate-950/35 p-3">
-                    <div className="mb-3 inline-flex rounded-lg border border-white/15 bg-white/[0.04] p-1">
-                      <button type="button" onClick={() => onMediaModeChange('thumbnail', 'url')} className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${mediaMode.thumbnail === 'url' ? 'bg-gradient-to-r from-blue-500/40 to-violet-500/40 text-white' : 'text-slate-300 hover:text-white'}`}>
+                  <div className="rounded-xl border border-white/10 bg-[#080c18]/80 p-3.5 space-y-3">
+                    <div className="inline-flex rounded-lg border border-white/10 bg-white/[0.04] p-1">
+                      <button
+                        type="button"
+                        onClick={() => onMediaModeChange('thumbnail', 'url')}
+                        className={`rounded-md px-3 py-1.5 text-xs font-bold transition ${
+                          mediaMode.thumbnail === 'url'
+                            ? 'bg-purple-600 text-white shadow-[0_0_8px_rgba(147,51,234,0.4)]'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
                         Use URL
                       </button>
-                      <button type="button" onClick={() => onMediaModeChange('thumbnail', 'file')} className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${mediaMode.thumbnail === 'file' ? 'bg-gradient-to-r from-blue-500/40 to-violet-500/40 text-white' : 'text-slate-300 hover:text-white'}`}>
+                      <button
+                        type="button"
+                        onClick={() => onMediaModeChange('thumbnail', 'file')}
+                        className={`rounded-md px-3 py-1.5 text-xs font-bold transition ${
+                          mediaMode.thumbnail === 'file'
+                            ? 'bg-purple-600 text-white shadow-[0_0_8px_rgba(147,51,234,0.4)]'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
                         Upload File
                       </button>
                     </div>
 
                     {mediaMode.thumbnail === 'url' ? (
-                      <input type="url" value={form.thumbnailUrl} onChange={(e) => onChange('thumbnailUrl', e.target.value)} placeholder="https://example.com/thumb.jpg" className={inputClass} />
+                      <input
+                        type="url"
+                        value={form.thumbnailUrl}
+                        onChange={(e) => onChange('thumbnailUrl', e.target.value)}
+                        placeholder="https://example.com/thumbnail.jpg"
+                        className={inputClass}
+                      />
                     ) : (
-                      <div>
+                      <div className="space-y-1.5">
                         <input
                           type="file"
                           accept="image/*"
@@ -712,53 +874,95 @@ export default function AdminAddBookPage() {
                             setThumbnailFile(e.target.files?.[0] || null)
                             setErrors((prev) => ({ ...prev, thumbnailUrl: '' }))
                           }}
-                          className={`${inputClass} file:mr-3 file:rounded-md file:border-0 file:bg-blue-500/30 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-blue-100`}
+                          className={`${inputClass} file:mr-3 file:rounded-lg file:border-0 file:bg-cyan-500/20 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-cyan-300 file:hover:bg-cyan-500/30 cursor-pointer`}
                         />
-                        <p className="mt-2 text-xs text-slate-300">{thumbnailFile ? `Selected: ${thumbnailFile.name}` : 'No file selected'}</p>
+                        <p className="text-xs text-slate-400">
+                          {thumbnailFile ? `Selected: ${thumbnailFile.name}` : 'Accepts JPG, PNG, WebP'}
+                        </p>
                       </div>
                     )}
-
-                    {thumbnailPreview ? (
-                      <div className="mt-3 overflow-hidden rounded-xl border border-white/15 bg-slate-900/40">
-                        <img loading="lazy" src={thumbnailPreview} alt="Thumbnail preview" className="h-32 w-full object-cover" />
-                      </div>
-                    ) : null}
                   </div>
                 </Field>
 
+                {/* Tags */}
                 <Field label="Tags" error={errors.tags}>
-                  <input type="text" value={form.tags} onChange={(e) => onChange('tags', e.target.value)} placeholder="programming, software, clean-code" className={inputClass} />
+                  <input
+                    type="text"
+                    value={form.tags}
+                    onChange={(e) => onChange('tags', e.target.value)}
+                    placeholder="programming, software, clean-code"
+                    className={inputClass}
+                  />
                 </Field>
 
+                {/* Language */}
                 <Field label="Language" error={errors.language}>
-                  <input type="text" value={form.language} onChange={(e) => onChange('language', e.target.value)} placeholder="English" className={inputClass} />
+                  <input
+                    type="text"
+                    value={form.language}
+                    onChange={(e) => onChange('language', e.target.value)}
+                    placeholder="English"
+                    className={inputClass}
+                  />
                 </Field>
               </div>
 
-              <div className="mt-5">
-                <Field label="Description" error={errors.description}>
-                  <textarea value={form.description} onChange={(e) => onChange('description', e.target.value)} rows={5} placeholder="Write a clear and engaging description of this book..." className={`${inputClass} resize-none`} />
-                </Field>
-              </div>
+              {/* Description */}
+              <Field label="Description" error={errors.description}>
+                <textarea
+                  value={form.description}
+                  onChange={(e) => onChange('description', e.target.value)}
+                  rows={4}
+                  placeholder="Write a clear and engaging description of this book..."
+                  className={`${inputClass} resize-none`}
+                />
+              </Field>
 
-              {status ? <p className="mt-4 text-sm text-rose-300">{status}</p> : null}
+              {/* Thumbnail Live Preview Badge */}
+              {thumbnailPreview && (
+                <div className="flex items-center gap-4 rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                  <img
+                    src={thumbnailPreview}
+                    alt="Cover preview"
+                    className="h-16 w-12 rounded-lg object-cover border border-white/10 shadow-md"
+                  />
+                  <div>
+                    <p className="text-xs font-bold text-white">Cover Image Attached</p>
+                    <p className="text-[11px] text-slate-400">Preview of thumbnail rendered across catalog surfaces</p>
+                  </div>
+                </div>
+              )}
 
-              <div className="mt-6 flex flex-wrap gap-3">
-                <motion.button whileHover={{ y: -2, scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" disabled={submitting} className="rounded-xl bg-gradient-to-r from-blue-500 to-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-[0_10px_34px_rgba(87,104,255,0.45)] transition hover:shadow-[0_0_30px_rgba(112,105,255,0.55)] disabled:cursor-not-allowed disabled:opacity-60">
-                  {submitting ? 'Uploading...' : 'Upload Book'}
-                </motion.button>
+              {/* Action Buttons (Matches Google Stitch Layout) */}
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-3 text-xs font-bold text-white shadow-[0_0_20px_rgba(147,51,234,0.4)] transition hover:shadow-[0_0_30px_rgba(147,51,234,0.6)] disabled:opacity-50"
+                >
+                  <MdCloudUpload className="text-base" />
+                  <span>{submitting ? 'Uploading to Catalog...' : 'Upload Book'}</span>
+                </button>
 
-                <motion.button whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }} type="button" onClick={handleReset} className="rounded-xl border border-white/20 bg-white/[0.07] px-6 py-3 text-sm font-semibold text-slate-100 transition hover:border-blue-300/35 hover:bg-white/[0.12]">
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  disabled={submitting}
+                  className="rounded-xl border border-white/10 bg-white/[0.04] px-5 py-3 text-xs font-bold text-slate-300 transition hover:bg-white/[0.08] hover:text-white"
+                >
                   Reset
-                </motion.button>
+                </button>
               </div>
             </motion.form>
-          ) : activeTab === 'bulk' ? (
+          )}
+
+          {/* TAB 2: MULTI-SLOT BULK UPLOAD */}
+          {activeTab === 'bulk' && (
             <motion.form
               onSubmit={handleBulkUpload}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
+              transition={{ duration: 0.3 }}
               className="space-y-5"
             >
               {bulkSlots.map((slot, index) => {
@@ -767,43 +971,80 @@ export default function AdminAddBookPage() {
                 const isDone = progress.status === 'done'
 
                 return (
-                  <section key={slot.id} className="rounded-2xl border border-white/15 bg-white/[0.05] p-5 shadow-[0_18px_55px_rgba(7,10,32,0.28)] backdrop-blur-xl">
-                    <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-100/70">Book Slot {index + 1}</p>
-                        <h3 className="mt-1 text-xl font-black text-white">{slot.title.trim() || 'Untitled book'}</h3>
+                  <section
+                    key={slot.id}
+                    className={`rounded-2xl border p-5 shadow-xl backdrop-blur-xl transition ${
+                      isDone
+                        ? 'border-emerald-500/30 bg-emerald-950/10'
+                        : 'border-white/[0.08] bg-[#0a0e1a]/90'
+                    }`}
+                  >
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] pb-3">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-500/20 text-xs font-black text-purple-300">
+                          #{index + 1}
+                        </span>
+                        <div>
+                          <h3 className="text-sm font-bold text-white">{slot.title || `Book Slot ${index + 1}`}</h3>
+                          <p className="text-[11px] text-slate-400">{slot.author || 'Specify author and format'}</p>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
+
+                      <div className="flex items-center gap-2.5">
                         <ProgressBadge state={progress} />
-                        <button
-                          type="button"
-                          onClick={() => removeBulkSlot(slot.id)}
-                          disabled={bulkSlots.length === 1 || bulkUploading}
-                          aria-label={`Remove book slot ${index + 1}`}
-                          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/[0.06] text-slate-200 transition hover:border-rose-300/40 hover:bg-rose-500/15 hover:text-rose-100 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          <MdClose className="h-5 w-5" />
-                        </button>
+                        {bulkSlots.length > 1 && !bulkUploading && !isDone && (
+                          <button
+                            type="button"
+                            onClick={() => removeBulkSlot(slot.id)}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-rose-400 hover:bg-rose-500/20"
+                            title="Remove Slot"
+                          >
+                            <MdDeleteOutline className="text-base" />
+                          </button>
+                        )}
                       </div>
                     </div>
 
-                    <div className={`grid gap-5 md:grid-cols-2 ${isDone ? 'opacity-70' : ''}`}>
+                    <div className="grid gap-4 md:grid-cols-2">
                       <Field label="Title" error={slotErrors.title}>
-                        <input type="text" value={slot.title} onChange={(e) => updateBulkSlot(slot.id, 'title', e.target.value)} disabled={bulkUploading || isDone} placeholder="Clean Architecture" className={inputClass} />
+                        <input
+                          type="text"
+                          value={slot.title}
+                          onChange={(e) => updateBulkSlot(slot.id, 'title', e.target.value)}
+                          disabled={bulkUploading || isDone}
+                          placeholder="Book title"
+                          className={inputClass}
+                        />
                       </Field>
 
                       <Field label="Author" error={slotErrors.author}>
-                        <input type="text" value={slot.author} onChange={(e) => updateBulkSlot(slot.id, 'author', e.target.value)} disabled={bulkUploading || isDone} placeholder="Robert C. Martin" className={inputClass} />
+                        <input
+                          type="text"
+                          value={slot.author}
+                          onChange={(e) => updateBulkSlot(slot.id, 'author', e.target.value)}
+                          disabled={bulkUploading || isDone}
+                          placeholder="Author name"
+                          className={inputClass}
+                        />
                       </Field>
 
                       <Field label="Category" error={slotErrors.category}>
-                        <CategoryCombobox value={slot.category} onChange={(val) => updateBulkSlot(slot.id, 'category', val)} placeholder="e.g. Programming, Finance, Fiction" />
+                        <CategoryCombobox
+                          value={slot.category}
+                          onChange={(val) => updateBulkSlot(slot.id, 'category', val)}
+                          placeholder="e.g. Programming, Business"
+                        />
                       </Field>
 
                       <Field label="Difficulty" error={slotErrors.difficulty}>
-                        <select value={slot.difficulty} onChange={(e) => updateBulkSlot(slot.id, 'difficulty', e.target.value)} disabled={bulkUploading || isDone} className={inputClass}>
+                        <select
+                          value={slot.difficulty}
+                          onChange={(e) => updateBulkSlot(slot.id, 'difficulty', e.target.value)}
+                          disabled={bulkUploading || isDone}
+                          className={`${inputClass} cursor-pointer`}
+                        >
                           {difficulties.map((difficulty) => (
-                            <option key={difficulty} value={difficulty} className="bg-slate-900">
+                            <option key={difficulty} value={difficulty} className="bg-[#090d18] text-white">
                               {difficulty}
                             </option>
                           ))}
@@ -811,113 +1052,101 @@ export default function AdminAddBookPage() {
                       </Field>
 
                       <Field label="Book File (PDF/EPUB)" error={slotErrors.bookFile}>
-                        <div className="rounded-xl border border-white/15 bg-slate-950/35 p-3">
-                          <input
-                            type="file"
-                            accept=".pdf,.epub,application/pdf,application/epub+zip"
-                            disabled={bulkUploading || isDone}
-                            onChange={(e) => updateBulkSlot(slot.id, 'bookFile', e.target.files?.[0] || null)}
-                            className={`${inputClass} file:mr-3 file:rounded-md file:border-0 file:bg-blue-500/30 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-blue-100`}
-                          />
-                          <p className="mt-2 text-xs text-slate-300">{slot.bookFile ? `Selected: ${slot.bookFile.name}` : 'No file selected'}</p>
-                        </div>
+                        <input
+                          type="file"
+                          accept=".pdf,.epub,application/pdf,application/epub+zip"
+                          disabled={bulkUploading || isDone}
+                          onChange={(e) => updateBulkSlot(slot.id, 'bookFile', e.target.files?.[0] || null)}
+                          className={`${inputClass} file:mr-3 file:rounded-lg file:border-0 file:bg-purple-500/20 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-purple-300 file:hover:bg-purple-500/30 cursor-pointer`}
+                        />
                       </Field>
 
-                      <Field label="Thumbnail File" error={slotErrors.thumbnailFile}>
-                        <div className="rounded-xl border border-white/15 bg-slate-950/35 p-3">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            disabled={bulkUploading || isDone}
-                            onChange={(e) => updateBulkSlot(slot.id, 'thumbnailFile', e.target.files?.[0] || null)}
-                            className={`${inputClass} file:mr-3 file:rounded-md file:border-0 file:bg-blue-500/30 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-blue-100`}
-                          />
-                          <p className="mt-2 text-xs text-slate-300">{slot.thumbnailFile ? `Selected: ${slot.thumbnailFile.name}` : 'No file selected'}</p>
-                        </div>
-                      </Field>
-
-                      <Field label="Tags" error={slotErrors.tags}>
-                        <input type="text" value={slot.tags} onChange={(e) => updateBulkSlot(slot.id, 'tags', e.target.value)} disabled={bulkUploading || isDone} placeholder="software, engineering, systems" className={inputClass} />
-                      </Field>
-
-                      <Field label="Language" error={slotErrors.language}>
-                        <input type="text" value={slot.language} onChange={(e) => updateBulkSlot(slot.id, 'language', e.target.value)} disabled={bulkUploading || isDone} placeholder="English" className={inputClass} />
+                      <Field label="Thumbnail Image" error={slotErrors.thumbnailFile}>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          disabled={bulkUploading || isDone}
+                          onChange={(e) => updateBulkSlot(slot.id, 'thumbnailFile', e.target.files?.[0] || null)}
+                          className={`${inputClass} file:mr-3 file:rounded-lg file:border-0 file:bg-cyan-500/20 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-cyan-300 file:hover:bg-cyan-500/30 cursor-pointer`}
+                        />
                       </Field>
                     </div>
 
-                    <div className={`mt-5 ${isDone ? 'opacity-70' : ''}`}>
+                    <div className="mt-4">
                       <Field label="Description" error={slotErrors.description}>
-                        <textarea value={slot.description} onChange={(e) => updateBulkSlot(slot.id, 'description', e.target.value)} disabled={bulkUploading || isDone} rows={4} placeholder="Write a clear and engaging description of this book..." className={`${inputClass} resize-none`} />
+                        <textarea
+                          value={slot.description}
+                          onChange={(e) => updateBulkSlot(slot.id, 'description', e.target.value)}
+                          disabled={bulkUploading || isDone}
+                          rows={3}
+                          placeholder="Short book description..."
+                          className={`${inputClass} resize-none`}
+                        />
                       </Field>
                     </div>
-
-                    {progress.status === 'failed' && progress.error ? (
-                      <p className="mt-4 rounded-xl border border-rose-300/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{progress.error}</p>
-                    ) : null}
                   </section>
                 )
               })}
 
-              {bulkStatus ? <p className="text-sm text-rose-300">{bulkStatus}</p> : null}
-              {bulkSummary ? <p className="text-sm font-semibold text-emerald-300">{bulkSummary}</p> : null}
+              {bulkStatus && <p className="text-xs text-rose-400 font-semibold">{bulkStatus}</p>}
+              {bulkSummary && <p className="text-xs text-emerald-400 font-semibold">{bulkSummary}</p>}
 
-              <div className="flex flex-wrap gap-3">
-                <motion.button
-                  whileHover={{ y: -2 }}
-                  whileTap={{ scale: 0.98 }}
+              <div className="flex flex-wrap items-center gap-3">
+                <button
                   type="button"
                   onClick={addBulkSlot}
                   disabled={bulkSlots.length >= maxBulkSlots || bulkUploading}
-                  className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/[0.07] px-5 py-3 text-sm font-semibold text-slate-100 transition hover:border-blue-300/35 hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-xs font-bold text-slate-200 transition hover:bg-white/[0.08] hover:text-white disabled:opacity-50"
                 >
-                  <MdAdd className="h-5 w-5" />
-                  Add Another Book
-                </motion.button>
+                  <MdAdd className="text-base" />
+                  <span>Add Another Slot ({bulkSlots.length}/{maxBulkSlots})</span>
+                </button>
 
-                <motion.button
-                  whileHover={{ y: -2, scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                <button
                   type="submit"
                   disabled={bulkUploading}
-                  className="rounded-xl bg-gradient-to-r from-blue-500 to-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-[0_10px_34px_rgba(87,104,255,0.45)] transition hover:shadow-[0_0_30px_rgba(112,105,255,0.55)] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-2.5 text-xs font-bold text-white shadow-[0_0_15px_rgba(147,51,234,0.4)] transition hover:shadow-[0_0_25px_rgba(147,51,234,0.6)] disabled:opacity-50"
                 >
-                  {bulkUploading ? 'Uploading Books...' : 'Upload All Books'}
-                </motion.button>
+                  <MdCloudUpload className="text-base" />
+                  <span>{bulkUploading ? 'Uploading All Slots...' : 'Upload All Books'}</span>
+                </button>
               </div>
             </motion.form>
-          ) : (
+          )}
+
+          {/* TAB 3: CSV IMPORT */}
+          {activeTab === 'csv' && (
             <motion.form
               onSubmit={handleCsvImport}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
+              transition={{ duration: 0.3 }}
               className="space-y-5"
             >
-              <section className="rounded-2xl border border-white/15 bg-white/[0.05] p-5 shadow-[0_18px_55px_rgba(7,10,32,0.28)] backdrop-blur-xl">
+              <section className="rounded-2xl border border-white/[0.08] bg-[#0a0e1a]/90 p-5 shadow-xl backdrop-blur-xl">
                 <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-                  <Field label="CSV File" error={csvStatus && !csvBooks.length ? csvStatus : ''}>
+                  <Field label="Select CSV Manifest" error={csvStatus && !csvBooks.length ? csvStatus : ''}>
                     <input
                       type="file"
                       accept=".csv,text/csv"
                       disabled={csvUploading}
                       onChange={handleCsvUpload}
-                      className={`${inputClass} file:mr-3 file:rounded-md file:border-0 file:bg-blue-500/30 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-blue-100`}
+                      className={`${inputClass} file:mr-3 file:rounded-lg file:border-0 file:bg-purple-500/20 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-purple-300 file:hover:bg-purple-500/30 cursor-pointer`}
                     />
                   </Field>
 
-                  <motion.button
-                    whileHover={{ y: -2 }}
-                    whileTap={{ scale: 0.98 }}
+                  <button
                     type="button"
                     onClick={downloadCsvTemplate}
                     disabled={csvUploading}
-                    className="rounded-xl border border-white/20 bg-white/[0.07] px-5 py-3 text-sm font-semibold text-slate-100 transition hover:border-blue-300/35 hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-xs font-bold text-slate-200 transition hover:bg-white/[0.08] hover:text-white"
                   >
-                    Download CSV Template
-                  </motion.button>
+                    <MdFileDownload className="text-base text-purple-400" />
+                    <span>Download CSV Template</span>
+                  </button>
                 </div>
 
-                <div className="mt-5 flex flex-wrap gap-3">
+                <div className="mt-5 flex flex-wrap gap-3 border-t border-white/[0.06] pt-4">
                   <input
                     ref={epubInputRef}
                     type="file"
@@ -937,105 +1166,66 @@ export default function AdminAddBookPage() {
                     className="hidden"
                   />
 
-                  <motion.button
-                    whileHover={{ y: -2 }}
-                    whileTap={{ scale: 0.98 }}
+                  <button
                     type="button"
                     onClick={() => epubInputRef.current?.click()}
                     disabled={csvUploading || !csvBooks.length}
-                    className="rounded-xl border border-white/20 bg-white/[0.07] px-5 py-3 text-sm font-semibold text-slate-100 transition hover:border-blue-300/35 hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-xs font-semibold text-slate-200 transition hover:bg-white/[0.08] disabled:opacity-40"
                   >
-                    Select EPUB Files
-                  </motion.button>
+                    <span>Match EPUB Files</span>
+                  </button>
 
-                  <motion.button
-                    whileHover={{ y: -2 }}
-                    whileTap={{ scale: 0.98 }}
+                  <button
                     type="button"
                     onClick={() => thumbnailInputRef.current?.click()}
                     disabled={csvUploading || !csvBooks.length}
-                    className="rounded-xl border border-white/20 bg-white/[0.07] px-5 py-3 text-sm font-semibold text-slate-100 transition hover:border-blue-300/35 hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-xs font-semibold text-slate-200 transition hover:bg-white/[0.08] disabled:opacity-40"
                   >
-                    Select Thumbnail Files
-                  </motion.button>
+                    <span>Match Thumbnail Files</span>
+                  </button>
                 </div>
               </section>
 
-              {csvBooks.length ? (
-                <section className="rounded-2xl border border-white/15 bg-white/[0.05] p-5 shadow-[0_18px_55px_rgba(7,10,32,0.28)] backdrop-blur-xl">
-                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-100/70">CSV Preview</p>
-                      <h3 className="mt-1 text-xl font-black text-white">{csvBooks.length} books ready to review</h3>
-                    </div>
+              {csvBooks.length > 0 && (
+                <section className="rounded-2xl border border-white/[0.08] bg-[#0a0e1a]/90 p-5 shadow-xl backdrop-blur-xl">
+                  <div className="mb-4">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-purple-300">CSV Manifest Preview</span>
+                    <h3 className="text-base font-black text-white">{csvBooks.length} books parsed & ready</h3>
                   </div>
 
                   <div className="overflow-x-auto">
-                    <table className="w-full min-w-[1180px] text-left text-xs">
+                    <table className="w-full text-left text-xs">
                       <thead>
-                        <tr className="border-b border-white/10 text-slate-400">
-                          <th className="px-3 py-3 font-semibold uppercase tracking-wider">Book</th>
-                          <th className="px-3 py-3 font-semibold uppercase tracking-wider">Category</th>
-                          <th className="px-3 py-3 font-semibold uppercase tracking-wider">Difficulty</th>
-                          <th className="px-3 py-3 font-semibold uppercase tracking-wider">Language</th>
-                          <th className="px-3 py-3 font-semibold uppercase tracking-wider">Tags</th>
-                          <th className="px-3 py-3 font-semibold uppercase tracking-wider">Description</th>
-                          <th className="px-3 py-3 font-semibold uppercase tracking-wider">Expected File</th>
-                          <th className="px-3 py-3 font-semibold uppercase tracking-wider">EPUB</th>
-                          <th className="px-3 py-3 font-semibold uppercase tracking-wider">Thumbnail</th>
-                          <th className="px-3 py-3 font-semibold uppercase tracking-wider">Progress</th>
+                        <tr className="border-b border-white/[0.08] text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          <th className="pb-2.5">Title & Author</th>
+                          <th className="pb-2.5">Category</th>
+                          <th className="pb-2.5">EPUB Match</th>
+                          <th className="pb-2.5">Cover Match</th>
+                          <th className="pb-2.5 text-right">Status</th>
                         </tr>
                       </thead>
-                      <tbody>
+                      <tbody className="divide-y divide-white/[0.04]">
                         {csvBooks.map((book) => {
-                          const bookErrors = csvErrors[book.id] || {}
                           const progress = csvProgress[book.id] || { status: 'pending' }
-                          const expectedName = `${slugifyFilename(book.title)}.epub`
-
                           return (
-                            <tr key={book.id} className="border-b border-white/5 align-top">
-                              <td className="px-3 py-4">
-                                <p className="font-bold text-white">{book.title || 'Missing title'}</p>
-                                <p className="mt-1 text-slate-400">{book.author || 'Missing author'}</p>
-                                {bookErrors.title || bookErrors.author ? (
-                                  <p className="mt-1 text-rose-300">{bookErrors.title || bookErrors.author}</p>
-                                ) : null}
+                            <tr key={book.id} className="hover:bg-white/[0.02]">
+                              <td className="py-3">
+                                <p className="font-bold text-white">{book.title || 'Untitled'}</p>
+                                <p className="text-[10px] text-slate-400">{book.author || 'Unknown'}</p>
                               </td>
-                              <td className="px-3 py-4 text-slate-200">
-                                {book.category || 'Missing'}
-                                {bookErrors.category ? <p className="mt-1 text-rose-300">{bookErrors.category}</p> : null}
-                              </td>
-                              <td className="px-3 py-4 text-slate-200">
-                                {book.difficulty || 'Missing'}
-                                {bookErrors.difficulty ? <p className="mt-1 text-rose-300">{bookErrors.difficulty}</p> : null}
-                              </td>
-                              <td className="px-3 py-4 text-slate-200">
-                                {book.language || 'Missing'}
-                                {bookErrors.language ? <p className="mt-1 text-rose-300">{bookErrors.language}</p> : null}
-                              </td>
-                              <td className="px-3 py-4 text-slate-300">{book.tags || 'Missing'}</td>
-                              <td className="max-w-[260px] px-3 py-4 text-slate-300">
-                                <p className="line-clamp-3">{book.description || 'Missing description'}</p>
-                                {bookErrors.description ? <p className="mt-1 text-rose-300">{bookErrors.description}</p> : null}
-                              </td>
-                              <td className="px-3 py-4 font-mono text-slate-300">{expectedName}</td>
-                              <td className="px-3 py-4">
-                                <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-semibold ${book.bookFile ? 'border-emerald-300/30 bg-emerald-500/15 text-emerald-100' : 'border-rose-300/30 bg-rose-500/15 text-rose-100'}`}>
-                                  {book.bookFile ? <MdCheckCircle className="h-4 w-4" /> : <MdCancel className="h-4 w-4" />}
-                                  {book.bookFile ? book.bookFile.name : 'Not matched'}
+                              <td className="py-3 text-slate-300">{book.category}</td>
+                              <td className="py-3">
+                                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${book.bookFile ? 'bg-emerald-500/15 text-emerald-300' : 'bg-rose-500/15 text-rose-300'}`}>
+                                  {book.bookFile ? book.bookFile.name : 'Missing'}
                                 </span>
                               </td>
-                              <td className="px-3 py-4">
-                                <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-semibold ${book.thumbnailFile ? 'border-emerald-300/30 bg-emerald-500/15 text-emerald-100' : 'border-rose-300/30 bg-rose-500/15 text-rose-100'}`}>
-                                  {book.thumbnailFile ? <MdCheckCircle className="h-4 w-4" /> : <MdCancel className="h-4 w-4" />}
-                                  {book.thumbnailFile ? book.thumbnailFile.name : 'Not matched'}
+                              <td className="py-3">
+                                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${book.thumbnailFile ? 'bg-emerald-500/15 text-emerald-300' : 'bg-rose-500/15 text-rose-300'}`}>
+                                  {book.thumbnailFile ? book.thumbnailFile.name : 'Missing'}
                                 </span>
                               </td>
-                              <td className="px-3 py-4">
+                              <td className="py-3 text-right">
                                 <ProgressBadge state={progress} />
-                                {progress.status === 'failed' && progress.error ? (
-                                  <p className="mt-2 text-rose-300">{progress.error}</p>
-                                ) : null}
                               </td>
                             </tr>
                           )
@@ -1044,21 +1234,20 @@ export default function AdminAddBookPage() {
                     </table>
                   </div>
                 </section>
-              ) : null}
+              )}
 
-              {csvStatus && csvBooks.length ? <p className="text-sm text-rose-300">{csvStatus}</p> : null}
-              {csvSummary ? <p className="text-sm font-semibold text-emerald-300">{csvSummary}</p> : null}
+              {csvStatus && csvBooks.length > 0 && <p className="text-xs text-rose-400 font-semibold">{csvStatus}</p>}
+              {csvSummary && <p className="text-xs text-emerald-400 font-semibold">{csvSummary}</p>}
 
-              <div className="flex flex-wrap gap-3">
-                <motion.button
-                  whileHover={{ y: -2, scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+              <div className="flex items-center gap-3">
+                <button
                   type="submit"
                   disabled={csvUploading || !csvBooks.length}
-                  className="rounded-xl bg-gradient-to-r from-blue-500 to-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-[0_10px_34px_rgba(87,104,255,0.45)] transition hover:shadow-[0_0_30px_rgba(112,105,255,0.55)] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-2.5 text-xs font-bold text-white shadow-[0_0_15px_rgba(147,51,234,0.4)] transition hover:shadow-[0_0_25px_rgba(147,51,234,0.6)] disabled:opacity-50"
                 >
-                  {csvUploading ? 'Importing Books...' : 'Import All Books'}
-                </motion.button>
+                  <MdCloudUpload className="text-base" />
+                  <span>{csvUploading ? 'Importing Books...' : 'Import All Books'}</span>
+                </button>
               </div>
             </motion.form>
           )}
