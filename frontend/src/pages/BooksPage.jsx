@@ -110,7 +110,7 @@ export default function BooksPage() {
     return result
   }, [allCatalogBooks, query, selectedTopic, selectedLevel])
 
-  const booksPerPage = 8
+  const booksPerPage = 12
   const totalPages = Math.max(1, Math.ceil(filteredBooks.length / booksPerPage))
   const paginatedBooks = filteredBooks.slice(
     (currentPage - 1) * booksPerPage,
@@ -118,7 +118,7 @@ export default function BooksPage() {
   )
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-6 sm:space-y-8 pb-12">
       <SEO
         title="Explore Catalog - Readify"
         description="Discover our immersive library of digital books across topics and reading levels."
@@ -127,13 +127,13 @@ export default function BooksPage() {
       {/* ========================================================================= */}
       {/* 1. FILTER ROWS: TOPICS & LEVEL                                            */}
       {/* ========================================================================= */}
-      <div className="space-y-4 pt-2">
+      <div className="space-y-3 sm:space-y-4 pt-1">
         {/* Row 1: TOPICS */}
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-[11px] font-bold tracking-[0.2em] text-slate-400 uppercase w-16">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+          <span className="text-[10px] sm:text-[11px] font-bold tracking-[0.2em] text-slate-400 uppercase shrink-0">
             TOPICS
           </span>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
             {TOPICS.map((topic) => {
               const active = selectedTopic === topic
               return (
@@ -144,7 +144,7 @@ export default function BooksPage() {
                     setSelectedTopic(topic)
                     setCurrentPage(1)
                   }}
-                  className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all duration-200 ${
+                  className={`shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold transition-all duration-200 ${
                     active
                       ? 'bg-[#2b3558] text-white shadow-sm ring-1 ring-white/10'
                       : 'border border-white/[0.06] bg-[#121624] text-slate-400 hover:bg-white/[0.06] hover:text-slate-200'
@@ -158,11 +158,11 @@ export default function BooksPage() {
         </div>
 
         {/* Row 2: LEVEL */}
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-[11px] font-bold tracking-[0.2em] text-slate-400 uppercase w-16">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+          <span className="text-[10px] sm:text-[11px] font-bold tracking-[0.2em] text-slate-400 uppercase shrink-0">
             LEVEL
           </span>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
             {LEVELS.map((lvl) => {
               const Icon = lvl.icon
               const active = selectedLevel === lvl.id
@@ -174,7 +174,7 @@ export default function BooksPage() {
                     setSelectedLevel((prev) => (prev === lvl.id ? null : lvl.id))
                     setCurrentPage(1)
                   }}
-                  className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-medium transition-all duration-200 ${
+                  className={`shrink-0 inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-medium transition-all duration-200 ${
                     active
                       ? 'bg-[#2b3558] text-white ring-1 ring-violet-400/40 shadow-sm'
                       : 'border border-white/[0.06] bg-[#121624] text-slate-400 hover:bg-white/[0.06] hover:text-slate-200'
@@ -190,16 +190,16 @@ export default function BooksPage() {
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. BOOKS GRID (4 COLUMNS EXACT MATCH)                                     */}
+      {/* 2. BOOKS GRID (2-COLUMNS ON MOBILE, 3-4 ON TABLET/DESKTOP)               */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-6">
         {paginatedBooks.map((book) => {
           const isSaved = savedBookIds.includes(book.slug)
           return (
             <div
               key={book.id}
               onClick={() => navigate(`/read/${book.slug}`)}
-              className="group relative cursor-pointer flex flex-col justify-between rounded-2xl border border-white/[0.07] bg-[#101420]/95 p-3.5 transition-all duration-300 hover:-translate-y-1.5 hover:border-violet-500/40 hover:bg-[#151928] hover:shadow-2xl shadow-black/60"
+              className="group relative cursor-pointer flex flex-col justify-between rounded-2xl border border-white/[0.07] bg-[#101420]/95 p-2.5 sm:p-3.5 transition-all duration-300 hover:-translate-y-1.5 hover:border-violet-500/40 hover:bg-[#151928] hover:shadow-2xl shadow-black/60"
             >
               {/* Vertical Book Cover Ratio */}
               <div className="relative aspect-[3/4.2] w-full overflow-hidden rounded-xl bg-slate-950 border border-white/5 shadow-inner">
@@ -213,7 +213,7 @@ export default function BooksPage() {
                 />
 
                 {/* Cover Overlay Top & Bottom */}
-                <div className="absolute inset-0 flex flex-col justify-between p-3 bg-gradient-to-t from-black/80 via-transparent to-black/50 rounded-xl">
+                <div className="absolute inset-0 flex flex-col justify-between p-2.5 sm:p-3 bg-gradient-to-t from-black/80 via-transparent to-black/50 rounded-xl">
                   {/* Top Right Heart Bookmark Button */}
                   <div className="flex justify-end">
                     <button
@@ -222,31 +222,31 @@ export default function BooksPage() {
                         e.stopPropagation()
                         toggleSaveBook(book.slug)
                       }}
-                      className="grid h-7 w-7 place-items-center rounded-full bg-black/50 text-slate-300 backdrop-blur-sm transition hover:scale-110 hover:text-pink-400"
+                      className="grid h-6 w-6 sm:h-7 sm:w-7 place-items-center rounded-full bg-black/50 text-slate-300 backdrop-blur-sm transition hover:scale-110 hover:text-pink-400"
                       title={isSaved ? 'Remove Bookmark' : 'Bookmark Book'}
                     >
                       {isSaved ? (
-                        <MdBookmark className="h-4 w-4 text-pink-500" />
+                        <MdBookmark className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-pink-500" />
                       ) : (
-                        <MdBookmarkBorder className="h-4 w-4" />
+                        <MdBookmarkBorder className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       )}
                     </button>
                   </div>
 
                   {/* Middle Cover Title Text Simulation */}
                   <div className="text-center my-auto py-1">
-                    <p className="text-[11px] font-black uppercase text-white tracking-widest drop-shadow-md leading-tight">
+                    <p className="text-[10px] sm:text-[11px] font-black uppercase text-white tracking-widest drop-shadow-md leading-tight truncate">
                       {book.coverTitle || book.title}
                     </p>
-                    <p className="text-[8px] font-semibold text-violet-300 tracking-wider mt-0.5">
+                    <p className="text-[7px] sm:text-[8px] font-semibold text-violet-300 tracking-wider mt-0.5 truncate">
                       {book.coverAuthor || book.author}
                     </p>
                   </div>
 
                   {/* Bottom Left Read Time Badge */}
                   <div className="flex items-center">
-                    <span className="inline-flex items-center gap-1 rounded-md bg-black/60 px-2 py-0.5 text-[9px] font-semibold text-slate-200 backdrop-blur-sm">
-                      <MdAccessTime className="h-3 w-3 text-slate-300" />
+                    <span className="inline-flex items-center gap-1 rounded-md bg-black/60 px-1.5 sm:px-2 py-0.5 text-[8px] sm:text-[9px] font-semibold text-slate-200 backdrop-blur-sm">
+                      <MdAccessTime className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-slate-300" />
                       {book.readTime || '8h read'}
                     </span>
                   </div>
@@ -254,18 +254,23 @@ export default function BooksPage() {
               </div>
 
               {/* Book Metadata Footer */}
-              <div className="mt-4 space-y-1">
-                <h3 className="line-clamp-1 text-sm font-bold text-white group-hover:text-violet-300 transition-colors">
+              <div className="mt-2.5 sm:mt-4 space-y-0.5 sm:space-y-1">
+                <h3 className="truncate text-xs sm:text-sm font-bold text-white group-hover:text-violet-300 transition-colors">
                   {book.title}
                 </h3>
-                <p className="line-clamp-1 text-xs text-slate-400">
+                <p className="truncate text-[10px] sm:text-xs text-slate-400">
                   {book.author}
                 </p>
 
                 {/* Rating with Pink/Rose Star */}
-                <div className="pt-2 flex items-center gap-1 text-pink-400 text-xs font-bold">
-                  <MdStar className="h-4 w-4 fill-current" />
-                  <span className="text-white text-xs">{book.rating || '4.8'}</span>
+                <div className="pt-1 flex items-center justify-between text-[10px] sm:text-xs">
+                  <div className="flex items-center gap-1 text-pink-400 font-bold">
+                    <MdStar className="h-3.5 w-3.5 fill-current" />
+                    <span className="text-white">{book.rating || '4.8'}</span>
+                  </div>
+                  <span className="text-slate-500 font-medium text-[9px] sm:text-[10px]">
+                    {book.category}
+                  </span>
                 </div>
               </div>
             </div>
@@ -274,24 +279,24 @@ export default function BooksPage() {
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. PAGINATION CONTROLS (EXACT DESIGN MATCH)                              */}
+      {/* 3. PAGINATION CONTROLS (RESPONSIVE)                                      */}
       {/* ========================================================================= */}
-      <div className="flex items-center justify-center gap-2 pt-6">
+      <div className="flex items-center justify-center gap-1.5 sm:gap-2 pt-6">
         <button
           type="button"
           onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
           disabled={currentPage === 1}
-          className="grid h-9 w-9 place-items-center rounded-xl border border-white/[0.08] bg-[#121624] text-slate-400 transition hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:pointer-events-none"
+          className="grid h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-xl border border-white/[0.08] bg-[#121624] text-slate-400 transition hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:pointer-events-none"
         >
-          <MdChevronLeft className="h-5 w-5" />
+          <MdChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
         </button>
 
-        {[1, 2, 3].map((page) => (
+        {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((page) => (
           <button
             key={page}
             type="button"
             onClick={() => setCurrentPage(page)}
-            className={`grid h-9 w-9 place-items-center rounded-xl text-xs font-bold transition-all ${
+            className={`grid h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-xl text-xs font-bold transition-all ${
               currentPage === page
                 ? 'bg-[#3b82f6] text-white shadow-md shadow-blue-600/30'
                 : 'border border-white/[0.08] bg-[#121624] text-slate-400 hover:bg-white/10 hover:text-white'
@@ -301,40 +306,43 @@ export default function BooksPage() {
           </button>
         ))}
 
-        <span className="px-1 text-xs text-slate-500 font-bold">...</span>
-
-        <button
-          type="button"
-          onClick={() => setCurrentPage(12)}
-          className={`grid h-9 w-9 place-items-center rounded-xl text-xs font-bold transition-all ${
-            currentPage === 12
-              ? 'bg-[#3b82f6] text-white shadow-md shadow-blue-600/30'
-              : 'border border-white/[0.08] bg-[#121624] text-slate-400 hover:bg-white/10 hover:text-white'
-          }`}
-        >
-          12
-        </button>
+        {totalPages > 5 && (
+          <>
+            <span className="px-1 text-xs text-slate-500 font-bold">...</span>
+            <button
+              type="button"
+              onClick={() => setCurrentPage(totalPages)}
+              className={`grid h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-xl text-xs font-bold transition-all ${
+                currentPage === totalPages
+                  ? 'bg-[#3b82f6] text-white shadow-md shadow-blue-600/30'
+                  : 'border border-white/[0.08] bg-[#121624] text-slate-400 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              {totalPages}
+            </button>
+          </>
+        )}
 
         <button
           type="button"
           onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
           disabled={currentPage === totalPages}
-          className="grid h-9 w-9 place-items-center rounded-xl border border-white/[0.08] bg-[#121624] text-slate-400 transition hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:pointer-events-none"
+          className="grid h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-xl border border-white/[0.08] bg-[#121624] text-slate-400 transition hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:pointer-events-none"
         >
-          <MdChevronRight className="h-5 w-5" />
+          <MdChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
         </button>
       </div>
 
       {/* ========================================================================= */}
-      {/* 4. FOOTER BAR (EXACT DESIGN MATCH)                                       */}
+      {/* 4. FOOTER BAR                                                            */}
       {/* ========================================================================= */}
-      <footer className="mt-16 pt-8 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400 font-mono">
+      <footer className="mt-12 sm:mt-16 pt-6 sm:pt-8 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400 font-mono">
         <div className="flex items-center gap-2">
           <span className="font-bold text-white">Readify</span>
           <span>© 2026 Readify. Immersive Reading Experience.</span>
         </div>
 
-        <div className="flex items-center gap-5">
+        <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-5">
           <Link to="/privacy" className="hover:text-slate-200 transition">Privacy Policy</Link>
           <Link to="/terms" className="hover:text-slate-200 transition">Terms of Service</Link>
           <Link to="/help" className="hover:text-slate-200 transition">Help Center</Link>
