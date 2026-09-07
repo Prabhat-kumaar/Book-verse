@@ -18,18 +18,20 @@ const validate = {
     },
 
     email: (email) => {
-        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return re.test(String(email).toLowerCase());
+        if (typeof email !== 'string' || email.length > 254) return false;
+        const re = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+        return re.test(email.toLowerCase().trim());
     },
 
-    password: (password) => typeof password === 'string' && password.length >= 8,
+    password: (password) => typeof password === 'string' && password.length >= 8 && password.length <= 128,
 
     sanitize: (str, maxLength = 500) => {
         if (typeof str !== 'string') return '';
-        return str.trim().slice(0, maxLength);
+        // Strip null bytes and control characters (except standard whitespace)
+        return str.replace(/\0/g, '').trim().slice(0, maxLength);
     },
 
-    objectId: (id) => /^[a-fA-F0-9]{24}$/.test(id),
+    objectId: (id) => typeof id === 'string' && /^[a-fA-F0-9]{24}$/.test(id.trim()),
 };
 
 module.exports = validate;

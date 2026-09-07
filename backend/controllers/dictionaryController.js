@@ -1,24 +1,37 @@
+const validate = require('../utils/validate');
+
+// Bounded in-memory caches to prevent Out-Of-Memory DoS
+const MAX_CACHE_SIZE = 1000;
 const meaningCache = new Map();
 const translationCache = new Map();
 
+function setBoundedCache(map, key, value, maxSize = MAX_CACHE_SIZE) {
+    if (map.size >= maxSize) {
+        const oldestKey = map.keys().next().value;
+        map.delete(oldestKey);
+    }
+    map.set(key, value);
+}
+
 const getWordMeaning = async (req, res, next) => {
     try {
-        const word = req.params.word ? req.params.word.trim() : '';
-        if (!word) {
-            return res.status(400).json({ success: false, message: 'Word is required' });
+        const rawWord = req.params.word ? req.params.word.trim() : '';
+        const word = validate.sanitize(rawWord, 80);
+
+        if (!word || !/^[a-zA-Z\s'-]+$/.test(word)) {
+            return res.status(400).json({ success: false, message: 'Valid word is required' });
         }
 
         const cacheKey = word.toLowerCase();
         if (meaningCache.has(cacheKey)) {
-            console.log(`[Dictionary Cache Hit] word: ${word}`);
             return res.status(200).json({
                 success: true,
-                data: meaningCache.get(cacheKey)
+                data: meaningCache.get(cacheKey),
             });
         }
 
         const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
-        
+
         if (response.status === 404) {
             return res.status(404).json({ success: false, message: 'No definition found' });
         }
@@ -33,11 +46,11 @@ const getWordMeaning = async (req, res, next) => {
         }
 
         const entry = data[0];
-        
+
         // Extract phonetic
         let phonetic = entry.phonetic || '';
         if (!phonetic && entry.phonetics && entry.phonetics.length > 0) {
-            const found = entry.phonetics.find(p => p.text);
+            const found = entry.phonetics.find((p) => p.text);
             if (found) {
                 phonetic = found.text;
             }
@@ -46,7 +59,7 @@ const getWordMeaning = async (req, res, next) => {
         // Extract audio
         let audio = '';
         if (entry.phonetics && entry.phonetics.length > 0) {
-            const found = entry.phonetics.find(p => p.audio);
+            const found = entry.phonetics.find((p) => p.audio);
             if (found) {
                 audio = found.audio;
             }
@@ -55,15 +68,15 @@ const getWordMeaning = async (req, res, next) => {
         // Parse meanings
         const meanings = [];
         if (entry.meanings) {
-            entry.meanings.forEach(m => {
+            entry.meanings.forEach((m) => {
                 const partOfSpeech = m.partOfSpeech || '';
                 if (m.definitions) {
-                    m.definitions.forEach(d => {
+                    m.definitions.forEach((d) => {
                         meanings.push({
                             partOfSpeech,
                             definition: d.definition || '',
                             example: d.example || '',
-                            synonyms: d.synonyms || m.synonyms || []
+                            synonyms: d.synonyms || m.synonyms || [],
                         });
                     });
                 }
@@ -74,15 +87,15 @@ const getWordMeaning = async (req, res, next) => {
             word: entry.word || word,
             phonetic,
             audio,
-            meanings
+            meanings,
         };
 
-        // Save to cache
-        meaningCache.set(cacheKey, simplified);
+        // Save to bounded cache
+        setBoundedCache(meaningCache, cacheKey, simplified);
 
         return res.status(200).json({
             success: true,
-            data: simplified
+            data: simplified,
         });
     } catch (error) {
         return next(error);
@@ -91,24 +104,30 @@ const getWordMeaning = async (req, res, next) => {
 
 const translateText = async (req, res, next) => {
     try {
-        const text = req.query.text ? req.query.text.trim() : '';
-        const target = req.query.target ? req.query.target.trim() : 'hi';
+        const rawText = req.query.text ? req.query.text.trim() : '';
+        const rawTarget = req.query.target ? req.query.target.trim() : 'hi';
+
+        const text = validate.sanitize(rawText, 1000);
+        const target = validate.sanitize(rawTarget, 10);
 
         if (!text) {
-            return res.status(400).json({ success: false, message: 'Text to translate is required' });
+            return res.status(400).json({ success: false, message: 'Text to translate is required (max 1000 characters)' });
+        }
+
+        if (!/^[a-zA-Z-]{2,10}$/.test(target)) {
+            return res.status(400).json({ success: false, message: 'Invalid target language code' });
         }
 
         const cacheKey = `${target.toLowerCase()}:${text.toLowerCase()}`;
         if (translationCache.has(cacheKey)) {
-            console.log(`[Translate Cache Hit] text: "${text}", target: "${target}"`);
             return res.status(200).json({
                 success: true,
-                data: { translatedText: translationCache.get(cacheKey) }
+                data: { translatedText: translationCache.get(cacheKey) },
             });
         }
 
         const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(target)}&dt=t&q=${encodeURIComponent(text)}`;
-        
+
         const response = await fetch(url);
         if (!response.ok) {
             return res.status(response.status).json({ success: false, message: `Translation error: ${response.statusText}` });
@@ -118,7 +137,7 @@ const translateText = async (req, res, next) => {
         let translatedText = '';
         if (data && data[0]) {
             translatedText = data[0]
-                .map(x => x[0])
+                .map((x) => x[0])
                 .filter(Boolean)
                 .join('');
         }
@@ -127,12 +146,12 @@ const translateText = async (req, res, next) => {
             return res.status(500).json({ success: false, message: 'Failed to extract translation' });
         }
 
-        // Save to cache
-        translationCache.set(cacheKey, translatedText);
+        // Save to bounded cache
+        setBoundedCache(translationCache, cacheKey, translatedText);
 
         return res.status(200).json({
             success: true,
-            data: { translatedText }
+            data: { translatedText },
         });
     } catch (error) {
         return next(error);
@@ -141,5 +160,5 @@ const translateText = async (req, res, next) => {
 
 module.exports = {
     getWordMeaning,
-    translateText
+    translateText,
 };

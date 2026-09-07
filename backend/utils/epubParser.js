@@ -112,16 +112,36 @@ function parseToc(zip, opfDir, opfXml) {
     return tocMap;
 }
 
+const path = require('path');
+
+function isBlockedInternalHost(hostname = '') {
+    const host = hostname.toLowerCase().trim();
+    if (host === 'localhost' || host === '127.0.0.1' || host === '::1') return true;
+    if (host.startsWith('10.') || host.startsWith('192.168.') || host.startsWith('169.254.')) return true;
+    if (/^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(host)) return true;
+    return false;
+}
+
 async function loadEpubBuffer(source) {
     if (Buffer.isBuffer(source)) return source;
     if (typeof source !== 'string') throw new Error('Invalid EPUB source');
 
     if (/^https?:\/\//i.test(source)) {
-        const response = await axios.get(source, { responseType: 'arraybuffer', timeout: 30000 });
+        const parsed = new URL(source);
+        if (isBlockedInternalHost(parsed.hostname)) {
+            throw new Error('Access to internal host address is forbidden');
+        }
+
+        const response = await axios.get(source, {
+            responseType: 'arraybuffer',
+            timeout: 30000,
+            maxContentLength: 250 * 1024 * 1024, // Max 250MB
+        });
         return Buffer.from(response.data);
     }
 
-    return fs.promises.readFile(source);
+    const resolvedPath = path.resolve(source);
+    return fs.promises.readFile(resolvedPath);
 }
 
 async function parseEpub(source) {

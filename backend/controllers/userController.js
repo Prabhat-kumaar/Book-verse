@@ -46,19 +46,45 @@ const getAllUsersAdmin = async (_req, res, next) => {
     }
 };
 
+const validate = require('../utils/validate');
+
 const updateBannedState = async (req, res, next, isBanned) => {
     try {
-        const user = await User.findByIdAndUpdate(
-            req.params.id,
-            { isBanned },
-            { new: true }
-        ).select('username email role createdAt isBanned avatar');
-
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+        const targetId = req.params.id;
+        if (!validate.objectId(targetId)) {
+            return res.status(400).json({ success: false, message: 'Invalid user ID' });
         }
 
-        return res.json({ success: true, data: user });
+        // Prevent admin from banning their own account
+        if (req.user?._id?.toString() === targetId && isBanned) {
+            return res.status(400).json({ success: false, message: 'You cannot ban your own admin account' });
+        }
+
+        const targetUser = await User.findById(targetId);
+        if (!targetUser) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        // Prevent banning other admin accounts
+        if (targetUser.role === 'admin' && isBanned) {
+            return res.status(400).json({ success: false, message: 'Administrator accounts cannot be banned' });
+        }
+
+        targetUser.isBanned = isBanned;
+        await targetUser.save();
+
+        return res.json({
+            success: true,
+            data: {
+                _id: targetUser._id,
+                username: targetUser.username,
+                email: targetUser.email || '',
+                role: targetUser.role,
+                createdAt: targetUser.createdAt,
+                isBanned: Boolean(targetUser.isBanned),
+                avatar: targetUser.avatar || '',
+            },
+        });
     } catch (error) {
         next(error);
     }

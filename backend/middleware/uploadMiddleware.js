@@ -5,43 +5,58 @@ const multer = require('multer');
 const uploadDir = path.join(__dirname, '..', 'uploads');
 fs.mkdirSync(uploadDir, { recursive: true });
 
+const ALLOWED_BOOK_EXTS = new Set(['.pdf', '.epub']);
+const ALLOWED_IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.avif']);
+
 const storage = multer.diskStorage({
     destination: (_req, _file, cb) => {
         cb(null, uploadDir);
     },
     filename: (_req, file, cb) => {
-        const ext = path.extname(file.originalname || '');
-        const base = path.basename(file.originalname || 'file', ext).replace(/[^a-zA-Z0-9_-]/g, '-');
+        const rawExt = path.extname(file.originalname || '').toLowerCase();
+        const ext = ALLOWED_BOOK_EXTS.has(rawExt) || ALLOWED_IMAGE_EXTS.has(rawExt) ? rawExt : '';
+        const base = path.basename(file.originalname || 'file', rawExt).replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 80);
         cb(null, `${Date.now()}-${base}${ext}`);
     },
 });
 
 const fileFilter = (_req, file, cb) => {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+
     if (file.fieldname === 'file' || file.fieldname === 'pdf') {
-        const ext = path.extname(file.originalname || '').toLowerCase();
-        const isPdf = file.mimetype === 'application/pdf' || ext === '.pdf';
-        const isEpub = file.mimetype === 'application/epub+zip' || ext === '.epub';
-        if (isPdf || isEpub) {
-            return cb(null, true);
+        if (!ALLOWED_BOOK_EXTS.has(ext)) {
+            return cb(new Error('Only .pdf and .epub file extensions are permitted'));
         }
-        return cb(new Error('Only PDF/EPUB files are allowed for file'));
+
+        const validMimes = ['application/pdf', 'application/epub+zip', 'application/octet-stream', 'application/x-zip-compressed'];
+        if (file.mimetype && !validMimes.includes(file.mimetype.toLowerCase())) {
+            return cb(new Error('Invalid MIME type for book file'));
+        }
+
+        return cb(null, true);
     }
 
     if (file.fieldname === 'thumbnail') {
-        if (file.mimetype && file.mimetype.startsWith('image/')) {
-            return cb(null, true);
+        if (!ALLOWED_IMAGE_EXTS.has(ext)) {
+            return cb(new Error('Only .jpg, .jpeg, .png, .webp, and .avif image files are allowed for thumbnail'));
         }
-        return cb(new Error('Only image files are allowed for thumbnail'));
+
+        if (file.mimetype && !file.mimetype.toLowerCase().startsWith('image/')) {
+            return cb(new Error('Invalid image MIME type for thumbnail'));
+        }
+
+        return cb(null, true);
     }
 
-    return cb(null, false);
+    return cb(new Error('Unexpected upload field'));
 };
 
 const upload = multer({
     storage,
     fileFilter,
     limits: {
-        fileSize: 1024 * 1024 * 200,
+        fileSize: 1024 * 1024 * 200, // 200MB max book size
+        files: 5,
     },
 });
 

@@ -94,8 +94,8 @@ const corsOptions = {
             return callback(null, true);
         }
 
-        // 2. ✅ FIX #6: Allow ANY Vercel deployment — production + all preview subdomains
-        if (/\.vercel\.app$/i.test(normalizedOrigin)) {
+        // 2. Allow verified Readify and Book-verse Vercel deployments (production + branch previews)
+        if (/^https:\/\/(?:readifyai|book-verse)[a-z0-9-]*\.vercel\.app$/i.test(normalizedOrigin)) {
             return callback(null, true);
         }
 
